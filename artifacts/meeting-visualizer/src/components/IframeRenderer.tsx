@@ -5,14 +5,11 @@ import { Button } from "./ui/button";
 
 const BASE = import.meta.env.BASE_URL;
 
-// Script injected into every rendered visualization to power host-tab switching
-// and other stateful interactions defined by data-viz-* attributes.
 const VIZ_INTERACT_SCRIPT = `
 (function() {
   if (window.__vizInteractInit) return;
   window.__vizInteractInit = true;
 
-  // ── HOST TABS (data-viz-host-tabs) ─────────────────────────────────────────
   document.querySelectorAll('[data-viz-host-tabs]').forEach(function(host) {
     var tabs  = host.querySelectorAll('[role="tab"][data-viz-tab]');
     var panels = host.querySelectorAll('[data-viz-tab-panel]');
@@ -38,7 +35,6 @@ const VIZ_INTERACT_SCRIPT = `
     });
   });
 
-  // ── TOGGLE CONTROLS (data-viz-toggle) ─────────────────────────────────────
   document.querySelectorAll('[data-viz-toggle]').forEach(function(btn) {
     btn.addEventListener('click', function() {
       var sel = btn.getAttribute('data-viz-toggle');
@@ -49,6 +45,279 @@ const VIZ_INTERACT_SCRIPT = `
   });
 })();
 `;
+
+// Returns true when the HTML has enough structure to usefully render
+function isHtmlRenderable(html: string | null): boolean {
+  if (!html || html.length < 300) return false;
+  const has_div = html.includes("<div") || html.includes("<section") || html.includes("<table");
+  return has_div;
+}
+
+// ─── Skeleton ──────────────────────────────────────────────────────────────────
+function VizSkeleton({ progress }: { progress: number }) {
+  return (
+    <div
+      style={{
+        position: "absolute",
+        inset: 0,
+        background: "#0d1421",
+        borderRadius: "inherit",
+        overflow: "hidden",
+        display: "flex",
+        flexDirection: "column",
+        zIndex: 10,
+      }}
+    >
+      {/* Progress bar at top */}
+      <div style={{ height: "2px", background: "rgba(0,200,255,0.12)", position: "relative", flexShrink: 0 }}>
+        <div
+          style={{
+            position: "absolute",
+            left: 0,
+            top: 0,
+            height: "100%",
+            width: `${progress}%`,
+            background: "linear-gradient(90deg, #0077C8, #00c8ff)",
+            borderRadius: "0 2px 2px 0",
+            transition: "width 0.6s ease",
+            boxShadow: "0 0 8px rgba(0,200,255,0.6)",
+          }}
+        />
+      </div>
+
+      {/* Shimmer keyframes injected via style tag */}
+      <style>{`
+        @keyframes __sk_shimmer {
+          0% { transform: translateX(-100%); }
+          100% { transform: translateX(200%); }
+        }
+        @keyframes __sk_pulse {
+          0%, 100% { opacity: 0.5; }
+          50% { opacity: 1; }
+        }
+        .__sk_block {
+          position: relative;
+          overflow: hidden;
+          background: #111827;
+          border-radius: 6px;
+        }
+        .__sk_block::after {
+          content: '';
+          position: absolute;
+          inset: 0;
+          background: linear-gradient(90deg, transparent 0%, rgba(0,200,255,0.07) 50%, transparent 100%);
+          animation: __sk_shimmer 1.6s ease-in-out infinite;
+        }
+      `}</style>
+
+      <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
+        {/* Left sidebar skeleton */}
+        <div style={{
+          width: "56px",
+          background: "#080e1a",
+          borderRight: "1px solid rgba(0,200,255,0.08)",
+          flexShrink: 0,
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          padding: "14px 0",
+          gap: "10px",
+        }}>
+          {/* Logo */}
+          <div className="__sk_block" style={{ width: 28, height: 28, borderRadius: 6 }} />
+          <div style={{ width: "80%", height: 1, background: "rgba(255,255,255,0.05)", margin: "4px 0" }} />
+          {[...Array(5)].map((_, i) => (
+            <div key={i} className="__sk_block" style={{ width: 36, height: 36, borderRadius: 8, opacity: i === 0 ? 1 : 0.45 }} />
+          ))}
+        </div>
+
+        {/* Main content */}
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+          {/* Top bar */}
+          <div style={{
+            height: "48px",
+            background: "#080e1a",
+            borderBottom: "1px solid rgba(0,200,255,0.08)",
+            display: "flex",
+            alignItems: "center",
+            padding: "0 20px",
+            gap: 14,
+            flexShrink: 0,
+          }}>
+            <div className="__sk_block" style={{ width: 120, height: 14, borderRadius: 4 }} />
+            <div className="__sk_block" style={{ width: 200, height: 10, borderRadius: 4, opacity: 0.6 }} />
+            <div style={{ marginLeft: "auto", display: "flex", gap: 10, alignItems: "center" }}>
+              <div className="__sk_block" style={{ width: 22, height: 22, borderRadius: "50%" }} />
+              <div className="__sk_block" style={{ width: 80, height: 22, borderRadius: 4 }} />
+            </div>
+          </div>
+
+          {/* Tab bar */}
+          <div style={{
+            height: "38px",
+            background: "#0d1421",
+            borderBottom: "1px solid rgba(0,200,255,0.06)",
+            display: "flex",
+            alignItems: "flex-end",
+            padding: "0 20px",
+            gap: 0,
+            flexShrink: 0,
+          }}>
+            {["OVERVIEW", "TRENDS", "EVENTS", "SMART"].map((t, i) => (
+              <div key={t} style={{
+                padding: "0 20px",
+                height: "38px",
+                display: "flex",
+                alignItems: "center",
+                borderBottom: i === 0 ? "2px solid rgba(0,200,255,0.5)" : "none",
+                marginBottom: i === 0 ? -1 : 0,
+              }}>
+                <div className="__sk_block" style={{
+                  width: i === 0 ? 68 : 48,
+                  height: 9,
+                  borderRadius: 3,
+                  opacity: i === 0 ? 0.9 : 0.35,
+                }} />
+              </div>
+            ))}
+          </div>
+
+          {/* Panel grid */}
+          <div style={{
+            flex: 1,
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gridTemplateRows: "1fr 1fr",
+            gap: "12px",
+            padding: "14px",
+            overflow: "hidden",
+          }}>
+            {/* Panel 1: Metrics */}
+            <div className="__sk_block" style={{
+              display: "flex",
+              flexDirection: "column",
+              padding: "14px",
+              border: "1px solid rgba(0,200,255,0.08)",
+            }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
+                <div className="__sk_block" style={{ width: 14, height: 14, borderRadius: "50%" }} />
+                <div className="__sk_block" style={{ width: 140, height: 9, borderRadius: 3 }} />
+                <div style={{ marginLeft: "auto" }}>
+                  <div className="__sk_block" style={{ width: 8, height: 8, borderRadius: "50%", background: "#00d08460" }} />
+                </div>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 8, flex: 1 }}>
+                {[...Array(4)].map((_, i) => (
+                  <div key={i} className="__sk_block" style={{
+                    display: "flex", flexDirection: "column", padding: "10px 8px", gap: 6,
+                    border: "1px solid rgba(0,200,255,0.06)", borderRadius: 6,
+                  }}>
+                    <div className="__sk_block" style={{ width: "70%", height: 7, borderRadius: 3, opacity: 0.5 }} />
+                    <div className="__sk_block" style={{ width: "90%", height: 22, borderRadius: 4 }} />
+                    <div className="__sk_block" style={{ width: "60%", height: 6, borderRadius: 3, opacity: 0.4 }} />
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Panel 2: Chart */}
+            <div className="__sk_block" style={{
+              display: "flex",
+              flexDirection: "column",
+              padding: "14px",
+              border: "1px solid rgba(0,200,255,0.08)",
+            }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
+                <div className="__sk_block" style={{ width: 120, height: 9, borderRadius: 3 }} />
+                <div className="__sk_block" style={{ width: 50, height: 18, borderRadius: 4, marginLeft: 8 }} />
+              </div>
+              {/* Fake chart lines */}
+              <div style={{ flex: 1, position: "relative", padding: "4px 0" }}>
+                {[...Array(3)].map((_, i) => (
+                  <div key={i} style={{
+                    position: "absolute",
+                    left: 0, right: 0,
+                    top: `${20 + i * 30}%`,
+                    height: 1,
+                    background: "rgba(0,200,255,0.05)",
+                  }} />
+                ))}
+                <svg width="100%" height="100%" viewBox="0 0 300 100" preserveAspectRatio="none" style={{ opacity: 0.25 }}>
+                  <polyline points="0,70 50,55 100,62 150,35 200,44 250,28 300,32"
+                    fill="none" stroke="#00c8ff" strokeWidth="2" />
+                  <polyline points="0,70 50,55 100,62 150,35 200,44 250,28 300,32 300,100 0,100"
+                    fill="rgba(0,200,255,0.06)" stroke="none" />
+                </svg>
+              </div>
+            </div>
+
+            {/* Panel 3: Diagram */}
+            <div className="__sk_block" style={{
+              display: "flex",
+              flexDirection: "column",
+              padding: "14px",
+              border: "1px solid rgba(0,200,255,0.08)",
+            }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                <div className="__sk_block" style={{ width: 100, height: 9, borderRadius: 3 }} />
+              </div>
+              <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 12 }}>
+                {[...Array(3)].map((_, i) => (
+                  <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
+                    <div className="__sk_block" style={{ width: 56, height: 36, borderRadius: 5, border: "1px solid rgba(0,200,255,0.1)" }} />
+                    <div className="__sk_block" style={{ width: 44, height: 7, borderRadius: 3, opacity: 0.5 }} />
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Panel 4: Controls */}
+            <div className="__sk_block" style={{
+              display: "flex",
+              flexDirection: "column",
+              padding: "14px",
+              border: "1px solid rgba(0,200,255,0.08)",
+            }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                <div className="__sk_block" style={{ width: 130, height: 9, borderRadius: 3 }} />
+              </div>
+              {[...Array(2)].map((_, i) => (
+                <div key={i} className="__sk_block" style={{
+                  padding: 10, borderRadius: 6, marginBottom: 8,
+                  border: "1px solid rgba(0,200,255,0.06)",
+                  display: "flex", alignItems: "center", gap: 10,
+                }}>
+                  <div className="__sk_block" style={{ width: 36, height: 36, borderRadius: "50%" }} />
+                  <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 5 }}>
+                    <div className="__sk_block" style={{ width: "80%", height: 7, borderRadius: 3, opacity: 0.5 }} />
+                    <div className="__sk_block" style={{ width: "60%", height: 9, borderRadius: 3 }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Status label */}
+      <div style={{
+        position: "absolute",
+        bottom: 16,
+        left: "50%",
+        transform: "translateX(-50%)",
+        fontSize: "0.67rem",
+        color: "rgba(0,200,255,0.5)",
+        letterSpacing: "0.12em",
+        fontFamily: "monospace",
+        textTransform: "uppercase",
+        animation: "__sk_pulse 1.8s ease-in-out infinite",
+        whiteSpace: "nowrap",
+      }}>
+        ◈ Generating visualization…
+      </div>
+    </div>
+  );
+}
 
 interface IframeRendererProps {
   html: string | null;
@@ -71,7 +340,34 @@ export function IframeRenderer({
   const [isFullscreen, setIsFullscreen] = useState(false);
   const fillPendingRef = useRef(false);
 
-  // Strip ```html...``` code fence wrappers the model sometimes emits
+  // Track progress for skeleton bar (0-95 while streaming, 100 on done)
+  const [skeletonProgress, setSkeletonProgress] = useState(0);
+  const progressTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    if (isStreaming) {
+      setSkeletonProgress(5);
+      let current = 5;
+      progressTimerRef.current = setInterval(() => {
+        // Slow logarithmic crawl toward 92
+        const delta = (92 - current) * 0.045;
+        current = Math.min(92, current + delta + 0.3);
+        setSkeletonProgress(current);
+      }, 400);
+    } else {
+      if (progressTimerRef.current) clearInterval(progressTimerRef.current);
+      setSkeletonProgress(100);
+      const t = setTimeout(() => setSkeletonProgress(0), 600);
+      return () => clearTimeout(t);
+    }
+    return () => {
+      if (progressTimerRef.current) clearInterval(progressTimerRef.current);
+    };
+  }, [isStreaming]);
+
+  const renderable = isHtmlRenderable(html);
+  const showSkeleton = isStreaming && !renderable;
+
   function stripCodeFences(s: string): string {
     let t = s.trim();
     t = t.replace(/^```(?:html)?\s*\n?/, "");
@@ -79,15 +375,12 @@ export function IframeRenderer({
     return t.trim();
   }
 
-  // Detect whether the generated HTML is a full document or a snippet
   function buildDocument(rawHtml: string): string {
     const t = stripCodeFences(rawHtml).trimStart();
     if (t.startsWith("<!DOCTYPE") || t.toLowerCase().startsWith("<html")) {
-      // Full document — inject interaction script before </body>
       return t.replace(/<\/body>/i,
         `<script>${VIZ_INTERACT_SCRIPT}<\/script></body>`);
     }
-    // Snippet (style + div) — wrap in a minimal doc
     return `<!DOCTYPE html>
 <html>
 <head>
@@ -111,7 +404,6 @@ ${t}
 </html>`;
   }
 
-  // Fill lazy tab panels via the API
   const fillLazyTabs = useCallback(async (doc: Document) => {
     if (fillPendingRef.current) return;
     const host = doc.querySelector<HTMLElement>('[data-viz-host-tabs][data-viz-lazy-tabs="1"]');
@@ -126,10 +418,7 @@ ${t}
       .filter(t => t.id != null);
     if (!tabs.length) return;
 
-    // Find the transcript from the parent page's iframe context is not possible,
-    // but we can use the roomId to let the server pull it from the room.
-    const transcript = ""; // server will use room segments if roomId given
-
+    const transcript = "";
     fillPendingRef.current = true;
     try {
       const res = await fetch(`${BASE}api/viz/fill-tab-panels`, {
@@ -156,7 +445,7 @@ ${t}
   }, [roomId, title, context]);
 
   useEffect(() => {
-    if (!html || !iframeRef.current) return;
+    if (!html || !renderable || !iframeRef.current) return;
     const doc = iframeRef.current.contentDocument;
     if (!doc) return;
 
@@ -165,15 +454,15 @@ ${t}
     doc.write(buildDocument(html));
     doc.close();
 
-    // If no longer streaming, try to fill lazy tab panels
     if (!isStreaming) {
-      // Small delay so the browser has painted the iframe content
       setTimeout(() => {
         const d = iframeRef.current?.contentDocument;
         if (d) fillLazyTabs(d);
       }, 400);
     }
-  }, [html, isStreaming, fillLazyTabs]);
+  }, [html, renderable, isStreaming, fillLazyTabs]);
+
+  const isEmpty = !html || html.trim() === "";
 
   return (
     <div className={cn(
@@ -182,11 +471,12 @@ ${t}
         ? "fixed inset-4 z-50 bg-card rounded-xl border-2 border-primary/50 shadow-2xl p-2"
         : className
     )}>
-      {html && (
+      {/* Fullscreen toggle */}
+      {!isEmpty && !showSkeleton && (
         <Button
           variant="ghost"
           size="icon"
-          className="absolute top-3 right-3 z-10 opacity-0 group-hover:opacity-100 transition-opacity bg-background/80 backdrop-blur-sm w-7 h-7"
+          className="absolute top-3 right-3 z-20 opacity-0 group-hover:opacity-100 transition-opacity bg-background/80 backdrop-blur-sm w-7 h-7"
           onClick={() => setIsFullscreen(!isFullscreen)}
           title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
         >
@@ -194,14 +484,8 @@ ${t}
         </Button>
       )}
 
-      {isStreaming && (
-        <div className="absolute top-3 right-12 z-10 flex items-center gap-1.5 bg-primary/20 text-primary px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest backdrop-blur-md border border-primary/30 animate-pulse">
-          <div className="w-1.5 h-1.5 rounded-full bg-primary" />
-          Rendering
-        </div>
-      )}
-
-      {(!html || html.trim() === "") ? (
+      {/* Empty state */}
+      {isEmpty && !isStreaming && (
         <div className="flex-1 flex items-center justify-center rounded-lg border border-border bg-card/30">
           <div className="text-center space-y-4 text-muted-foreground p-8">
             <div className="w-16 h-16 mx-auto opacity-10 border-2 border-current rounded-xl flex items-center justify-center">
@@ -216,10 +500,23 @@ ${t}
             </div>
           </div>
         </div>
-      ) : (
+      )}
+
+      {/* Skeleton — shown while streaming and html not yet renderable */}
+      {showSkeleton && (
+        <div className="flex-1 relative rounded-lg border border-border overflow-hidden">
+          <VizSkeleton progress={skeletonProgress} />
+        </div>
+      )}
+
+      {/* Iframe — always mounted when we have renderable html (or after streaming) */}
+      {!isEmpty && (
         <iframe
           ref={iframeRef}
-          className="flex-1 w-full rounded-lg bg-card/20 border border-border"
+          className={cn(
+            "w-full rounded-lg bg-card/20 border border-border transition-opacity duration-300",
+            showSkeleton ? "absolute opacity-0 pointer-events-none h-0" : "flex-1"
+          )}
           sandbox="allow-scripts allow-same-origin"
           title="AI Visualization"
         />

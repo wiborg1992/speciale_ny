@@ -353,38 +353,138 @@ FREKVENSOMFORMER:
    Hero-sektion med produktnavn (Playfair), tagline, og 3 kolonner:
    What it does | Who it's for | Why it matters.
 
-━━━ FYSISK GRUNDFOS PUMPE VISUALISERING ━━━
-USE WHEN: transcript mentions physical pump appearance, hardware, product model.
+━━━ FYSISK GRUNDFOS PUMPE & CONTROLLER VISUALISERING ━━━
+USE WHEN: transcript mentions physical pump appearance, hardware, product model, controller, CU unit, control box, pump panel.
 
 BACKGROUND: white #FFFFFF or very light #F8FAFC
-LAYOUT: Central large SVG pump illustration + surrounding technical spec cards
+LAYOUT: Central large SVG product illustration + surrounding technical spec cards
+FONT: @import Outfit + Space Mono from Google Fonts
 
 GRUNDFOS HARDWARE COLOURS:
-  Signature Red (pump body):  #BE1E2D
-  Dark grey (base/fittings):  #2D2D2D
-  Mid grey (coupling/shaft):  #6B7280
-  Stainless (ports/flanges):  #B0B8C1
-  Brand blue (logo/label):    #0077C8
+  Signature Red (pump body / logo):   #BE1E2D
+  Grundfos Navy (brand, labels):      #002A5C
+  Grundfos Blue (accents, display):   #0077C8
+  Controller enclosure:               #2A2D30  (dark charcoal, almost black)
+  Controller light grey trim:         #9CA3AF
+  Stainless flanges / ports:          #B0B8C1
+  Coupling / shaft grey:              #6B7280
+  Base plate / feet:                  #3D4147
+  Cable jacket:                       #1C1C1C
+  LED green (running):                #22C55E
+  LED red (alarm):                    #EF4444
+  LED amber (warning):                #F59E0B
+  Display background (LCD):           #0A1628
+  Display text:                       #00C8FF  or  #7CFC00
 
-SVG PUMP — For ALPHA2 / circulator pump:
-  Body: wide flat oval/rect, fill:#BE1E2D, rx:12
-  Motor end cap (right): semicircle, fill:#BE1E2D
-  Pipe connections: stubs, fill:#B0B8C1
-  Control panel face: small rectangle, fill:#1A1A1A with display in #0077C8
-  Brand label: "GRUNDFOS" text in white on red, "alpha2" below
+━━━ CONTROLLER/PANEL — Grundfos CU-series (CU 200, CU 300, Dedicated Controls) ━━━
+Draw as a realistic SVG front panel with these elements:
 
-SVG PUMP — For CR / multistage vertical:
-  Motor (top): tall cylinder fill:#BE1E2D with horizontal cooling ribs
-  Coupling cover (middle): short cylinder fill:#6B7280
-  Pump stages (bottom): rect with horizontal stage lines fill:#BE1E2D
-  Flanges: horizontal stubs fill:#B0B8C1
-  Base plate: flat rect fill:#2D2D2D
+ENCLOSURE BODY:
+  rect fill="#2A2D30" rx="8" — main housing, approximately 180×220px
+  Subtle gradient overlay: fill="url(#enclosureGrad)" where gradient goes from #323538 at top to #1E2124 at bottom
+  Thin highlight edge: rect fill="none" stroke="#4A4D50" stroke-width="1" (inner border)
+  Mounting holes: 4× small circles fill="#1A1C1E" stroke="#555" r="4" at corners
 
-SURROUNDING LAYOUT:
-  Left: specification table (Parameter | Value | Unit) with navy header
-  Right: 3-4 feature highlight cards (rounded, white, blue left border)
-  Below: installation diagram
-  Top: product name as hero title (Outfit 2.5rem, #002A5C)
+GRUNDFOS LOGO PLATE (top section of enclosure):
+  rect fill="#BE1E2D" height="32" — red logo strip across top
+  "GRUNDFOS" text fill="#FFFFFF" font-size="11" font-weight="700" letter-spacing="0.15em" centered
+  Below: product name e.g. "CU 300" or "Dedicated Controls" fill="#ffffff" font-size="9" opacity="0.8"
+
+DIGITAL DISPLAY (center of panel):
+  rect fill="#0A1628" rx="4" stroke="#000" stroke-width="1.5" — display bezel
+  Inner rect fill="#0A1628" stroke="#001a38" stroke-width="1" — screen area (~140×60px)
+  Display content (monospace, font-family="Courier New"):
+    Line 1: flow value e.g. "18.5 m³/h" fill="#00C8FF" font-size="14" font-weight="700"
+    Line 2: pressure e.g. "4.2 bar" fill="#7CFC00" font-size="11"
+    Line 3: status e.g. "AUTO  ►  RUNNING" fill="#00C8FF" font-size="9"
+  Display frame highlight: stroke rgba(0,200,255,0.3) glow around bezel
+
+STATUS INDICATOR ROW (below display):
+  3× LED circles (r=5) with labels below (font-size="7" fill="#9CA3AF"):
+    Left: POWER — fill="#22C55E" + box-shadow glow
+    Center: RUNNING — fill="#22C55E" glow OR fill="#EF4444" if alarm
+    Right: ALARM — fill="#3D4147" (off) or fill="#EF4444" (on)
+  Each LED: circle fill=color + circle fill="white" opacity="0.3" r="2" at top-left (highlight dot)
+
+PHYSICAL BUTTONS (below LED row):
+  Navigation buttons in a cross/diamond pattern:
+    UP ▲, DOWN ▼, LEFT ◄, RIGHT ►, ENTER/OK (center)
+    Button body: rect fill="#333639" rx="3" stroke="#555" — ~20×16px each
+    Button label: text fill="#a8b8cc" font-size="7"
+  STOP button (red): rect fill="#7B1D1D" rx="3" + "STOP" label in red
+  START/RUN button (green): rect fill="#14532D" rx="3" + "START" label in green
+
+INPUT/OUTPUT PORTS (bottom of enclosure):
+  Cable gland circles: 3-4× circles fill="#1A1C1E" stroke="#6B7280" r="6" with small rect tabs
+  Labels: "L1 L2 L3 N PE" or "4-20mA  RS485  24VDC" text fill="#6B7280" font-size="6"
+
+MOUNTING RAIL (left side of enclosure): thin rect fill="#4A4D50" width="8"
+
+━━━ SVG PUMP HARDWARE ━━━
+
+SVG PUMP — ALPHA2 / E / Magna (compact circulator, horizontal):
+  Motor housing: wide rounded rect (rx:10) fill:#BE1E2D — main body (~200×80px)
+  Motor end cap: rounded right end, fill:#BE1E2D, slightly lighter shade
+  Cooling fins: 8-10 thin vertical lines stroke:#9B1520 stroke-width:1.5 on motor
+  Pipe inlet (bottom): rect fill:#B0B8C1 pointing down with flange plate (wider rect)
+  Pipe outlet (bottom): similar stub, 90° elbow, pointing sideways
+  Control interface: small rect ~50×30px fill:#1A1A1A rx:3 on top of motor
+    Display: smaller inner rect fill:#0A1628 with "E" series display
+    2× buttons below display
+  Grundfos badge: "GRUNDFOS" + "alpha2" or "MAGNA3" in white on red body
+  Cable exit: small rect fill:#1C1C1C pointing out from motor end
+  Mounting bracket: flat rect fill:#3D4147 below inlet flange
+
+SVG PUMP — CR / CRI / CRE (multistage vertical inline):
+  Motor (top, cylindrical): tall ellipse/rect fill:#BE1E2D ~60px wide ×120px tall
+    Cooling ribs: 8× horizontal lines stroke:#9B1520 on motor body
+    Fan cover (top of motor): rounded rect fill:#9B1520
+    Motor rating plate: small white rect on motor side
+  Coupling cover (middle): short cylinder fill:#6B7280 ~70px wide ×30px
+    4× hex bolt heads: circles fill:#4B5563 around coupling perimeter
+  Pump stages (bottom): rect fill:#BE1E2D ~60px wide ×100px, with
+    Stage separation lines: horizontal strokes every ~15px stroke:#9B1520
+    Stage count chip: small rect showing e.g. "CR 32-3" label
+  Inlet flange (left at bottom): horizontal rect fill:#B0B8C1 + wider rect (flange face)
+    Flange bolt holes: 4× tiny circles on flange face
+  Outlet flange (right at bottom): same, pointing right
+  Base plate: wide flat rect fill:#2D2D2D below pump stages
+    Mounting feet: 4× short rects at corners fill:#3D4147
+
+SVG PUMP — CM / CME (end suction centrifugal):
+  Motor (right): horizontal cylinder fill:#BE1E2D ~120×70px
+    Cooling fins on motor (vertical lines)
+    Fan cover: circle fill:#9B1520 on right end
+  Volute/pump body (left): larger oval fill:#BE1E2D ~90×90px
+    Suction inlet: horizontal rect fill:#B0B8C1 pointing left (with flange)
+    Discharge outlet: vertical rect fill:#B0B8C1 pointing up (with flange)
+  Coupling: short cylinder fill:#6B7280 between motor and volute
+  Base frame: wide rect fill:#2D2D2D below entire assembly
+
+SURROUNDING LAYOUT (for all pump/controller types):
+  Top: product name as hero title — 'Outfit' 2.2rem font-weight:700 color:#002A5C
+       Product model chip: background:#E8F4FD border:#0077C8 color:#002A5C
+  Left of product: Technical specification table:
+    Navy header row (#002A5C, white text): "SPECIFICATIONS"
+    Alternating rows: Parameter | Value | Unit
+    Include: Flow, Pressure, Power, Speed, Efficiency, IE Class, Protection class, Weight
+    Striped: #F8FAFB / white. Status col with coloured circles.
+  Right of product: 3-4 Feature highlight cards:
+    border-left:4px solid #0077C8; background:#fff; border-radius:8px; padding:12px;
+    box-shadow: 0 2px 8px rgba(0,42,92,0.08)
+    Each card: icon (SVG, 20px, #0077C8) + feature title (bold) + 1-line description
+  Below product: Installation/piping schematic (simple SVG flow lines)
+  SVG overall defs include gradient for enclosure and glow filter for LEDs:
+    <defs>
+      <linearGradient id="enclosureGrad" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#323538"/>
+        <stop offset="100%" stop-color="#1E2124"/>
+      </linearGradient>
+      <filter id="ledGlow">
+        <feGaussianBlur stdDeviation="2" result="blur"/>
+        <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+      </filter>
+    </defs>
 
 ━━━ USER JOURNEY MAP — FULL VISUAL SPEC ━━━
 Visual language: Miro/Figma UX style. Light background #F7F8FA.
