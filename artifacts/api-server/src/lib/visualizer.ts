@@ -48,8 +48,8 @@ SELECTION LOGIC — read the transcript and pick ONE:
   "user journey / brugerrejse / steps / trin / what happens when / hvad sker der når / onboarding / flow of a user"
     → USER JOURNEY MAP  (light background, swim lanes, emotion indicators)
 
-  "physical pump / pumpe hardware / product looks like / pump model / Alpha / CR / Magna / cirkulationspumpe / what does it look like"
-    → PHYSICAL PUMP ILLUSTRATION  (realistic SVG product drawing, Grundfos red #BE1E2D)
+  "physical pump / pumpe hardware / product looks like / pump model / Alpha / Alpha GO / GO app / Grundfos GO / CR / Magna / cirkulationspumpe / what does it look like / LED ring / control face / dial / bluetooth pump / CU 200 / CU 300 / controller box / dedicated controls"
+    → PHYSICAL PUMP ILLUSTRATION  (realistic SVG product drawing — Alpha GO with circular LED ring interface OR CU-series controller OR CR/CM pump hardware)
 
   "workflow / process steps / flowchart / decision / if X then Y / approval / how does the process work / hvad er processen"
     → WORKFLOW DIAGRAM  (flowchart with decision diamonds, swim lanes, clean white/light background)
@@ -422,18 +422,88 @@ MOUNTING RAIL (left side of enclosure): thin rect fill="#4A4D50" width="8"
 
 ━━━ SVG PUMP HARDWARE ━━━
 
-SVG PUMP — ALPHA2 / E / Magna (compact circulator, horizontal):
-  Motor housing: wide rounded rect (rx:10) fill:#BE1E2D — main body (~200×80px)
-  Motor end cap: rounded right end, fill:#BE1E2D, slightly lighter shade
-  Cooling fins: 8-10 thin vertical lines stroke:#9B1520 stroke-width:1.5 on motor
-  Pipe inlet (bottom): rect fill:#B0B8C1 pointing down with flange plate (wider rect)
-  Pipe outlet (bottom): similar stub, 90° elbow, pointing sideways
-  Control interface: small rect ~50×30px fill:#1A1A1A rx:3 on top of motor
-    Display: smaller inner rect fill:#0A1628 with "E" series display
-    2× buttons below display
-  Grundfos badge: "GRUNDFOS" + "alpha2" or "MAGNA3" in white on red body
-  Cable exit: small rect fill:#1C1C1C pointing out from motor end
-  Mounting bracket: flat rect fill:#3D4147 below inlet flange
+SVG PUMP — ALPHA GO / ALPHA2 E / GO RANGE (compact smart circulator, inline):
+USE THIS for any mention of Alpha GO, Alpha2, GO range, smart circulator, Bluetooth pump, GO app.
+
+PUMP BODY (side view):
+  Orientation: VERTICAL — inlet at bottom, outlet at top (inline installation)
+  Main body: rect fill:#BE1E2D rx:10 ~80×140px — Grundfos signature red
+    Subtle shading: left edge slightly darker (#A01825), right edge lighter (#D42234)
+    "GRUNDFOS" text in white, font-size:8, letter-spacing:0.12em, rotated 90° on left side
+    "alpha GO" or "ALPHA2 E" badge: small rect fill:#0077C8 rx:2 with white text font-size:7
+
+  FRONT CONTROL FACE (key distinguishing feature of Alpha GO):
+    White circular disc on the front of the pump body:
+      circle cx=pump_center_x cy=pump_center_y r=28 fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1"
+      Subtle shadow: filter drop-shadow(0 2px 6px rgba(0,0,0,0.2))
+
+    LED RING (around the white disc — MOST IMPORTANT VISUAL ELEMENT):
+      Draw as SVG arc segments (total 270° arc, starting bottom-left):
+      Active mode segment: stroke="#0077C8" (proportional pressure = blue)
+        OR stroke="#22C55E" (auto-adapt = green)
+        OR stroke="#F59E0B" (constant pressure = orange)
+        OR stroke="#EF4444" (constant curve = red)
+      Inactive segments: stroke="rgba(0,0,0,0.08)"
+      All arcs: stroke-width="6" stroke-linecap="round" fill="none" r=32
+      Example active blue arc for proportional pressure:
+        <circle cx="cX" cy="cY" r="32" fill="none" stroke="#0077C8" stroke-width="6"
+          stroke-dasharray="90 272" stroke-dashoffset="-91" stroke-linecap="round"/>
+
+    CENTER DIAL / BUTTON (inside the white disc):
+      circle r=14 fill="#F3F4F6" stroke="#D1D5DB" stroke-width="1.5" — the pressable button
+      Inner circle r=10 fill="#E9EAEC" — button face depth
+      "▶" or mode icon in center: fill="#374151" font-size:9
+
+    CONNECTIVITY INDICATOR (Bluetooth):
+      Small Bluetooth icon or "B" symbol in top-right of white disc
+      circle r=5 fill="#0077C8" opacity="0.9" + "B" text fill="white" font-size:6
+
+    MINI DATA DISPLAY (below center dial):
+      rect fill="#002A5C" rx:2 ~40×16px
+      text fill="#00C8FF" font-family="Courier New" font-size:8 — shows e.g. "4.2 m" or "18W"
+
+  PIPE CONNECTIONS:
+    Bottom inlet: rect fill:#B0B8C1 ~22×35px pointing down + wider flange rect fill:#9BA3AF
+    Top outlet: rect fill:#B0B8C1 ~22×35px pointing up + wider flange rect
+    Union nuts: rect fill:#A8AEB5 rx:2 where pipes meet pump body
+    Arrow showing flow direction: small SVG arrow inside pump body stroke:#fff opacity:0.4
+
+  ELECTRICAL CONNECTION (right side of body):
+    Cable entry: circle fill:#1C1C1C r:6 with cable jacket rect fill:#1C1C1C ~5×20px
+
+GO APP DASHBOARD PANEL (show alongside the pump, represents the companion app):
+  When Alpha GO is mentioned, also generate an adjacent panel showing the GO App UI:
+  Background: white #FFFFFF, rounded card with subtle shadow
+  Layout (portrait card ~220×340px):
+
+  APP TOP BAR:
+    Grundfos logo (red circle + "G" or "GRUNDFOS" text)
+    "Grundfos GO" title, blue, font-weight:700
+    Bluetooth connected indicator (●  connected)
+
+  PUMP STATUS CIRCLE (main feature of the app):
+    Large SVG circle (r=70) — arc gauge showing current operating point:
+      Background track: stroke="#F3F4F6" stroke-width="10"
+      Active arc: stroke="#0077C8" stroke-width="10" — fills based on current setpoint %
+      Center: pump icon (SVG simplified pump outline in #002A5C)
+      Below center: "18.5 m³/h" in Space Mono bold, "4.2 m" in smaller text
+
+  MODE SELECTOR ROW (below circle, 4 icons):
+    Each mode: vertical pill with icon + label, active mode has #0077C8 background
+    Icons (simple SVG paths, not emoji):
+      ⌁ Auto-adapt | ⊟ Proportional | ≡ Constant pressure | — Constant curve
+    Active pill: background:#0077C8 text:#fff
+    Inactive: background:#F3F4F6 text:#6B7280
+
+  METRICS CARDS ROW (3 cards side by side):
+    Card 1: "FLOW" — value in Space Mono + "m³/h"
+    Card 2: "HEAD" — value + "m"
+    Card 3: "POWER" — value + "W"
+    Card style: background:#F8FAFC border:1px solid #E5E7EB border-radius:8px padding:8px
+
+  ENERGY SAVINGS BAR:
+    "Energy saved this month: 34%" with progress bar fill:#22C55E width:34%
+    IE class badge: "IE5" in navy rounded chip
 
 SVG PUMP — CR / CRI / CRE (multistage vertical inline):
   Motor (top, cylindrical): tall ellipse/rect fill:#BE1E2D ~60px wide ×120px tall
