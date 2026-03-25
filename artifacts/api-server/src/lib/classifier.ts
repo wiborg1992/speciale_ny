@@ -311,23 +311,221 @@ function normalizeForClassification(text: string): string {
   return s.trim();
 }
 
-export function classifyVisualizationIntent(transcript: string): ClassificationResult {
-  // Score only the tail — recent speech drives the intent
-  const tail = transcript.slice(-VIZ_CLASSIFY_TAIL_CHARS);
-  const norm = normalizeForClassification(tail);
+/**
+ * Recency zone boundaries (chars from end of transcript tail).
+ * Zone 1 (RECENT):  last 3000 chars — what the speaker is saying RIGHT NOW → 2.5x multiplier
+ * Zone 2 (MIDDLE):  3000–7000 chars  — recent context → 1.0x multiplier
+ * Zone 3 (DISTANT): 7000–12000 chars — earlier background → 0.3x multiplier
+ *
+ * This ensures that "we talked about journey maps for 8 minutes, but now
+ * switched to building an interface" correctly classifies as hmi_interface.
+ */
+const ZONE_RECENT_CHARS  = 3000;
+const ZONE_MIDDLE_CHARS  = 7000;
+const ZONE_RECENT_MULT   = 2.5;
+const ZONE_MIDDLE_MULT   = 1.0;
+const ZONE_DISTANT_MULT  = 0.3;
 
-  const scored = VIZ_FAMILY_SIGNALS.map((fam) => {
-    let score = 0;
+/** If zone-1-only score for a family exceeds this, it wins outright (topic shift override) */
+const RECENT_ZONE_OVERRIDE_THRESHOLD = 20;
+
+/**
+ * Explicit topic-shift phrases that act as HARD OVERRIDES (auto-win).
+ * If the RECENT zone contains one of these, the target family wins outright
+ * regardless of accumulated scores from earlier speech.
+ *
+ * These capture the moment when a speaker says "ok now let's do X" —
+ * that's a direct instruction, not a statistical signal.
+ */
+const TOPIC_SHIFT_OVERRIDES: Array<{ pattern: string; target: VizFamily }> = [
+  // Danish: interface / HMI
+  { pattern: "nu laver vi et interface",           target: "hmi_interface" },
+  { pattern: "lad os lave et interface",            target: "hmi_interface" },
+  { pattern: "nu skal vi lave et interface",        target: "hmi_interface" },
+  { pattern: "vis mig et interface",                target: "hmi_interface" },
+  { pattern: "vis et interface",                    target: "hmi_interface" },
+  { pattern: "det skal være et interface",          target: "hmi_interface" },
+  { pattern: "det her skal være et interface",      target: "hmi_interface" },
+  { pattern: "lav et interface",                    target: "hmi_interface" },
+  { pattern: "skal være interface",                 target: "hmi_interface" },
+  { pattern: "det er et interface",                 target: "hmi_interface" },
+  { pattern: "vi laver et hmi",                     target: "hmi_interface" },
+  { pattern: "lad os lave et hmi",                  target: "hmi_interface" },
+  { pattern: "vi bygger et interface",              target: "hmi_interface" },
+  { pattern: "vi designer et interface",            target: "hmi_interface" },
+  // English: interface / HMI
+  { pattern: "show me an interface",                target: "hmi_interface" },
+  { pattern: "let's build an interface",            target: "hmi_interface" },
+  { pattern: "now let's make the interface",        target: "hmi_interface" },
+  { pattern: "we need an interface",                target: "hmi_interface" },
+  { pattern: "it should be an interface",           target: "hmi_interface" },
+  { pattern: "this should be an interface",         target: "hmi_interface" },
+  { pattern: "make it an interface",                target: "hmi_interface" },
+  { pattern: "build the interface",                 target: "hmi_interface" },
+  // Danish: user journey
+  { pattern: "det skal være en user journey",       target: "user_journey" },
+  { pattern: "vis mig en user journey",             target: "user_journey" },
+  { pattern: "lad os se en brugerrejse",            target: "user_journey" },
+  { pattern: "vis mig en brugerrejse",              target: "user_journey" },
+  { pattern: "lav en brugerrejse",                  target: "user_journey" },
+  { pattern: "det skal være en brugerrejse",        target: "user_journey" },
+  { pattern: "vis en journey map",                  target: "user_journey" },
+  // English: user journey
+  { pattern: "show me a user journey",              target: "user_journey" },
+  { pattern: "make it a journey map",               target: "user_journey" },
+  { pattern: "it should be a user journey",         target: "user_journey" },
+  { pattern: "this should be a journey",            target: "user_journey" },
+  // Danish: workflow
+  { pattern: "vis mig et workflow",                 target: "workflow_process" },
+  { pattern: "vis mig et flowchart",                target: "workflow_process" },
+  { pattern: "det skal være et workflow",           target: "workflow_process" },
+  { pattern: "lav et flowchart",                    target: "workflow_process" },
+  { pattern: "det skal være et flowdiagram",        target: "workflow_process" },
+  { pattern: "vis mig processen som et flowchart",  target: "workflow_process" },
+  // English: workflow
+  { pattern: "show me a flowchart",                 target: "workflow_process" },
+  { pattern: "make it a workflow",                  target: "workflow_process" },
+  { pattern: "it should be a workflow",             target: "workflow_process" },
+  // Danish: pump / product
+  { pattern: "vis mig pumpen",                      target: "physical_product" },
+  { pattern: "vis mig produktet",                   target: "physical_product" },
+  { pattern: "det skal være en pumpe",              target: "physical_product" },
+  { pattern: "vis pumpe hardware",                  target: "physical_product" },
+  // English: pump / product
+  { pattern: "show me the pump",                    target: "physical_product" },
+  { pattern: "it should be a pump",                 target: "physical_product" },
+  { pattern: "show the pump hardware",              target: "physical_product" },
+  // Danish: timeline / management
+  { pattern: "vis mig en timeline",                 target: "management_summary" },
+  { pattern: "vis mig en roadmap",                  target: "management_summary" },
+  { pattern: "det skal være en timeline",           target: "management_summary" },
+  { pattern: "lav en gantt",                        target: "management_summary" },
+  // English: timeline / management
+  { pattern: "show me a timeline",                  target: "management_summary" },
+  { pattern: "make it a roadmap",                   target: "management_summary" },
+  // Danish: requirements
+  { pattern: "det skal være en kravspec",           target: "requirements_matrix" },
+  { pattern: "vis mig kravene",                     target: "requirements_matrix" },
+  { pattern: "lav en kravspecifikation",             target: "requirements_matrix" },
+  // English: requirements
+  { pattern: "show me the requirements",            target: "requirements_matrix" },
+  { pattern: "make it a requirements matrix",       target: "requirements_matrix" },
+];
+
+function scoreZone(
+  normText: string,
+  signals: typeof VIZ_FAMILY_SIGNALS,
+  multiplier: number
+): Map<string, number> {
+  const scores = new Map<string, number>();
+  for (const fam of signals) {
+    let total = 0;
     for (const [term, weight] of fam.terms) {
-      if (term && norm.includes(term)) score += weight;
+      if (term && normText.includes(term)) total += weight;
     }
-    return { id: fam.id, label: fam.label, score };
-  });
+    scores.set(fam.id, total * multiplier);
+  }
+  return scores;
+}
+
+export function classifyVisualizationIntent(transcript: string): ClassificationResult {
+  const tail = transcript.slice(-VIZ_CLASSIFY_TAIL_CHARS);
+
+  // Split tail into three recency zones
+  const recentRaw  = tail.slice(-ZONE_RECENT_CHARS);
+  const middleRaw  = tail.slice(-ZONE_MIDDLE_CHARS, -ZONE_RECENT_CHARS);
+  const distantRaw = tail.slice(0, Math.max(0, tail.length - ZONE_MIDDLE_CHARS));
+
+  const recentNorm  = normalizeForClassification(recentRaw);
+  const middleNorm  = normalizeForClassification(middleRaw);
+  const distantNorm = normalizeForClassification(distantRaw);
+
+  // Score each zone with its multiplier
+  const recentScores  = scoreZone(recentNorm,  VIZ_FAMILY_SIGNALS, ZONE_RECENT_MULT);
+  const middleScores  = scoreZone(middleNorm,  VIZ_FAMILY_SIGNALS, ZONE_MIDDLE_MULT);
+  const distantScores = scoreZone(distantNorm, VIZ_FAMILY_SIGNALS, ZONE_DISTANT_MULT);
+
+  // Merge all zone scores
+  const mergedMap = new Map<string, number>();
+  for (const fam of VIZ_FAMILY_SIGNALS) {
+    mergedMap.set(
+      fam.id,
+      (recentScores.get(fam.id) ?? 0) +
+      (middleScores.get(fam.id) ?? 0) +
+      (distantScores.get(fam.id) ?? 0)
+    );
+  }
+
+  // ─── HARD OVERRIDE: topic-shift phrases in RECENT zone auto-win ────────────
+  // Scan the RECENT zone for explicit directives like "det skal være et interface".
+  // If found, the target family wins outright — no further scoring needed.
+  // We scan from end-to-start so the LAST override wins if multiple are present.
+  let hardOverrideFamily: VizFamily | null = null;
+  let hardOverridePos = -1;
+  for (const shift of TOPIC_SHIFT_OVERRIDES) {
+    const pos = recentNorm.lastIndexOf(shift.pattern);
+    if (pos !== -1 && pos > hardOverridePos) {
+      hardOverridePos = pos;
+      hardOverrideFamily = shift.target;
+    }
+  }
+  if (hardOverrideFamily) {
+    const overrideFam = VIZ_FAMILY_SIGNALS.find(f => f.id === hardOverrideFamily)!;
+    const scored = VIZ_FAMILY_SIGNALS.map((fam) => ({
+      id:    fam.id,
+      label: fam.label,
+      score: fam.id === hardOverrideFamily ? 999 : Math.round((mergedMap.get(fam.id) ?? 0) * 10) / 10,
+    }));
+    const sorted = [...scored].sort((a, b) => b.score - a.score);
+    return {
+      family:   hardOverrideFamily,
+      topic:    overrideFam.label + " (explicit override)",
+      scores:   sorted,
+      ambiguous: false,
+      lead:     999,
+      runnerUp: sorted[1]?.id ?? null,
+    };
+  }
+
+  // Check for RECENT zone override: if one family dominates the most recent speech
+  // it wins outright, regardless of accumulated earlier scores
+  let recentOverride: VizFamily | null = null;
+  const recentEntries = [...recentScores.entries()];
+  recentEntries.sort((a, b) => b[1] - a[1]);
+  if (recentEntries.length > 0) {
+    const [topRecentId, topRecentScore] = recentEntries[0];
+    const secondRecentScore = recentEntries[1]?.[1] ?? 0;
+    // Raw score (before multiplier) = topRecentScore / ZONE_RECENT_MULT
+    const rawRecent = topRecentScore / ZONE_RECENT_MULT;
+    if (rawRecent >= RECENT_ZONE_OVERRIDE_THRESHOLD && topRecentScore > secondRecentScore * 1.5) {
+      recentOverride = topRecentId as VizFamily;
+    }
+  }
+
+  // Build scored array
+  const scored = VIZ_FAMILY_SIGNALS.map((fam) => ({
+    id:    fam.id,
+    label: fam.label,
+    score: Math.round((mergedMap.get(fam.id) ?? 0) * 10) / 10,
+  }));
 
   const sorted = [...scored].sort((a, b) => b.score - a.score);
   const top    = sorted[0];
   const second = sorted[1] ?? { id: null, label: "", score: 0 };
-  const lead   = top.score - second.score;
+  const lead   = Math.round((top.score - second.score) * 10) / 10;
+
+  // If recent zone has a clear override, use it
+  if (recentOverride) {
+    const overrideFam = VIZ_FAMILY_SIGNALS.find(f => f.id === recentOverride)!;
+    return {
+      family:   recentOverride,
+      topic:    overrideFam.label,
+      scores:   sorted,
+      ambiguous: false,
+      lead,
+      runnerUp: top.id === recentOverride ? (second.id ?? null) : top.id,
+    };
+  }
 
   const ambiguous = top.score < CLASSIFY_MIN_TOTAL || lead < CLASSIFY_MIN_LEAD;
 
