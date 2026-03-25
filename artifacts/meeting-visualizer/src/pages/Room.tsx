@@ -48,6 +48,7 @@ export default function Room() {
 
   // Auto-viz tracking
   const [lastVizWordCount, setLastVizWordCount] = useState(0);
+  const [autoVizCountdown, setAutoVizCountdown] = useState(45);
   const transcriptRef = useRef<HTMLDivElement>(null);
 
   const fullText = useMemo(() => {
@@ -102,15 +103,33 @@ export default function Room() {
     }
   }, [segments, interimText]);
 
-  // Auto-viz logic
+  // Refs so the interval always reads latest values without restating
+  const handleManualGenerateRef = useRef(handleManualGenerate);
+  useEffect(() => { handleManualGenerateRef.current = handleManualGenerate; }, [handleManualGenerate]);
+  const currentWordCountRef = useRef(currentWordCount);
+  useEffect(() => { currentWordCountRef.current = currentWordCount; }, [currentWordCount]);
+  const isGeneratingRef = useRef(isGenerating);
+  useEffect(() => { isGeneratingRef.current = isGenerating; }, [isGenerating]);
+
+  // Auto-viz: 45-second countdown — restarts only when the toggle changes
   useEffect(() => {
-    if (autoVizEnabled && !isGenerating) {
-      const newWords = currentWordCount - lastVizWordCount;
-      if (newWords >= 30) {
-        handleManualGenerate();
-      }
-    }
-  }, [currentWordCount, autoVizEnabled, isGenerating, lastVizWordCount, handleManualGenerate]);
+    setAutoVizCountdown(45);
+    if (!autoVizEnabled) return;
+
+    const tick = setInterval(() => {
+      setAutoVizCountdown(prev => {
+        if (prev <= 1) {
+          if (currentWordCountRef.current > 0 && !isGeneratingRef.current) {
+            handleManualGenerateRef.current();
+          }
+          return 45;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(tick);
+  }, [autoVizEnabled]);
 
   return (
     <div className="h-screen w-full flex flex-col bg-background overflow-hidden">
@@ -274,7 +293,7 @@ export default function Room() {
                   id="auto-viz"
                 />
                 <label htmlFor="auto-viz" className="text-xs font-mono text-muted-foreground uppercase cursor-pointer select-none">
-                  Auto-Sync {autoVizEnabled && <span className="text-primary ml-1">[{currentWordCount - lastVizWordCount}/30]</span>}
+                  Auto-Sync {autoVizEnabled && <span className="text-primary ml-1">[{autoVizCountdown}s]</span>}
                 </label>
               </div>
 
