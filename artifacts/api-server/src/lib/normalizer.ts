@@ -7,52 +7,61 @@ export type VizFamily =
   | "management"
   | "general";
 
-const FILLWORDS_DA = ["øh", "øhm", "eh", "ehm", "altså", "ligesom", "ikk", "ikke", "jo", "nå", "hvad", "jamen", "jamens", "men", "og", "så", "bare", "faktisk"];
-const FILLWORDS_EN = ["um", "uh", "like", "sort of", "kind of", "basically", "actually", "right", "okay", "so", "well"];
-
-const LEXICON: Record<string, string> = {
-  grundfos: "Grundfos",
-  scada: "SCADA",
-  hmi: "HMI",
-  plc: "PLC",
-  api: "API",
-  iot: "IoT",
-  modbus: "Modbus",
-  profibus: "PROFIBUS",
-  profinet: "PROFINET",
-  bacnet: "BACnet",
-  mqtt: "MQTT",
-  "opc-ua": "OPC-UA",
-  iiot: "IIoT",
-  vfd: "VFD",
-  pid: "PID",
-  ui: "UI",
-  ux: "UX",
-};
-
-const CLASSIFICATION_KEYWORDS: Record<string, string[]> = {
-  hmi: ["hmi", "scada", "dashboard", "display", "screen", "panel", "alarm", "sensor", "gauge", "meter", "control", "setpoint", "status", "monitoring", "overvågning", "styring", "skærm", "pumpe", "pump", "flow", "tryk", "pressure", "temperatur", "temperature", "ventil", "valve"],
-  journey: ["journey", "user", "bruger", "customer", "kunde", "step", "trin", "experience", "oplevelse", "onboarding", "path", "touch", "fase", "phase"],
-  workflow: ["workflow", "process", "arbejdsgang", "task", "opgave", "approval", "godkendelse", "review", "sequence", "rækkefølge", "procedure", "handoff", "integration", "automation", "automatisering"],
-  product: ["product", "produkt", "hardware", "komponenter", "component", "installation", "montage", "mounting", "dimension", "størrelse", "material", "materiale", "specification", "spec", "motor", "impeller", "housing", "shaft", "aksel"],
-  requirements: ["requirement", "krav", "feature", "funktion", "function", "must", "skal", "should", "bør", "compliance", "standard", "norm", "regulation", "safety", "sikkerhed", "certification", "certificering", "iso", "iec", "atex"],
-  management: ["management", "ledelse", "strategy", "strategi", "roadmap", "milestone", "milepæl", "budget", "cost", "omkostning", "resource", "ressource", "risk", "risiko", "timeline", "kpi", "metric", "måltal", "stakeholder"],
-};
+const FILLWORDS_DA = ["øh", "øhm", "eh", "ehm", "altså", "ligesom", "ikk", "ikke sandt", "jo", "nå", "hvad", "jamen", "jamens", "bare", "faktisk"];
+const FILLWORDS_EN = ["um", "uh", "uhm", "hmm", "like", "sort of", "kind of", "basically", "actually", "right right", "okay okay", "yeah yeah", "you know", "i mean"];
 
 const allFillwords = [...FILLWORDS_DA, ...FILLWORDS_EN];
-
 const fillwordPattern = new RegExp(
   `\\b(${allFillwords.map((w) => w.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&")).join("|")})\\b`,
   "gi"
 );
 
 export function normalizeTranscript(text: string): string {
-  let result = text.replace(fillwordPattern, "").replace(/\s{2,}/g, " ").trim();
-
-  for (const [wrong, correct] of Object.entries(LEXICON)) {
-    const pattern = new RegExp(`\\b${wrong}\\b`, "gi");
-    result = result.replace(pattern, correct);
-  }
+  let result = text
+    .replace(fillwordPattern, "")
+    // Repetitions: "det er det er" → "det er"
+    .replace(/\b(\w{3,})\s+\1\b/gi, "$1")
+    .replace(/\b(\w+ \w+)\s+\1\b/gi, "$1")
+    // Standards written digit-by-digit by ASR
+    .replace(/\bCER[\s-]?direktiv\w*/gi, "CER-direktivet")
+    .replace(/\bNIS[\s-]?2\b/gi, "NIS2")
+    .replace(/\bIEC[\s-]?6\s*2\s*4\s*4\s*3\b/gi, "IEC 62443")
+    .replace(/\bISO[\s-]?2\s*7\s*0\s*0\s*1\b/gi, "ISO 27001")
+    .replace(/\bISO[\s-]?9\s*0\s*0\s*1\b/gi, "ISO 9001")
+    .replace(/\bGD\s+PR\b/gi, "GDPR")
+    // Technical abbreviations
+    .replace(/\bscada\b/gi, "SCADA")
+    .replace(/\bplc\b/gi, "PLC")
+    .replace(/\bhmi\b/gi, "HMI")
+    .replace(/\bbms\b/gi, "BMS")
+    .replace(/\batex\b/gi, "ATEX")
+    .replace(/\bnpsh\b/gi, "NPSH")
+    .replace(/\bmge\b/gi, "MGE")
+    .replace(/\bcim\b/gi, "CIM")
+    .replace(/\bapi\b/gi, "API")
+    .replace(/\biot\b/gi, "IoT")
+    .replace(/\biiot\b/gi, "IIoT")
+    .replace(/\bvfd\b/gi, "VFD")
+    .replace(/\bpid\b/gi, "PID")
+    .replace(/\bprofinet\b/gi, "PROFINET")
+    .replace(/\bprofibus\b/gi, "PROFIBUS")
+    .replace(/\bmodbus\b/gi, "Modbus")
+    .replace(/\bbacnet\b/gi, "BACnet")
+    .replace(/\bmqtt\b/gi, "MQTT")
+    .replace(/\bopc[\s-]ua\b/gi, "OPC-UA")
+    // IE efficiency classes — "IE 3", "I E 3", "IE class 3"
+    .replace(/\bi[\s-]?e[\s-]?([1-5])\b/gi, (_, n) => "IE" + n)
+    .replace(/\bi[\s-]?e[\s-]?class[\s-]?([1-5])\b/gi, (_, n) => "IE" + n)
+    // Grundfos product names
+    .replace(/\bi\s*solutions?\b/gi, "iSolutions")
+    .replace(/\bi\s*cense\b/gi, "iSense")
+    .replace(/\bground\s*foss?\b/gi, "Grundfos")
+    .replace(/\bgrund\s*foss?\b/gi, "Grundfos")
+    .replace(/\bgrundfos\b/gi, "Grundfos")
+    // Units split by ASR
+    .replace(/\bm\s*3\s*\/?\s*h\b/gi, "m³/h")
+    .replace(/\s{2,}/g, " ")
+    .trim();
 
   return result;
 }
@@ -61,31 +70,29 @@ export function classifyTranscript(text: string): VizFamily {
   const lower = text.toLowerCase();
   const words = lower.split(/\s+/);
 
-  const scores: Record<string, number> = {
-    hmi: 0,
-    journey: 0,
-    workflow: 0,
-    product: 0,
-    requirements: 0,
-    management: 0,
+  const KEYWORDS: Record<VizFamily, string[]> = {
+    hmi: ["hmi", "scada", "dashboard", "display", "screen", "panel", "alarm", "sensor", "gauge", "meter", "control", "setpoint", "monitoring", "overvågning", "styring", "skærm", "pumpe", "pump", "flow", "tryk", "pressure", "temperatur", "ventil", "valve", "isolutions"],
+    journey: ["journey", "user", "bruger", "customer", "kunde", "step", "trin", "experience", "oplevelse", "onboarding", "path", "touch", "fase", "phase"],
+    workflow: ["workflow", "process", "arbejdsgang", "task", "opgave", "approval", "godkendelse", "review", "sequence", "rækkefølge", "procedure", "integration", "automation"],
+    product: ["product", "produkt", "hardware", "komponenter", "component", "installation", "montage", "dimension", "størrelse", "material", "spec", "motor", "impeller", "housing", "shaft", "aksel"],
+    requirements: ["requirement", "krav", "feature", "funktion", "must", "skal", "should", "bør", "compliance", "standard", "norm", "regulation", "safety", "sikkerhed", "certification", "iso", "iec", "atex", "nis2", "cer", "gdpr"],
+    management: ["management", "ledelse", "strategy", "strategi", "roadmap", "milestone", "milepæl", "budget", "cost", "resource", "ressource", "risk", "risiko", "timeline", "kpi", "metric", "måltal", "stakeholder"],
+    general: [],
   };
 
-  for (const [family, keywords] of Object.entries(CLASSIFICATION_KEYWORDS)) {
+  const scores: Partial<Record<VizFamily, number>> = {};
+
+  for (const [family, keywords] of Object.entries(KEYWORDS) as [VizFamily, string[]][]) {
+    if (family === "general") continue;
+    scores[family] = 0;
     for (const keyword of keywords) {
-      const count = words.filter((w) => w.includes(keyword)).length;
-      scores[family] += count;
+      scores[family]! += words.filter((w) => w.includes(keyword)).length;
     }
   }
 
-  const best = Object.entries(scores).sort(([, a], [, b]) => b - a)[0];
+  const best = Object.entries(scores)
+    .sort(([, a], [, b]) => (b ?? 0) - (a ?? 0))[0];
 
-  if (best[1] === 0) return "general";
+  if (!best || (best[1] ?? 0) === 0) return "general";
   return best[0] as VizFamily;
-}
-
-export function countWords(text: string): number {
-  return text
-    .trim()
-    .split(/\s+/)
-    .filter((w) => w.length > 0).length;
 }

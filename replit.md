@@ -41,28 +41,37 @@ artifacts-monorepo/
 The main product artifact. A live meeting tool for industrial/engineering contexts.
 
 ### Features
-- **Speech-to-text**: Web Speech API (da-DK / en-US), optional Deepgram WebSocket
+- **Speech-to-text**: Web Speech API (da-DK / en-US, 2500ms commit buffer), optional Deepgram WebSocket
 - **AI Visualization**: Claude (Anthropic) generates HTML+CSS visualizations from transcript
-  - Families: HMI/SCADA, User Journey, Workflow, Product/Hardware, Requirements, Management
+  - Types: Auto-detect, HMI/SCADA, User Journey, Workflow, Product/Hardware, Requirements, Management, Kanban, Decision Log, Timeline, Comparison Cards, Stakeholder Map
+  - Models: Haiku (fast), Sonnet (balanced), Opus (best quality)
   - Streamed via SSE, rendered safely in `<iframe>` (never innerHTML)
-  - Incremental updates — builds on previous visualization when topic is consistent
+  - Incremental updates (builds on previous) or fresh start
+  - Code fence stripping (model sometimes emits ```html wrappers)
+  - HMI host-tab interactivity injected via script into iframe
+  - Lazy tab panels filled by separate Haiku call after first paint
+- **Paste text mode**: paste Teams/Zoom transcripts as an alternative to mic recording
+- **Decisions/Actions tab**: separate Claude Haiku call extracts decisions and action items
+- **Version history**: in-session v1/v2/v3 pills for revisiting prior visualizations
+- **Meeting context**: title, purpose, projects, participants, extra context passed to AI
 - **Multi-user rooms**: 6-char room codes, SSE broadcast of segments + visualizations + participants
-- **Normalization**: Fillword removal (da/en), domain lexicon correction before AI calls
+- **45-second auto-viz countdown**: timer resets on each generate (mic or manual)
+- **Normalization**: fillword removal (da/en), Danish tech-term normalization (IEC 62443, ISO 27001, GDPR, SCADA, PLC, HMI, IE1–IE5, Grundfos products, m³/h)
 
 ### Key backend files
 - `artifacts/api-server/src/lib/normalizer.ts` — transcript normalization + classification
-- `artifacts/api-server/src/lib/visualizer.ts` — Anthropic streaming + family prompts
-- `artifacts/api-server/src/lib/rooms.ts` — SSE room management (in-memory)
-- `artifacts/api-server/src/routes/visualize.ts` — POST /api/visualize (rate-limited, SSE stream)
+- `artifacts/api-server/src/lib/visualizer.ts` — Anthropic streaming, fill-tab-panels, actions extraction
+- `artifacts/api-server/src/lib/rooms.ts` — SSE room management (in-memory, ephemeral)
+- `artifacts/api-server/src/routes/visualize.ts` — POST /api/visualize (rate-limited SSE stream), POST /api/viz/fill-tab-panels, POST /api/actions
 - `artifacts/api-server/src/routes/sse.ts` — GET /api/sse?room=CODE
 - `artifacts/api-server/src/routes/segment.ts` — POST /api/segment
 - `artifacts/api-server/src/routes/deepgram.ts` — GET /api/deepgram-token
 
 ### Key frontend files
 - `artifacts/meeting-visualizer/src/pages/Home.tsx` — Room create/join landing
-- `artifacts/meeting-visualizer/src/pages/Room.tsx` — Main meeting view (split panel)
-- `artifacts/meeting-visualizer/src/components/IframeRenderer.tsx` — Safe AI HTML renderer
-- `artifacts/meeting-visualizer/src/hooks/use-speech.ts` — Web Speech API hook
+- `artifacts/meeting-visualizer/src/pages/Room.tsx` — Main meeting view (mic/paste tabs + viz/decisions tabs + config row)
+- `artifacts/meeting-visualizer/src/components/IframeRenderer.tsx` — Safe AI HTML renderer with host-tab injection and fill-tab-panels API call
+- `artifacts/meeting-visualizer/src/hooks/use-speech.ts` — Web Speech API hook (da-DK default, 2500ms buffer)
 - `artifacts/meeting-visualizer/src/hooks/use-room-sse.ts` — SSE room sync
 - `artifacts/meeting-visualizer/src/hooks/use-visualize-stream.ts` — SSE visualization stream
 

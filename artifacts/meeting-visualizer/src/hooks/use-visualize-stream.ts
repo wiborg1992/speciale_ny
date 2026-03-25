@@ -1,6 +1,8 @@
 import { useState, useCallback } from "react";
 import type { VisualizeRequest } from "@workspace/api-client-react";
 
+const BASE = import.meta.env.BASE_URL;
+
 export function useVisualizeStream() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [streamedHtml, setStreamedHtml] = useState<string>("");
@@ -14,7 +16,7 @@ export function useVisualizeStream() {
     setMeta(null);
 
     try {
-      const response = await fetch("/api/visualize", {
+      const response = await fetch(`${BASE}api/visualize`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -36,20 +38,16 @@ export function useVisualizeStream() {
       while (true) {
         const { value, done } = await reader.read();
         if (done) break;
-        
+
         buffer += decoder.decode(value, { stream: true });
-        
-        // Process SSE format
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || ""; // Keep the last incomplete line in buffer
+
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
 
         for (const line of lines) {
           if (line.startsWith("data: ")) {
             const data = line.slice(6);
-            if (data === "[DONE]") {
-              // End of stream
-              continue;
-            }
+            if (data === "[DONE]") continue;
             try {
               const parsed = JSON.parse(data);
               if (parsed.type === "chunk" && parsed.text) {
@@ -64,7 +62,7 @@ export function useVisualizeStream() {
               } else if (parsed.type === "error") {
                 setError(parsed.error || "Generation failed");
               }
-            } catch (e) {
+            } catch {
               // ignore parse errors on non-data lines
             }
           }

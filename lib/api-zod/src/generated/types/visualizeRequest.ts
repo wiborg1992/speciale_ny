@@ -24,4 +24,28 @@ export interface VisualizeRequest {
    * @nullable
    */
   speakerName?: string | null;
+  /**
+   * Visualization type override (auto = let AI decide)
+   * @nullable
+   */
+  vizType?: string | null;
+  /**
+   * Claude model: haiku | sonnet | opus
+   * @nullable
+   */
+  vizModel?: string | null;
+  /**
+   * Meeting title for context
+   * @nullable
+   */
+  title?: string | null;
+  /**
+   * Meeting context (purpose, projects, participants)
+   * @nullable
+   */
+  context?: string | null;
+  /**
+   * If true, generate a fresh visualization rather than updating the previous one
+   */
+  freshStart?: boolean;
 }
