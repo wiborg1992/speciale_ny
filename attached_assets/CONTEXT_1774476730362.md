@@ -1,0 +1,115 @@
+# Meeting AI Visualizer — Projektkontekst
+
+> **Læs denne fil først.** Den giver det fulde billede af projektet, dets formål og tekniske setup — uden at du behøver læse al koden.
+
+---
+
+## Formål
+
+Meeting AI Visualizer er et specialeprojektværktøj udviklet til brug i møde- og workshop-sammenhænge hos **Grundfos**. Formålet er at transskribere det der siges på dansk i realtid, og automatisk generere visuelle referencepunkter for mødedeltagerne — så alle har et fælles billede af det der diskuteres.
+
+Projektet er en **prototype** der skal afprøves og testes i rigtige møder. Der er endnu ingen domænedata eller eksempeltransskriptioner fra virkelige Grundfos-møder.
+
+---
+
+## Målgruppe og kontekst
+
+- **Virksomhed:** Grundfos (dansk pumpeproducent, global)
+- **Mødetyper:** Produktudvikling, kravspecifikation, workshop
+- **Sprog:** Dansk (transskription og visualisering)
+- **Deltagere:** Ingeniører, produktchefer, projektledere
+- **Typiske emner:** Pumpespecifikationer, kravdefinition, komponentvalg, projektplanlægning
+
+---
+
+## Teknisk arkitektur
+
+```
+START.bat
+   └── node server.js          (Node.js HTTP-server, ingen eksterne deps udover dotenv + express i package.json)
+         ├── GET  /            → serverer public/index.html
+         └── POST /api/visualize
+                  ├── modtager { transcript: "..." }
+                  ├── kalder Anthropic API (claude-sonnet-4-6)
+                  └── returnerer { html: "<div>...</div>" }
+
+public/index.html
+   ├── Venstre panel: Web Speech API (da-DK) → realtids-transskription
+   └── Højre panel:  Modtager og renderer HTML-visualisering fra Claude
+```
+
+**Runtime:** Node.js (primær) eller Python via server.py (alternativ)
+**AI-model:** `claude-sonnet-4-6` via Anthropic Messages API
+**Frontend:** Vanilla HTML/CSS/JS — ingen frameworks
+**Krav:** Google Chrome (Web Speech API), Anthropic API-nøgle i `.env`
+
+---
+
+## Filstruktur
+
+```
+meeting-ai/
+├── CONTEXT.md          ← denne fil (projektoverblik til AI-assistenter)
+├── PROMPT_LOG.md       ← dokumentation af system prompt og dens rationale
+├── TEST_CASES.md       ← eksempel-transskriptioner til test af visualiseringer
+├── CHANGELOG.md        ← historik over ændringer
+├── server.js           ← Node.js backend + Claude system prompt
+├── server.py           ← Python-alternativ til serveren
+├── public/
+│   └── index.html      ← hele frontend (transskription + visualisering)
+├── .env                ← ANTHROPIC_API_KEY + PORT (ikke i git)
+├── package.json        ← npm-metadata
+├── START.bat           ← Windows launcher (opretter skrivebordsgenvej automatisk)
+└── README.md           ← brugervendt kom-i-gang vejledning
+```
+
+---
+
+## Grundfos Brand
+
+| Rolle | Hex | Anvendelse |
+|---|---|---|
+| Primær navy | `#002A5C` | Headers, baggrunde, kontrolpanel-top |
+| Sekundær blå | `#0077C8` | Accenter, highlights, knapper |
+| Lys blå | `#E8F4FD` | Kort-baggrunde, sektioner |
+| HMI mørk | `#1a1a2a` | Kontrolpanel-baggrund |
+| Metrik-kort | `#252535` | Kort i mørkt kontrolpanel |
+| Brødtekst | `#333333` | Mørkegrå tekst |
+| Neutral | `#F5F5F5` | Lysegrå baggrunde |
+
+---
+
+## Vigtige designbeslutninger
+
+**Hvorfor Claude frem for Google AI Studio / Gemini?**
+Claude er markant bedre til at generere præcis, velstruktureret HTML/CSS i ét output — hvilket er kritisk for dette format. Gemini er mere uforudsigelig i outputformatet. Claude håndterer desuden dansk fagsprog bedre i denne kontekst.
+
+**Hvorfor inline CSS?**
+HTML-outputtet injectes direkte i DOM'en via `innerHTML`. Externe stylesheets og `<style>`-tags udenfor en `<div>` fungerer ikke i dette setup.
+
+**Prototype-badge**
+Alle kontrolpanel-visualiseringer viser "PROTOTYPE – Ikke tilsluttet live data" så det er tydeligt for mødedeltagere at der er tale om en mock-up.
+
+---
+
+## Teams-integration
+
+Appen understøtter to tilstande:
+
+**Mikrofon-tilstand** (live): Bruger Web Speech API til realtids-transskription. Kræver Chrome eller Edge. Under et Teams-møde kan mikrofonen være optaget af Teams — i så fald bruges "Indsæt tekst"-tilstanden i stedet.
+
+**Indsæt tekst-tilstand** (Teams/Zoom/manuel): Brugeren kopierer transskription fra Teams ("Mere → Start transskription") og indsætter den i appen. Virker i alle browsere og er den anbefalede metode i Teams-møder. Understøtter også Zoom, Webex og manuelt referatudkast.
+
+Browserkompatibilitet:
+- Chrome: Begge tilstande virker
+- Edge: Begge tilstande virker (Edge er Chromium-baseret og understøtter Web Speech API)
+- Safari/Firefox: Kun "Indsæt tekst"-tilstand virker
+
+## Kendte begrænsninger / næste skridt
+
+- [ ] Ingen rigtige Grundfos-transskriptioner til at validere outputkvalitet endnu
+- [ ] Grundfos brand hex-koder er baseret på offentligt tilgængelige ressourcer — bør verificeres mod officielle brand guidelines
+- [ ] Auto-visualisering sker hvert 30. sekund — interval kan justeres i `index.html` (`AUTO_INTERVAL`)
+- [ ] Ingen gem/eksport-funktion endnu
+- [ ] Ingen historik over tidligere visualiseringer i samme session
+- [ ] Appen kører på localhost — for brug på tværs af enheder i et møde kræves hosting (f.eks. ngrok til prototype-test)

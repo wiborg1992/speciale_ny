@@ -27,6 +27,7 @@ interface SpeechRecognition extends EventTarget {
   continuous: boolean;
   interimResults: boolean;
   lang: string;
+  maxAlternatives: number;
   start(): void;
   stop(): void;
   abort(): void;
@@ -47,61 +48,93 @@ export interface UseSpeechProps {
   language?: string;
 }
 
-export function useSpeech({ onSegmentFinalized, language = "en-US" }: UseSpeechProps) {
+// How long to wait after the last final result before committing the segment (ms)
+const COMMIT_DELAY_MS = 2500;
+
+export function useSpeech({ onSegmentFinalized, language = "da-DK" }: UseSpeechProps) {
   const [isRecording, setIsRecording] = useState(false);
   const [interimText, setInterimText] = useState("");
   const [error, setError] = useState<string | null>(null);
+
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const isRecordingRef = useRef(false);
   const intentionalStopRef = useRef(false);
 
-  // Use a ref for the callback so we never need to recreate the recognition object
+  // Stable ref for the callback — never causes hook recreation
   const onSegmentFinalizedRef = useRef(onSegmentFinalized);
-  useEffect(() => {
-    onSegmentFinalizedRef.current = onSegmentFinalized;
-  }, [onSegmentFinalized]);
+  useEffect(() => { onSegmentFinalizedRef.current = onSegmentFinalized; }, [onSegmentFinalized]);
 
-  // Create recognition object once on mount (or when language changes)
+  // Buffer: accumulate final results and wait COMMIT_DELAY_MS of silence before emitting
+  const pendingTextRef = useRef("");
+  const commitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const flushPending = useCallback(() => {
+    if (commitTimerRef.current) {
+      clearTimeout(commitTimerRef.current);
+      commitTimerRef.current = null;
+    }
+    const text = pendingTextRef.current.trim();
+    pendingTextRef.current = "";
+    if (text) onSegmentFinalizedRef.current(text);
+  }, []);
+
+  const scheduleCommit = useCallback(() => {
+    if (commitTimerRef.current) clearTimeout(commitTimerRef.current);
+    commitTimerRef.current = setTimeout(() => {
+      commitTimerRef.current = null;
+      const text = pendingTextRef.current.trim();
+      pendingTextRef.current = "";
+      if (text) onSegmentFinalizedRef.current(text);
+    }, COMMIT_DELAY_MS);
+  }, []);
+
+  // Create/recreate the recognition object only when language changes
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-      setError("Web Speech API is not supported in this browser. Please use Chrome or Edge.");
+    const SpeechRecognitionCtor = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognitionCtor) {
+      setError("Web Speech API not supported. Please use Chrome or Edge.");
       return;
     }
 
-    const recognition = new SpeechRecognition();
+    const recognition = new SpeechRecognitionCtor();
     recognition.continuous = true;
     recognition.interimResults = true;
     recognition.lang = language;
+    recognition.maxAlternatives = 1;
 
     recognition.onresult = (event: SpeechRecognitionEvent) => {
       let currentInterim = "";
 
       for (let i = event.resultIndex; i < event.results.length; ++i) {
-        if (event.results[i].isFinal) {
-          const finalText = event.results[i][0].transcript.trim();
-          if (finalText) {
-            onSegmentFinalizedRef.current(finalText);
+        const result = event.results[i];
+        if (result.isFinal) {
+          const finalText = result[0].transcript;
+          if (finalText.trim()) {
+            // Append to pending buffer and (re)start the commit timer
+            pendingTextRef.current = (pendingTextRef.current + " " + finalText).trim();
+            scheduleCommit();
           }
         } else {
-          currentInterim += event.results[i][0].transcript;
+          currentInterim += result[0].transcript;
         }
       }
 
-      setInterimText(currentInterim);
+      // Show interim text + pending buffer so the user sees everything in progress
+      const display = [pendingTextRef.current, currentInterim].filter(Boolean).join(" ");
+      setInterimText(display);
     };
 
     recognition.onerror = (event: any) => {
       if (event.error === "not-allowed" || event.error === "permission-denied") {
-        setError("Microphone access denied. Please allow microphone access in your browser.");
+        setError("Mikrofonadgang nægtet. Tillad mikrofon i browseren.");
         setIsRecording(false);
         isRecordingRef.current = false;
       } else if (event.error === "no-speech") {
-        // Not a fatal error — just silence
+        // Silence — not fatal
       } else {
-        setError(`Speech recognition error: ${event.error}`);
+        setError(`Talegenkendelse fejl: ${event.error}`);
       }
     };
 
@@ -116,6 +149,8 @@ export function useSpeech({ onSegmentFinalized, language = "en-US" }: UseSpeechP
           isRecordingRef.current = false;
         }
       } else {
+        // Flush any pending buffer on intentional stop
+        flushPending();
         setIsRecording(false);
         isRecordingRef.current = false;
       }
@@ -126,15 +161,16 @@ export function useSpeech({ onSegmentFinalized, language = "en-US" }: UseSpeechP
     return () => {
       intentionalStopRef.current = true;
       isRecordingRef.current = false;
+      if (commitTimerRef.current) clearTimeout(commitTimerRef.current);
       recognition.abort();
       recognitionRef.current = null;
     };
-  }, [language]); // Only recreate when language changes
+  }, [language, scheduleCommit, flushPending]);
 
   const toggleRecording = useCallback(() => {
     const recognition = recognitionRef.current;
     if (!recognition) {
-      setError("Speech recognition not available. Please use Chrome or Edge.");
+      setError("Talegenkendelse ikke tilgængelig. Brug Chrome eller Edge.");
       return;
     }
 
@@ -144,25 +180,23 @@ export function useSpeech({ onSegmentFinalized, language = "en-US" }: UseSpeechP
       setIsRecording(false);
       setInterimText("");
       recognition.stop();
+      // Flush any accumulated text immediately on manual stop
+      flushPending();
     } else {
       setError(null);
       intentionalStopRef.current = false;
       isRecordingRef.current = true;
+      pendingTextRef.current = "";
       setIsRecording(true);
       try {
         recognition.start();
-      } catch (err) {
-        setError("Could not start recording. Please try again.");
+      } catch {
+        setError("Kunne ikke starte optagelse. Prøv igen.");
         setIsRecording(false);
         isRecordingRef.current = false;
       }
     }
-  }, []); // Stable — never changes
+  }, [flushPending]);
 
-  return {
-    isRecording,
-    interimText,
-    error,
-    toggleRecording,
-  };
+  return { isRecording, interimText, error, toggleRecording };
 }

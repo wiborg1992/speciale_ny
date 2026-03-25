@@ -34,7 +34,7 @@ const FAMILY_ICONS: Record<string, React.ReactNode> = {
 export default function Room() {
   const { id: roomId } = useParams<{ id: string }>();
   const [speakerName] = useLocalStorage("meetingVisualizer_speakerName", "Anonymous");
-  const [language, setLanguage] = useState("en-US");
+  const [language, setLanguage] = useState("da-DK");
   const [autoVizEnabled, setAutoVizEnabled] = useState(false);
   
   // API & State Hooks

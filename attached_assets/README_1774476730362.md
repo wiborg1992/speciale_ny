@@ -1,0 +1,58 @@
+# Meeting AI Visualizer
+
+Real-time mødetransskription med AI-visualisering via Claude.
+
+---
+
+## Hurtig start (3 trin)
+
+### 1. Installer Node.js ELLER Python
+
+Du skal bruge **én** af disse (tjek om du allerede har dem):
+
+| Runtime | Tjek i terminal          | Download                           |
+|---------|--------------------------|------------------------------------|
+| Node.js | `node --version`         | https://nodejs.org (vælg "LTS")    |
+| Python  | `python --version`       | https://python.org/downloads       |
+
+### 2. Indsæt din API-nøgle
+
+Åbn filen `.env` i en teksteditor og erstat `din-api-nøgle-her`:
+
+```
+ANTHROPIC_API_KEY=sk-ant-api03-DIN-RIGTIGE-NØGLE-HER
+PORT=3000
+```
+
+Hent en nøgle på https://console.anthropic.com/ hvis du ikke har en.
+
+### 3. Start appen
+
+**Windows:** Dobbeltklik på `START.bat`
+
+**Mac/Linux:** Åbn terminal i mappen og kør:
+```bash
+node server.js
+# eller hvis du bruger Python:
+python3 server.py
+```
+
+Chrome åbner automatisk på http://localhost:3000
+
+---
+
+## Brug
+
+1. Tryk **▶ Start** for at optage (giv Chrome adgang til mikrofon)
+2. Tal frit — transskription vises i realtid
+3. Tryk **✨ Visualisér** eller vent 30 sek (automatisk)
+4. Claude genererer kanban-boards, tidslinjer, mindmaps, tabeller mv.
+5. Tryk **⏹ Stop** når mødet er slut
+
+## Fejlfinding
+
+| Problem | Løsning |
+|---------|---------|
+| Mikrofon virker ikke | Brug Chrome + giv mikrofonrettigheder |
+| API-fejl | Tjek at nøglen i `.env` er korrekt |
+| Siden vises ikke | Tjek at serveren kører i terminalvinduet |

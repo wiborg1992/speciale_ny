@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Meeting AI Visualizer – Konfiguration</title>
+  <script src="https://res.cdn.office.net/teams-js/2.22.0/js/MicrosoftTeams.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f0f2f5;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 24px;
+    }
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+      padding: 40px;
+      max-width: 480px;
+      width: 100%;
+      text-align: center;
+    }
+    .logo { font-size: 3rem; margin-bottom: 16px; }
+    h1 { font-size: 1.3rem; color: #002A5C; font-weight: 700; margin-bottom: 8px; }
+    p  { font-size: 0.88rem; color: #64748b; line-height: 1.6; margin-bottom: 24px; }
+    .feature-list {
+      text-align: left;
+      background: #f8fafc;
+      border-radius: 8px;
+      padding: 16px 20px;
+      margin-bottom: 24px;
+    }
+    .feature-list li {
+      font-size: 0.85rem;
+      color: #334155;
+      padding: 5px 0;
+      list-style: none;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .badge {
+      display: inline-block;
+      background: #002A5C;
+      color: #fff;
+      font-size: 0.72rem;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 4px;
+      margin-top: 16px;
+    }
+    .status {
+      font-size: 0.78rem;
+      color: #22c55e;
+      margin-top: 12px;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo">🎙️</div>
+    <h1>Meeting AI Visualizer</h1>
+    <p>Tilføjer Meeting AI Visualizer til dit Teams-møde. Appen transskriberer det der siges og genererer automatisk professionelle visualiseringer.</p>
+
+    <ul class="feature-list">
+      <li>◈ Realtids-transskription på dansk</li>
+      <li>▲ Automatiske AI-visualiseringer via Claude</li>
+      <li>⚙ Grundfos HMI-kontrolpaneler for pumper og motorer</li>
+      <li>◉ "Del til scene" — alle deltagere ser det samme</li>
+    </ul>
+
+    <span class="badge">PROTOTYPE · Grundfos</span>
+    <div class="status" id="statusMsg">Konfigurerer...</div>
+  </div>
+
+  <script>
+    microsoftTeams.app.initialize().then(() => {
+      microsoftTeams.pages.config.registerOnSaveHandler((saveEvent) => {
+        const baseUrl = window.location.origin;
+        microsoftTeams.pages.config.setConfig({
+          entityId:             'meeting-ai-visualizer',
+          contentUrl:           baseUrl + '/index.html',
+          websiteUrl:           baseUrl + '/index.html',
+          suggestedDisplayName: 'Meeting AI'
+        });
+        saveEvent.notifySuccess();
+      });
+
+      microsoftTeams.pages.config.setValidityState(true);
+      document.getElementById('statusMsg').textContent = '✓ Klar til at tilføje';
+    }).catch(() => {
+      document.getElementById('statusMsg').textContent = 'Åbn denne side inde fra Teams.';
+    });
+  </script>
+</body>
+</html>
