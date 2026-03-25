@@ -1,0 +1,88 @@
+import { useState, useCallback } from "react";
+import type { VisualizeRequest } from "@workspace/api-client-react";
+
+export function useVisualizeStream() {
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [streamedHtml, setStreamedHtml] = useState<string>("");
+  const [meta, setMeta] = useState<any>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const generate = useCallback(async (request: VisualizeRequest) => {
+    setIsGenerating(true);
+    setStreamedHtml("");
+    setError(null);
+    setMeta(null);
+
+    try {
+      const response = await fetch("/api/visualize", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(request),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Server responded with ${response.status}`);
+      }
+
+      if (!response.body) throw new Error("No response body");
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let completeHtml = "";
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        
+        buffer += decoder.decode(value, { stream: true });
+        
+        // Process SSE format
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || ""; // Keep the last incomplete line in buffer
+
+        for (const line of lines) {
+          if (line.startsWith("data: ")) {
+            const data = line.slice(6);
+            if (data === "[DONE]") {
+              // End of stream
+              continue;
+            }
+            try {
+              const parsed = JSON.parse(data);
+              if (parsed.type === "chunk" && parsed.text) {
+                completeHtml += parsed.text;
+                setStreamedHtml(completeHtml);
+              } else if (parsed.type === "done") {
+                if (parsed.html) {
+                  completeHtml = parsed.html;
+                  setStreamedHtml(completeHtml);
+                }
+                if (parsed.meta) setMeta(parsed.meta);
+              } else if (parsed.type === "error") {
+                setError(parsed.error || "Generation failed");
+              }
+            } catch (e) {
+              // ignore parse errors on non-data lines
+            }
+          }
+        }
+      }
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || "Failed to generate visualization");
+    } finally {
+      setIsGenerating(false);
+    }
+  }, []);
+
+  return {
+    generate,
+    isGenerating,
+    streamedHtml,
+    meta,
+    error,
+  };
+}

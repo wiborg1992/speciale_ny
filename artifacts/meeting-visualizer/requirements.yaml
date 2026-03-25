@@ -1,0 +1,24 @@
+packages:
+  "framer-motion": "Animations for panels and UI interactions"
+  "uuid": "Generating unique IDs for transcript segments"
+  "@types/uuid": "Types for UUID"
+  "date-fns": "Formatting timestamps for the history and transcript"
+  "clsx": "Classname merging"
+  "tailwind-merge": "Tailwind class merging for UI components"
+  "@radix-ui/react-slot": "For reusable UI components"
+  "@radix-ui/react-switch": "For toggles like auto-generate"
+  "@radix-ui/react-dialog": "For modals"
+  "@radix-ui/react-scroll-area": "For scrollable transcript areas"
+
+images:
+  - path: "artifacts/meeting-visualizer/public/images/industrial-bg.png"
+    description: "Dark, moody industrial background with glowing red and orange metallic accents, geometric shapes, and a subtle tech grid. Perfect for an engineering dashboard."
+    aspect_ratio: "16:9"
+  - path: "artifacts/meeting-visualizer/public/images/logo-mark.png"
+    description: "Minimalist geometric industrial logo in neon orange and dark grey, clean vector style."
+    aspect_ratio: "1:1"
+
+notes:
+  - "The app relies heavily on Server-Sent Events (SSE) for real-time state synchronization."
+  - "Web Speech API is the primary transcription method, falling back to basic input if needed."
+  - "Visualization relies on a custom fetch hook to handle POST SSE streams from the /api/visualize endpoint."

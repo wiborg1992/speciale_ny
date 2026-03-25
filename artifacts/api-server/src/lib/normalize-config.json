@@ -1,0 +1,52 @@
+{
+  "fillwords": {
+    "da": ["øh", "øhm", "eh", "ehm", "altså", "ligesom", "ikk", "ikke", "jo", "nå", "hvad", "jamen", "jamens", "men", "og", "så", "bare", "faktisk"],
+    "en": ["um", "uh", "like", "you know", "sort of", "kind of", "basically", "actually", "right", "okay", "so", "well"]
+  },
+  "lexicon": {
+    "da": {
+      "pumpesystemet": "pumpesystemet",
+      "grundfos": "Grundfos",
+      "scada": "SCADA",
+      "hmi": "HMI",
+      "plc": "PLC",
+      "api": "API",
+      "iot": "IoT",
+      "modbus": "Modbus",
+      "profibus": "PROFIBUS",
+      "profinet": "PROFINET",
+      "bacnet": "BACnet",
+      "mqtt": "MQTT",
+      "opc-ua": "OPC-UA",
+      "iiot": "IIoT",
+      "vfd": "VFD",
+      "pid": "PID",
+      "mpo": "MPO",
+      "cms": "CMS",
+      "ui": "UI",
+      "ux": "UX"
+    },
+    "en": {
+      "grundfos": "Grundfos",
+      "scada": "SCADA",
+      "hmi": "HMI",
+      "plc": "PLC",
+      "modbus": "Modbus",
+      "profibus": "PROFIBUS",
+      "profinet": "PROFINET",
+      "bacnet": "BACnet",
+      "mqtt": "MQTT",
+      "iiot": "IIoT",
+      "vfd": "VFD",
+      "pid": "PID"
+    }
+  },
+  "classificationKeywords": {
+    "hmi": ["hmi", "scada", "dashboard", "display", "screen", "panel", "alarm", "sensor", "gauge", "meter", "control", "setpoint", "status", "monitoring", "overvågning", "styring", "skærm", "display", "pumpe", "pump", "flow", "tryk", "pressure", "temperatur", "temperature", "ventil", "valve"],
+    "journey": ["journey", "user", "bruger", "customer", "kunde", "step", "trin", "experience", "oplevelse", "onboarding", "flow", "path", "sti", "touch", "kontaktpunkt", "fase", "phase", "process", "step"],
+    "workflow": ["workflow", "process", "arbejdsgang", "step", "trin", "task", "opgave", "approval", "godkendelse", "review", "sequence", "rækkefølge", "procedure", "handoff", "integration", "automation", "automatisering"],
+    "product": ["product", "produkt", "hardware", "komponenter", "component", "installation", "montage", "mounting", "dimension", "størrelse", "size", "material", "materiale", "specification", "spec", "motor", "impeller", "housing", "hus", "shaft", "aksel"],
+    "requirements": ["requirement", "krav", "feature", "funktion", "function", "must", "skal", "should", "bør", "compliance", "overholdelse", "standard", "norm", "regulation", "regulering", "safety", "sikkerhed", "certification", "certificering", "iso", "iec", "atex"],
+    "management": ["management", "ledelse", "strategy", "strategi", "roadmap", "milestone", "milepæl", "budget", "cost", "omkostning", "resource", "ressource", "risk", "risiko", "timeline", "tidslinje", "kpi", "metric", "måltal", "stakeholder", "board"]
+  }
+}
