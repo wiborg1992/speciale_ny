@@ -228,7 +228,7 @@ export default function Room() {
     addLocalSegment(newSegment);
     try {
       await postSegment({
-        data: { roomId, speakerName, text, timestamp: newSegment.timestamp, isFinal: true }
+        data: { roomId, speakerName, text, timestamp: newSegment.timestamp, isFinal: true, id: newSegment.id } as any
       });
     } catch (err) {
       console.error("Failed to post segment", err);

@@ -14,7 +14,12 @@ router.post("/segment", async (req, res): Promise<void> => {
 
   const { roomId, speakerName, text, timestamp, isFinal } = parsed.data;
 
-  const segmentId = randomUUID();
+  // Use client-provided id if present (prevents SSE dedup failure when the
+  // segment is broadcast back to the sender who already added it locally).
+  const clientId = typeof req.body.id === "string" && req.body.id.length > 8
+    ? req.body.id
+    : null;
+  const segmentId = clientId || randomUUID();
 
   const segment = {
     id: segmentId,
