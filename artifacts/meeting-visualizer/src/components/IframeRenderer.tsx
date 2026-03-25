@@ -324,8 +324,10 @@ const EDIT_MODE_SCRIPT = `
     window.parent.postMessage({ type: 'viz-edit-status', enabled: false }, '*');
   }
 
+  window.__vizEditEnable = enableEdit;
+  window.__vizEditDisable = disableEdit;
+
   window.addEventListener('message', function(e) {
-    if (e.source !== window.parent) return;
     if (e.data && e.data.type === 'viz-edit-mode') {
       if (e.data.enabled) enableEdit();
       else disableEdit();
@@ -730,10 +732,25 @@ ${editScript}
 
   const toggleEditMode = useCallback(() => {
     const iframe = iframeRef.current;
-    if (!iframe?.contentWindow) return;
+    if (!iframe) return;
     const newMode = !isEditMode;
     setIsEditMode(newMode);
-    iframe.contentWindow.postMessage({ type: "viz-edit-mode", enabled: newMode }, "*");
+
+    const win = iframe.contentWindow as any;
+    if (!win) return;
+    try {
+      if (newMode && typeof win.__vizEditEnable === "function") {
+        win.__vizEditEnable();
+        return;
+      }
+      if (!newMode && typeof win.__vizEditDisable === "function") {
+        win.__vizEditDisable();
+        return;
+      }
+    } catch { /* ignore */ }
+    try {
+      win.postMessage({ type: "viz-edit-mode", enabled: newMode }, "*");
+    } catch { /* ignore */ }
   }, [isEditMode]);
 
   const handleReset = useCallback(() => {
@@ -763,38 +780,38 @@ ${editScript}
         : className
     )}>
       {!isEmpty && !showSkeleton && (
-        <div className="absolute top-3 right-3 z-20 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="absolute top-3 right-3 z-20 flex items-center gap-1.5">
           <Button
-            variant="ghost"
-            size="icon"
+            variant={isEditMode ? "default" : "outline"}
+            size="sm"
             className={cn(
-              "w-7 h-7 backdrop-blur-sm",
+              "h-7 gap-1.5 text-[10px] font-mono uppercase tracking-wider backdrop-blur-sm",
               isEditMode
-                ? "bg-primary/30 text-primary hover:bg-primary/40"
-                : "bg-background/80 text-muted-foreground hover:text-foreground"
+                ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                : "bg-background/90 border-border text-muted-foreground hover:text-foreground hover:bg-background"
             )}
             onClick={toggleEditMode}
-            title={isEditMode ? "Exit edit mode" : "Edit visualization"}
           >
-            <Pencil className="h-3.5 w-3.5" />
+            <Pencil className="h-3 w-3" />
+            {isEditMode ? "Editing" : "Edit"}
           </Button>
 
           {isEditMode && (
             <Button
-              variant="ghost"
-              size="icon"
-              className="w-7 h-7 bg-background/80 backdrop-blur-sm text-muted-foreground hover:text-foreground"
+              variant="outline"
+              size="sm"
+              className="h-7 gap-1.5 text-[10px] font-mono uppercase tracking-wider bg-background/90 border-border text-muted-foreground hover:text-foreground hover:bg-background backdrop-blur-sm"
               onClick={handleReset}
-              title="Reset to original"
             >
-              <RotateCcw className="h-3.5 w-3.5" />
+              <RotateCcw className="h-3 w-3" />
+              Reset
             </Button>
           )}
 
           <Button
-            variant="ghost"
+            variant="outline"
             size="icon"
-            className="w-7 h-7 bg-background/80 backdrop-blur-sm text-muted-foreground hover:text-foreground"
+            className="w-7 h-7 bg-background/90 border-border backdrop-blur-sm text-muted-foreground hover:text-foreground hover:bg-background"
             onClick={() => setIsFullscreen(!isFullscreen)}
             title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
           >
