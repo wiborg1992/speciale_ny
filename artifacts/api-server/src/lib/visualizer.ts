@@ -41,42 +41,78 @@ const SYSTEM_PROMPT = `You are an expert at analysing meeting transcripts from G
 Return ONLY valid HTML — no markdown, no explanations, no code fences, no preamble.
 Your first character MUST be '<' and your last character MUST be '>'.
 
-━━━ MOST IMPORTANT RULE: CHOOSE THE RIGHT VISUALISATION TYPE ━━━
-You MUST select the visualisation type that best matches what is being discussed — and then commit 100% to that type's visual language. Do NOT default to the dark HMI dashboard unless the meeting is explicitly about a digital control panel or SCADA screen.
+━━━ RULE 1: FOLLOW THE SERVER DIRECTIVE — DO NOT OVERRIDE IT ━━━
+The user message will begin with ⚡ SERVER CLASSIFICATION or ⚡ USER-SELECTED TYPE.
+This is the pre-computed instruction — follow it EXACTLY and commit 100% to that visual style.
+If no directive appears, use SELECTION FALLBACK below.
 
-SELECTION LOGIC — read the transcript and pick ONE:
-  "user journey / brugerrejse / steps / trin / what happens when / hvad sker der når / onboarding / flow of a user"
-    → USER JOURNEY MAP  (light background, swim lanes, emotion indicators)
+SELECTION FALLBACK (only when no ⚡ directive):
+  HMI / SCADA signals → HMI DASHBOARD (dark navy, cyans, tabs, gauge widgets)
+  user journey / brugerrejse / touchpoint / persona → USER JOURNEY MAP (light, swim lanes)
+  workflow / flowchart / process / decision diamond → WORKFLOW DIAGRAM (light, SVG arrows)
+  physical pump / Alpha GO / GO app / LED ring / CU 200 → PHYSICAL PUMP ILLUSTRATION (SVG hardware)
+  requirements / kravspec / MoSCoW / traceability → REQUIREMENTS MATRIX (structured table)
+  roadmap / gantt / milestone / kanban / decision log → MANAGEMENT SUMMARY (editorial layout)
+  anything else → pick the most relevant type above
 
-  "physical pump / pumpe hardware / product looks like / pump model / Alpha / Alpha GO / GO app / Grundfos GO / CR / Magna / cirkulationspumpe / what does it look like / LED ring / control face / dial / bluetooth pump / CU 200 / CU 300 / controller box / dedicated controls"
-    → PHYSICAL PUMP ILLUSTRATION  (realistic SVG product drawing — Alpha GO with circular LED ring interface OR CU-series controller OR CR/CM pump hardware)
+━━━ RULE 2: TYPE ISOLATION — NEVER MIX VISUAL LANGUAGES ━━━
+Each type is a COMPLETELY DIFFERENT visual universe. The cardinal sin is blending them:
+  ✗ Journey map with dark HMI backgrounds
+  ✗ Pump hardware with SCADA-style dashboard frame  
+  ✗ Workflow flowchart inside a dark navy HMI shell
+  ✗ Kanban board styled like a pump P&ID diagram
 
-  "workflow / process steps / flowchart / decision / if X then Y / approval / how does the process work / hvad er processen"
-    → WORKFLOW DIAGRAM  (flowchart with decision diamonds, swim lanes, clean white/light background)
+Each type has its own palette, typography, layout, and component language. Commit fully.
 
-  "compare / option A vs B / two approaches / pros cons / PIN vs token / we can either"
-    → SCENARIO COMPARISON  (side-by-side cards, Grundfos brand colours)
+━━━ BEST PRACTICES BY TYPE ━━━
 
-  "stakeholders / who is involved / roles / teams / organisation"
-    → STAKEHOLDER MAP  (concentric circles SVG)
+TYPE: USER JOURNEY MAP — best practices:
+  • Phases in columns across top: Awareness → Research → Purchase → Onboarding → Use → Renewal
+  • 4-5 swim lanes: Actor | Touchpoints | Emotions | Pain Points | Opportunities
+  • Emotion indicators: use a ☹️😐🙂😊😍 scale with colored dots (red→amber→yellow→green→dark-green)
+  • Pain points: red background chips; Opportunities: green background chips
+  • Touchpoints: small icon + label cards (e-mail, phone, app, web, in-person)
+  • Typography: Playfair Display (headings) + Outfit (body) — imported from Google Fonts
+  • Background: #F8FAFC or white — NEVER dark navy
+  • Staggered CSS animations: fade-in-up with 0.1s delays across columns
 
-  "timeline / milestones / phases / when / deadline / roadmap"
-    → TIMELINE  (horizontal SVG with phase segments)
+TYPE: WORKFLOW / PROCESS DIAGRAM — best practices:
+  • Start node: rounded pill (green border) → Process boxes (blue border) → Decision diamonds → End (red border)
+  • Arrows with arrowhead markers (SVG <marker> element)
+  • Swim lanes: left-side labels for actors (Installer / System / Customer)
+  • Step numbers in circles (①②③...)
+  • Decision diamonds: yellow/amber fill, two exit labels (Yes / No, or specific condition text)
+  • Background: white or #F8FAFC; nodes: white cards with colored left-border accent
+  • Grid/column structure — not a free-floating diagram
 
-  "tasks / action points / to-do / kanban / backlog"
-    → KANBAN BOARD  (columns: Backlog · In Progress · Done)
+TYPE: PHYSICAL PUMP HARDWARE — best practices:
+  • Dedicate 60%+ of viewport to the SVG pump drawing
+  • Alpha GO: circular white control face + LED arc ring (most distinctive feature) + GO App panel
+  • CU-series: realistic enclosure box with LCD display area, cross nav buttons, LED indicators
+  • CR/CM: motor housing with cooling fins + flange connections + mounting bracket
+  • Callout lines with labels (SVG <line> + <text>): annotate key parts
+  • Light background (#F5F5F5 or white) behind the illustration — NOT dark HMI
 
-  "decisions / conclusions / agreements / we decided"
-    → DECISION LOG  (editorial card layout)
+TYPE: REQUIREMENTS MATRIX — best practices:
+  • Full-width responsive HTML table
+  • Header row: navy background (#002A5C), white text, uppercase, letter-spacing
+  • Alternating rows: white and #F8FAFC
+  • Priority chip column: "Must" red pill, "Should" amber, "Could" green, "Won't" grey
+  • Status column with icon: ✓ Done / ⏳ Pending / ✗ Blocked
+  • Sticky header (position:sticky; top:0)
+  • Source column links requirements to transcript speakers
 
-  "HMI / SCADA / control panel / digital interface / screen design / display / betjeningspanel / iSolutions / navigationspanel / vi laver et interface / tabs / app interface / we are building an interface / drift tab / settings tab / sikkerhedstab / user profile / pump profile"
-    → HMI DASHBOARD  (dark Grundfos iSolutions style — ONLY for this context)
+TYPE: MANAGEMENT SUMMARY / TIMELINE — best practices:
+  • Dramatic typography: Playfair Display 48px+ for title, huge weight contrast
+  • Horizontal Gantt/timeline SVG: phase bars with month labels on x-axis
+  • Summary KPI row: 3-4 large metric cards (number + label)
+  • Decision log section: cards with date, decision text, owner
+  • Color: Grundfos navy + blue, subtle red accents for risk items
+  • Footer: Grundfos logo strip in navy
 
-  anything else / general meeting content
-    → COMBINED OVERVIEW or the most relevant type above
-
-NEVER use the dark HMI style for user journeys, workflows, physical products, or general discussions.
-Each type has its own complete visual language defined below — follow it exactly.
+TYPE: HMI / SCADA DASHBOARD — best practices (see full spec below):
+  • ONLY for explicit UI/screen-design discussions
+  • NEVER apply to general pump or meeting topics
 
 ━━━ FLER-DELTAGER TRANSSKRIPTIONER ━━━
 Transskriptioner kan have tale-attribution i formatet:
@@ -790,13 +826,58 @@ export interface VisualizerParams {
   previousHtml?: string | null;
   freshStart?: boolean;
   roomId?: string | null;
+  /** Pre-computed server-side family classification — injected into user message for explicit AI guidance */
+  resolvedFamily?: string | null;
 }
+
+/** Maps server-side family IDs to clear, unambiguous instructions for the AI */
+const FAMILY_INSTRUCTIONS: Record<string, string> = {
+  hmi_interface: `GENERATE: HMI / SCADA DASHBOARD — Grundfos iSolutions dark-theme interface.
+Use the full HMI design language defined in the system prompt (dark navy backgrounds, cyan accents, tab navigation, gauge widgets, live value cards).
+DO NOT use light backgrounds. DO NOT generate journey maps, flowcharts, or product illustrations.`,
+
+  user_journey: `GENERATE: USER JOURNEY MAP — light background, swim lane layout.
+Show phases across the top (e.g., Awareness → Onboarding → Use → Support → Renewal).
+For each phase: actor touchpoints, emotions (emoji scale ☹→😐→😊→😍), pain points (red), opportunities (green).
+Use Grundfos brand colours (#002A5C navy, #0077C8 blue). Clean, editorial layout with Google Fonts.
+DO NOT use dark backgrounds, gauges, or pump hardware illustrations.`,
+
+  workflow_process: `GENERATE: WORKFLOW / PROCESS DIAGRAM — clean, light-background flowchart.
+Use SVG or HTML for flow: rectangles (process steps), diamonds (decisions), arrows, swim lanes if multiple actors.
+Show clear start → process nodes → decision points → end states.
+Use Grundfos colours, crisp lines, directional arrows, numbered steps.
+DO NOT use dark HMI style. DO NOT generate journey maps or pump hardware.`,
+
+  physical_product: `GENERATE: PHYSICAL PUMP HARDWARE ILLUSTRATION — realistic SVG product drawing.
+Follow the exact SVG specs in the system prompt for the specific pump type detected:
+  • Alpha GO / Alpha2 / GO app → circular LED ring interface, white control face, inline orientation
+  • CU 200 / CU 300 controller → wall-mounted enclosure with LCD, navigation cross, terminals
+  • CR / CM / Magna → motor housing with cooling fins, inlet/outlet flanges
+Include the GO App panel if Alpha GO is detected. Use Grundfos red (#BE1E2D), navy, realistic pipe joints.
+DO NOT use dark HMI dashboard style for the main layout.`,
+
+  requirements_matrix: `GENERATE: REQUIREMENTS TRACEABILITY MATRIX — structured table layout.
+Columns: Req ID | Requirement | Priority (MoSCoW) | Source | Status | Notes.
+Use colour-coding: Must=red, Should=amber, Could=green, Won't=grey.
+Clean table with alternating row shading (#F8FAFC). Grundfos brand header.
+DO NOT use dark backgrounds or pump illustrations.`,
+
+  management_summary: `GENERATE: MANAGEMENT SUMMARY / TIMELINE — editorial, executive-level layout.
+May include: horizontal Gantt/timeline SVG, decision log cards, KPI summary, risk register, roadmap phases.
+Use dramatic typography hierarchy (Playfair Display for headings, Outfit for body), structured backgrounds.
+Grundfos navy and blue accents. Print-ready proportions.
+DO NOT use dark HMI style or pump hardware illustrations.`,
+
+  generic: `GENERATE: The most appropriate visualization type based on the transcript content.
+Read the transcript carefully and choose from: HMI dashboard, user journey, workflow, pump hardware, comparison, stakeholder map, timeline, kanban, or decision log.
+Commit fully to one type — do not mix styles.`,
+};
 
 export async function* streamVisualization(
   params: VisualizerParams,
   onChunk: (chunk: string) => void
 ): AsyncGenerator<string> {
-  const { transcript, vizType, vizModel, title, context, previousHtml, freshStart } = params;
+  const { transcript, vizType, vizModel, title, context, previousHtml, freshStart, resolvedFamily } = params;
 
   const model = MODEL_IDS[vizModel ?? "haiku"];
   const maxTokens = MAX_TOKENS[vizModel ?? "haiku"];
@@ -808,11 +889,15 @@ export async function* streamVisualization(
   let userMessage = "";
   if (title) userMessage += `Meeting title: ${title}\n\n`;
   if (context) userMessage += `MEETING CONTEXT:\n${context}\n\n`;
-  userMessage += `Here is the meeting transcript:\n\n${transcriptForModel}\n\n`;
 
+  // Inject server-side classification as an explicit, high-confidence directive
   if (vizType && vizType !== "auto") {
-    userMessage += `IMPORTANT: Generate SPECIFICALLY this visualization type — nothing else: ${vizType}\n\n`;
+    userMessage += `⚡ USER-SELECTED TYPE: Generate SPECIFICALLY this visualization type — nothing else: ${vizType}\n\n`;
+  } else if (resolvedFamily && FAMILY_INSTRUCTIONS[resolvedFamily]) {
+    userMessage += `⚡ SERVER CLASSIFICATION (high confidence) — follow these instructions exactly:\n${FAMILY_INSTRUCTIONS[resolvedFamily]}\n\n`;
   }
+
+  userMessage += `Here is the meeting transcript:\n\n${transcriptForModel}\n\n`;
 
   if (isIncremental && previousHtml) {
     const { snippet, truncated } = truncatePreviousViz(previousHtml);
@@ -823,7 +908,7 @@ export async function* streamVisualization(
       `INCREMENTAL UPDATE: The meeting has continued. Use the transcript tail (newest content) as the PRIMARY signal — extend and refine the visualization when the topic is the same; change layout/type only if the conversation clearly shifted.\n\nCURRENT VISUALIZATION (reference — keep when still appropriate):\n${snippet}${tail}`;
   }
 
-  userMessage += "Generate an appropriate HTML visualization.";
+  userMessage += "Generate the HTML visualization now.";
 
   const stream = client.messages.stream({
     model,

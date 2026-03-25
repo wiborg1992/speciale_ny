@@ -8,21 +8,23 @@ import {
   isHtmlQualityOk,
   type VizModel,
 } from "../lib/visualizer.js";
+import {
+  classifyVisualizationIntent,
+  VIZ_FAMILY_LABEL,
+  type VizFamily,
+} from "../lib/classifier.js";
 import { getRoom, broadcastEvent } from "../lib/rooms.js";
 
 const router: IRouter = Router();
 
 const rateLimitMap = new Map<string, number[]>();
 const RATE_LIMIT_WINDOW = 60_000;
-const RATE_LIMIT_MAX = 8;
-const MAX_BODY_CHARS = 100_000;
+const RATE_LIMIT_MAX    = 28;   // matches reference server
+const MAX_BODY_CHARS    = 100_000;
 
-/** Strip ```html ... ``` wrappers that models sometimes emit despite instructions */
 function stripCodeFences(text: string): string {
   let t = text.trim();
-  // Remove leading ```html or ```
   t = t.replace(/^```(?:html)?\s*\n?/, "");
-  // Remove trailing ```
   t = t.replace(/\n?```\s*$/, "");
   return t.trim();
 }
@@ -40,15 +42,15 @@ function checkRateLimit(ip: string): boolean {
 const VizModelEnum = z.enum(["haiku", "sonnet", "opus"]).optional().nullable();
 
 const VisualizeBodySchema = z.object({
-  transcript: z.string(),
+  transcript:   z.string(),
   previousHtml: z.string().optional().nullable(),
-  roomId: z.string().optional().nullable(),
-  speakerName: z.string().optional().nullable(),
-  vizType: z.string().optional().nullable(),
-  vizModel: VizModelEnum,
-  title: z.string().optional().nullable(),
-  context: z.string().optional().nullable(),
-  freshStart: z.boolean().optional(),
+  roomId:       z.string().optional().nullable(),
+  speakerName:  z.string().optional().nullable(),
+  vizType:      z.string().optional().nullable(),
+  vizModel:     VizModelEnum,
+  title:        z.string().optional().nullable(),
+  context:      z.string().optional().nullable(),
+  freshStart:   z.boolean().optional(),
 });
 
 router.post("/visualize", async (req, res): Promise<void> => {
@@ -77,7 +79,7 @@ router.post("/visualize", async (req, res): Promise<void> => {
     return;
   }
 
-  // Use room transcript if roomId provided
+  // Merge room transcript if available
   let effectiveTranscript = transcript;
   if (roomId) {
     const room = getRoom(roomId);
@@ -88,11 +90,57 @@ router.post("/visualize", async (req, res): Promise<void> => {
 
   const normalized = normalizeTranscript(effectiveTranscript);
 
+  // ─── Server-side classification ───────────────────────────────────────────
+  // Runs BEFORE calling Claude so we can pass an explicit type hint.
+  // If the user explicitly chose a type, skip auto-classification.
+  const userPickedType = vizType && vizType !== "auto";
+  const classification = userPickedType
+    ? null
+    : classifyVisualizationIntent(normalized);
+
+  // Resolve the effective family to inject into the prompt
+  let resolvedFamily: VizFamily | null = null;
+  if (userPickedType) {
+    // Map frontend vizType values → family ids
+    const typeToFamily: Record<string, VizFamily> = {
+      "hmi":          "hmi_interface",
+      "journey":      "user_journey",
+      "workflow":     "workflow_process",
+      "product":      "physical_product",
+      "requirements": "requirements_matrix",
+      "management":   "management_summary",
+      "kanban":       "management_summary",
+      "decisions":    "management_summary",
+      "timeline":     "management_summary",
+      "comparison":   "generic",
+      "stakeholders": "generic",
+    };
+    resolvedFamily = typeToFamily[vizType!] ?? null;
+  } else if (classification && !classification.ambiguous) {
+    resolvedFamily = classification.family;
+  }
+
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");
   res.setHeader("Connection", "keep-alive");
   res.setHeader("X-Accel-Buffering", "no");
   res.flushHeaders();
+
+  // Emit classification metadata immediately so the client can see it
+  if (classification) {
+    res.write(
+      `data: ${JSON.stringify({
+        type: "meta",
+        classification: {
+          family:   classification.family,
+          topic:    classification.topic,
+          ambiguous: classification.ambiguous,
+          lead:     classification.lead,
+          scores:   classification.scores.slice(0, 4),
+        },
+      })}\n\n`
+    );
+  }
 
   let fullHtml = "";
 
@@ -107,6 +155,7 @@ router.post("/visualize", async (req, res): Promise<void> => {
         previousHtml,
         freshStart,
         roomId,
+        resolvedFamily,
       },
       (c) => {
         res.write(`data: ${JSON.stringify({ type: "chunk", text: c })}\n\n`);
@@ -116,10 +165,11 @@ router.post("/visualize", async (req, res): Promise<void> => {
     }
 
     const meta = {
-      vizType: vizType ?? "auto",
-      vizModel: vizModel ?? "haiku",
-      wordCount: normalized.split(/\s+/).filter(Boolean).length,
-      incremental: !freshStart && !!previousHtml,
+      vizType:         vizType ?? "auto",
+      vizModel:        vizModel ?? "haiku",
+      wordCount:       normalized.split(/\s+/).filter(Boolean).length,
+      incremental:     !freshStart && !!previousHtml,
+      classifiedFamily: resolvedFamily ?? classification?.family ?? null,
     };
 
     const cleanHtml = stripCodeFences(fullHtml);
@@ -144,13 +194,13 @@ router.post("/visualize", async (req, res): Promise<void> => {
   res.end();
 });
 
-// POST /api/viz/fill-tab-panels — fills lazy HMI tab panels after first paint
+// POST /api/viz/fill-tab-panels
 const FillTabsSchema = z.object({
   transcript: z.string(),
-  roomId: z.string().optional().nullable(),
-  title: z.string().optional().nullable(),
-  context: z.string().optional().nullable(),
-  tabs: z.array(z.object({ id: z.string(), label: z.string() })),
+  roomId:     z.string().optional().nullable(),
+  title:      z.string().optional().nullable(),
+  context:    z.string().optional().nullable(),
+  tabs:       z.array(z.object({ id: z.string(), label: z.string() })),
 });
 
 router.post("/viz/fill-tab-panels", async (req, res): Promise<void> => {
@@ -183,12 +233,12 @@ router.post("/viz/fill-tab-panels", async (req, res): Promise<void> => {
   }
 });
 
-// POST /api/actions — extract decisions and action items
+// POST /api/actions
 const ActionsSchema = z.object({
   transcript: z.string(),
-  roomId: z.string().optional().nullable(),
-  title: z.string().optional().nullable(),
-  context: z.string().optional().nullable(),
+  roomId:     z.string().optional().nullable(),
+  title:      z.string().optional().nullable(),
+  context:    z.string().optional().nullable(),
 });
 
 router.post("/actions", async (req, res): Promise<void> => {
@@ -225,7 +275,7 @@ router.post("/actions", async (req, res): Promise<void> => {
       context,
       (c) => res.write(`data: ${JSON.stringify({ type: "chunk", text: c })}\n\n`)
     )) {
-      // chunks already written above
+      // chunks written in callback above
     }
     res.write(`data: ${JSON.stringify({ type: "done" })}\n\n`);
   } catch (err) {
