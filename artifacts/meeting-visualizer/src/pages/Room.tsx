@@ -70,6 +70,27 @@ function extractVizName(html: string): string | null {
 const MAX_VIZ_HISTORY = 20;
 const BASE = import.meta.env.BASE_URL;
 
+const SPEAKER_COLORS = [
+  { bg: "bg-blue-500/15",    border: "border-blue-500/30",    text: "text-blue-300",    dot: "bg-blue-400" },
+  { bg: "bg-emerald-500/15", border: "border-emerald-500/30", text: "text-emerald-300", dot: "bg-emerald-400" },
+  { bg: "bg-amber-500/15",   border: "border-amber-500/30",   text: "text-amber-300",   dot: "bg-amber-400" },
+  { bg: "bg-violet-500/15",  border: "border-violet-500/30",  text: "text-violet-300",  dot: "bg-violet-400" },
+  { bg: "bg-rose-500/15",    border: "border-rose-500/30",    text: "text-rose-300",    dot: "bg-rose-400" },
+  { bg: "bg-cyan-500/15",    border: "border-cyan-500/30",    text: "text-cyan-300",    dot: "bg-cyan-400" },
+  { bg: "bg-orange-500/15",  border: "border-orange-500/30",  text: "text-orange-300",  dot: "bg-orange-400" },
+  { bg: "bg-pink-500/15",    border: "border-pink-500/30",    text: "text-pink-300",    dot: "bg-pink-400" },
+  { bg: "bg-lime-500/15",    border: "border-lime-500/30",    text: "text-lime-300",    dot: "bg-lime-400" },
+  { bg: "bg-indigo-500/15",  border: "border-indigo-500/30",  text: "text-indigo-300",  dot: "bg-indigo-400" },
+];
+
+function getSpeakerColor(speakerName: string, speakerMap: Map<string, number>): typeof SPEAKER_COLORS[number] {
+  if (!speakerMap.has(speakerName)) {
+    speakerMap.set(speakerName, speakerMap.size);
+  }
+  const idx = speakerMap.get(speakerName)! % SPEAKER_COLORS.length;
+  return SPEAKER_COLORS[idx];
+}
+
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export default function Room() {
@@ -119,8 +140,20 @@ export default function Room() {
 
   const activeHtml = isGenerating ? streamedHtml : (displayHtml || sseViz.html);
 
-  // Compute full transcript text
-  const fullText = useMemo(() => segments.map(s => s.text).join(" "), [segments]);
+  // Build stable speaker color map from segment order
+  const speakerColorMap = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const seg of segments) {
+      if (!map.has(seg.speakerName)) map.set(seg.speakerName, map.size);
+    }
+    return map;
+  }, [segments]);
+
+  // Compute full transcript text WITH speaker attribution (so the AI sees who said what)
+  const fullText = useMemo(
+    () => segments.map(s => `[${s.speakerName}]: ${s.text}`).join("\n"),
+    [segments]
+  );
   const currentWordCount = useMemo(
     () => (fullText.trim() === "" ? 0 : fullText.split(/\s+/).length),
     [fullText]
@@ -357,19 +390,29 @@ export default function Room() {
         </div>
 
         <div className="flex items-center gap-3">
-          {/* Participants */}
+          {/* Participants — up to 10 colored avatars */}
           <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-secondary border border-border text-xs font-mono">
             <Users className="w-3.5 h-3.5 text-muted-foreground" />
             <span>{participants.length}</span>
             <div className="flex -space-x-1.5 ml-1">
-              {participants.slice(0, 3).map((p, i) => (
-                <div key={i} className="w-5 h-5 rounded-full bg-primary/20 border border-primary flex items-center justify-center text-[9px] font-bold text-primary" title={p}>
-                  {p.charAt(0).toUpperCase()}
-                </div>
-              ))}
-              {participants.length > 3 && (
+              {participants.slice(0, 10).map((p, i) => {
+                const colors = getSpeakerColor(p, speakerColorMap);
+                return (
+                  <div
+                    key={i}
+                    className={cn(
+                      "w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold border",
+                      colors.bg, colors.border, colors.text
+                    )}
+                    title={p}
+                  >
+                    {p.charAt(0).toUpperCase()}
+                  </div>
+                );
+              })}
+              {participants.length > 10 && (
                 <div className="w-5 h-5 rounded-full bg-muted border border-border flex items-center justify-center text-[9px] font-bold">
-                  +{participants.length - 3}
+                  +{participants.length - 10}
                 </div>
               )}
             </div>
@@ -439,6 +482,7 @@ export default function Room() {
                 {segments.map((seg, i) => {
                   const isMe = seg.speakerName === speakerName;
                   const showSpeaker = i === 0 || segments[i - 1].speakerName !== seg.speakerName;
+                  const colors = getSpeakerColor(seg.speakerName, speakerColorMap);
                   return (
                     <motion.div
                       key={seg.id}
@@ -447,15 +491,22 @@ export default function Room() {
                       className={cn("flex flex-col", isMe ? "items-end" : "items-start")}
                     >
                       {showSpeaker && (
-                        <span className="text-[10px] font-mono text-muted-foreground mb-0.5 ml-1 tracking-wider uppercase">
-                          {seg.speakerName} · {format(new Date(seg.timestamp), "HH:mm:ss")}
-                        </span>
+                        <div className="flex items-center gap-1.5 mb-0.5 ml-1">
+                          <span className={cn("w-2 h-2 rounded-full", colors.dot)} />
+                          <span className={cn("text-[10px] font-mono tracking-wider uppercase", colors.text)}>
+                            {seg.speakerName}
+                          </span>
+                          <span className="text-[9px] font-mono text-muted-foreground/50">
+                            {format(new Date(seg.timestamp), "HH:mm:ss")}
+                          </span>
+                        </div>
                       )}
                       <div className={cn(
-                        "px-3 py-2 rounded-2xl max-w-[90%] text-sm leading-relaxed",
-                        isMe
-                          ? "bg-primary/20 text-primary-foreground border border-primary/30 rounded-tr-sm"
-                          : "bg-secondary text-secondary-foreground border border-border rounded-tl-sm"
+                        "px-3 py-2 rounded-2xl max-w-[90%] text-sm leading-relaxed border",
+                        isMe ? "rounded-tr-sm" : "rounded-tl-sm",
+                        colors.bg,
+                        colors.border,
+                        "text-foreground"
                       )}>
                         {seg.text}
                       </div>

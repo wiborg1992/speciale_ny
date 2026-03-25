@@ -99,6 +99,6 @@ export function getMergedTranscript(roomId: string): string {
   if (!room) return "";
   return room.segments
     .filter((s) => s.isFinal)
-    .map((s) => s.text)
-    .join(" ");
+    .map((s) => `[${s.speakerName}]: ${s.text}`)
+    .join("\n");
 }

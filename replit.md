@@ -41,7 +41,7 @@ artifacts-monorepo/
 The main product artifact. A live meeting tool for industrial/engineering contexts.
 
 ### Features
-- **Speech-to-text**: Web Speech API (da-DK / en-US, 2500ms commit buffer), optional Deepgram WebSocket
+- **Speech-to-text**: Web Speech API (da-DK / en-US, 4000ms commit buffer — gives speakers time to pause naturally), optional Deepgram WebSocket
 - **AI Visualization**: Claude (Anthropic) generates HTML+CSS visualizations from transcript
   - Types: Auto-detect, HMI/SCADA, User Journey, Workflow, Product/Hardware, Requirements, Management, Kanban, Decision Log, Timeline, Comparison Cards, Stakeholder Map
   - Models: Haiku (fast), Sonnet (balanced), Opus (best quality)
@@ -54,14 +54,16 @@ The main product artifact. A live meeting tool for industrial/engineering contex
 - **Decisions/Actions tab**: separate Claude Haiku call extracts decisions and action items
 - **Version history**: in-session v1/v2/v3 pills for revisiting prior visualizations
 - **Meeting context**: title, purpose, projects, participants, extra context passed to AI
-- **Multi-user rooms**: 6-char room codes, SSE broadcast of segments + visualizations + participants
+- **Server-side classification** (`classifier.ts`): weighted keyword scoring with recency zones + hard topic-shift overrides for instant type switching (6 families + generic fallback)
+- **Multi-user rooms**: up to 10 participants with unique speaker colors, SSE broadcast of segments + visualizations + participants, transcript includes `[SpeakerName]: text` attribution
 - **45-second auto-viz countdown**: timer resets on each generate (mic or manual)
 - **Normalization**: fillword removal (da/en), Danish tech-term normalization (IEC 62443, ISO 27001, GDPR, SCADA, PLC, HMI, IE1–IE5, Grundfos products, m³/h)
 
 ### Key backend files
-- `artifacts/api-server/src/lib/normalizer.ts` — transcript normalization + classification
-- `artifacts/api-server/src/lib/visualizer.ts` — Anthropic streaming, fill-tab-panels, actions extraction
-- `artifacts/api-server/src/lib/rooms.ts` — SSE room management (in-memory, ephemeral)
+- `artifacts/api-server/src/lib/classifier.ts` — server-side visualization type classification (recency zones, topic-shift overrides, weighted keywords)
+- `artifacts/api-server/src/lib/normalizer.ts` — transcript normalization + fillword removal
+- `artifacts/api-server/src/lib/visualizer.ts` — Anthropic streaming, fill-tab-panels, actions extraction, per-type FAMILY_INSTRUCTIONS
+- `artifacts/api-server/src/lib/rooms.ts` — SSE room management (in-memory, ephemeral, up to 10 participants)
 - `artifacts/api-server/src/routes/visualize.ts` — POST /api/visualize (rate-limited SSE stream), POST /api/viz/fill-tab-panels, POST /api/actions
 - `artifacts/api-server/src/routes/sse.ts` — GET /api/sse?room=CODE
 - `artifacts/api-server/src/routes/segment.ts` — POST /api/segment

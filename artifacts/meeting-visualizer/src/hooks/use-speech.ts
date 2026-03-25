@@ -48,8 +48,9 @@ export interface UseSpeechProps {
   language?: string;
 }
 
-// How long to wait after the last final result before committing the segment (ms)
-const COMMIT_DELAY_MS = 2500;
+// How long to wait after the last final result before committing the segment (ms).
+// 4 seconds gives the speaker time to pause and continue without cutting mid-thought.
+const COMMIT_DELAY_MS = 4000;
 
 export function useSpeech({ onSegmentFinalized, language = "da-DK" }: UseSpeechProps) {
   const [isRecording, setIsRecording] = useState(false);
