@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useParams } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
@@ -58,8 +58,8 @@ export default function Room() {
     return fullText.trim() === "" ? 0 : fullText.split(/\s+/).length;
   }, [fullText]);
 
-  // Speech Handler
-  const handleFinalSegment = async (text: string) => {
+  // Speech Handler — memoized so useSpeech hook is not recreated on every render
+  const handleFinalSegment = useCallback(async (text: string) => {
     if (!roomId) return;
     const newSegment = {
       id: uuidv4(),
@@ -68,29 +68,32 @@ export default function Room() {
       timestamp: Date.now(),
       isFinal: true
     };
-    
-    // Optimistic update
     addLocalSegment(newSegment);
-    
     try {
       await postSegment({
-        data: {
-          roomId,
-          speakerName,
-          text,
-          timestamp: newSegment.timestamp,
-          isFinal: true
-        }
+        data: { roomId, speakerName, text, timestamp: newSegment.timestamp, isFinal: true }
       });
     } catch (err) {
       console.error("Failed to post segment", err);
     }
-  };
+  }, [roomId, speakerName, addLocalSegment, postSegment]);
 
   const { isRecording, interimText, toggleRecording, error: speechError } = useSpeech({
     onSegmentFinalized: handleFinalSegment,
     language
   });
+
+  // Manual & auto visualization
+  const handleManualGenerate = useCallback(() => {
+    if (!roomId || currentWordCount === 0) return;
+    setLastVizWordCount(currentWordCount);
+    generate({
+      transcript: fullText,
+      previousHtml: sseViz.html,
+      roomId,
+      speakerName
+    });
+  }, [roomId, currentWordCount, fullText, sseViz.html, speakerName, generate]);
 
   // Auto-scroll transcript
   useEffect(() => {
@@ -107,18 +110,7 @@ export default function Room() {
         handleManualGenerate();
       }
     }
-  }, [currentWordCount, autoVizEnabled, isGenerating, lastVizWordCount]);
-
-  const handleManualGenerate = () => {
-    if (!roomId || currentWordCount === 0) return;
-    setLastVizWordCount(currentWordCount);
-    generate({
-      transcript: fullText,
-      previousHtml: sseViz.html,
-      roomId,
-      speakerName
-    });
-  };
+  }, [currentWordCount, autoVizEnabled, isGenerating, lastVizWordCount, handleManualGenerate]);
 
   return (
     <div className="h-screen w-full flex flex-col bg-background overflow-hidden">

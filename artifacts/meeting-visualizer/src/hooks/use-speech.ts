@@ -1,7 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { v4 as uuidv4 } from "uuid";
 
-// Define standard types for Web Speech API to avoid TS errors
 interface SpeechRecognitionEvent extends Event {
   resultIndex: number;
   results: SpeechRecognitionResultList;
@@ -54,16 +52,22 @@ export function useSpeech({ onSegmentFinalized, language = "en-US" }: UseSpeechP
   const [interimText, setInterimText] = useState("");
   const [error, setError] = useState<string | null>(null);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
-  
-  // Track intentional stops to prevent auto-restart when user clicks stop
+  const isRecordingRef = useRef(false);
   const intentionalStopRef = useRef(false);
 
+  // Use a ref for the callback so we never need to recreate the recognition object
+  const onSegmentFinalizedRef = useRef(onSegmentFinalized);
+  useEffect(() => {
+    onSegmentFinalizedRef.current = onSegmentFinalized;
+  }, [onSegmentFinalized]);
+
+  // Create recognition object once on mount (or when language changes)
   useEffect(() => {
     if (typeof window === "undefined") return;
-    
+
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
-      setError("Web Speech API is not supported in this browser. Try Chrome or Edge.");
+      setError("Web Speech API is not supported in this browser. Please use Chrome or Edge.");
       return;
     }
 
@@ -71,42 +75,49 @@ export function useSpeech({ onSegmentFinalized, language = "en-US" }: UseSpeechP
     recognition.continuous = true;
     recognition.interimResults = true;
     recognition.lang = language;
-    
+
     recognition.onresult = (event: SpeechRecognitionEvent) => {
       let currentInterim = "";
-      
+
       for (let i = event.resultIndex; i < event.results.length; ++i) {
         if (event.results[i].isFinal) {
           const finalText = event.results[i][0].transcript.trim();
           if (finalText) {
-            onSegmentFinalized(finalText);
+            onSegmentFinalizedRef.current(finalText);
           }
         } else {
           currentInterim += event.results[i][0].transcript;
         }
       }
-      
+
       setInterimText(currentInterim);
     };
 
     recognition.onerror = (event: any) => {
-      console.error("Speech recognition error", event.error);
-      if (event.error !== "no-speech") {
-        setError(`Speech recognition error: ${event.error}`);
+      if (event.error === "not-allowed" || event.error === "permission-denied") {
+        setError("Microphone access denied. Please allow microphone access in your browser.");
         setIsRecording(false);
+        isRecordingRef.current = false;
+      } else if (event.error === "no-speech") {
+        // Not a fatal error — just silence
+      } else {
+        setError(`Speech recognition error: ${event.error}`);
       }
     };
 
     recognition.onend = () => {
-      if (!intentionalStopRef.current) {
-        // Auto-restart if we didn't intentionally stop
+      setInterimText("");
+      // Auto-restart if still supposed to be recording
+      if (isRecordingRef.current && !intentionalStopRef.current) {
         try {
           recognition.start();
-        } catch (e) {
+        } catch {
           setIsRecording(false);
+          isRecordingRef.current = false;
         }
       } else {
         setIsRecording(false);
+        isRecordingRef.current = false;
       }
     };
 
@@ -114,29 +125,39 @@ export function useSpeech({ onSegmentFinalized, language = "en-US" }: UseSpeechP
 
     return () => {
       intentionalStopRef.current = true;
+      isRecordingRef.current = false;
       recognition.abort();
+      recognitionRef.current = null;
     };
-  }, [language, onSegmentFinalized]);
+  }, [language]); // Only recreate when language changes
 
   const toggleRecording = useCallback(() => {
-    if (!recognitionRef.current) return;
+    const recognition = recognitionRef.current;
+    if (!recognition) {
+      setError("Speech recognition not available. Please use Chrome or Edge.");
+      return;
+    }
 
-    if (isRecording) {
+    if (isRecordingRef.current) {
       intentionalStopRef.current = true;
-      recognitionRef.current.stop();
+      isRecordingRef.current = false;
       setIsRecording(false);
       setInterimText("");
+      recognition.stop();
     } else {
       setError(null);
       intentionalStopRef.current = false;
+      isRecordingRef.current = true;
+      setIsRecording(true);
       try {
-        recognitionRef.current.start();
-        setIsRecording(true);
+        recognition.start();
       } catch (err) {
-        console.error(err);
+        setError("Could not start recording. Please try again.");
+        setIsRecording(false);
+        isRecordingRef.current = false;
       }
     }
-  }, [isRecording]);
+  }, []); // Stable — never changes
 
   return {
     isRecording,
