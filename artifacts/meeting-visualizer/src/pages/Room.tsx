@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useParams } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Mic, MicOff, Users, Code2, Play,
+  Mic, MicOff, Users, Code2, Play, Pencil, Check,
   RefreshCcw, AlertTriangle,
   ChevronDown, ChevronUp, ClipboardList, Wand2,
   Download, Maximize2, RotateCcw, History, FileText,
@@ -98,7 +98,9 @@ function getSpeakerColor(speakerName: string, speakerMap: Map<string, number>): 
 
 export default function Room() {
   const { id: roomId } = useParams<{ id: string }>();
-  const [speakerName] = useLocalStorage("meetingVisualizer_speakerName", "Anonymous");
+  const [speakerName, setSpeakerName] = useLocalStorage("meetingVisualizer_speakerName", "Anonymous");
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [editNameValue, setEditNameValue] = useState("");
   const [language, setLanguage] = useState("da-DK");
   const [autoVizEnabled, setAutoVizEnabled] = useState(false);
   const [autoVizCountdown, setAutoVizCountdown] = useState(45);
@@ -142,6 +144,18 @@ export default function Room() {
   const { generate, isGenerating, streamedHtml, meta: streamMeta } = useVisualizeStream();
 
   const activeHtml = isGenerating ? streamedHtml : (displayHtml || sseViz.html);
+
+  useEffect(() => {
+    if (!roomId || !meetingTitle.trim()) return;
+    const timer = setTimeout(() => {
+      fetch(`${BASE}api/meetings/${roomId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: meetingTitle }),
+      }).catch(() => {});
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, [meetingTitle, roomId]);
 
   // Build stable speaker color map from segment order
   const speakerColorMap = useMemo(() => {
@@ -393,6 +407,40 @@ export default function Room() {
         </div>
 
         <div className="flex items-center gap-3">
+          {/* Speaker identity */}
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-secondary border border-border text-xs font-mono">
+            {(() => {
+              const colors = getSpeakerColor(speakerName, speakerColorMap);
+              return <div className={cn("w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-bold border", colors.bg, colors.border, colors.text)}>
+                {speakerName.charAt(0).toUpperCase()}
+              </div>;
+            })()}
+            {isEditingName ? (
+              <form onSubmit={(e) => { e.preventDefault(); if (editNameValue.trim()) { setSpeakerName(editNameValue.trim()); } setIsEditingName(false); }} className="flex items-center gap-1">
+                <input
+                  autoFocus
+                  value={editNameValue}
+                  onChange={e => setEditNameValue(e.target.value)}
+                  onBlur={() => { if (editNameValue.trim()) { setSpeakerName(editNameValue.trim()); } setIsEditingName(false); }}
+                  className="w-20 bg-transparent border-b border-primary text-xs font-mono text-white outline-none"
+                  maxLength={20}
+                />
+                <button type="submit" className="text-primary hover:text-white">
+                  <Check className="w-3 h-3" />
+                </button>
+              </form>
+            ) : (
+              <button
+                onClick={() => { setEditNameValue(speakerName); setIsEditingName(true); }}
+                className="flex items-center gap-1 text-muted-foreground hover:text-white transition-colors"
+                title="Change your name"
+              >
+                <span className="text-white">{speakerName}</span>
+                <Pencil className="w-2.5 h-2.5 opacity-50" />
+              </button>
+            )}
+          </div>
+
           {/* Participants — up to 10 colored avatars */}
           <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-secondary border border-border text-xs font-mono">
             <Users className="w-3.5 h-3.5 text-muted-foreground" />

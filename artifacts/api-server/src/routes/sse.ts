@@ -7,11 +7,15 @@ import {
   removeParticipant,
   broadcastEvent,
   getMergedTranscript,
+  addSegment,
 } from "../lib/rooms.js";
+import { getMeetingByRoom } from "../lib/meeting-store.js";
 
 const router: IRouter = Router();
 
-router.get("/sse", (req, res): void => {
+const hydrating = new Set<string>();
+
+router.get("/sse", async (req, res): Promise<void> => {
   const roomId = (req.query.room as string) || "default";
   const participantName = (req.query.name as string) || "Anonymous";
 
@@ -25,6 +29,32 @@ router.get("/sse", (req, res): void => {
   addParticipant(roomId, participantName);
 
   const room = getOrCreateRoom(roomId);
+
+  if (room.segments.length === 0 && !hydrating.has(roomId)) {
+    hydrating.add(roomId);
+    try {
+      const dbData = await getMeetingByRoom(roomId);
+      if (dbData && dbData.segments.length > 0) {
+        for (const seg of dbData.segments) {
+          addSegment(roomId, {
+            id: seg.segmentId,
+            speakerName: seg.speakerName,
+            text: seg.text,
+            timestamp: new Date(seg.timestamp).getTime(),
+            isFinal: seg.isFinal,
+          });
+        }
+        if (dbData.visualizations.length > 0) {
+          room.lastVisualization = dbData.visualizations[0].html;
+          room.lastVizWordCount = dbData.visualizations[0].wordCount;
+        }
+      }
+    } catch (err) {
+      console.error("Failed to load meeting from DB:", err);
+    } finally {
+      hydrating.delete(roomId);
+    }
+  }
 
   if (room.segments.length > 0) {
     const recentSegments = room.segments.slice(-20);

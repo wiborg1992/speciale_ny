@@ -55,6 +55,8 @@ The main product artifact. A live meeting tool for industrial/engineering contex
 - **Version history**: in-session v1/v2/v3 pills for revisiting prior visualizations
 - **Meeting context**: title, purpose, projects, participants, extra context passed to AI
 - **Server-side classification** (`classifier.ts`): weighted keyword scoring with recency zones + hard topic-shift overrides for instant type switching (10 families + generic fallback: hmi_interface, user_journey, persona_research, service_blueprint, comparison_evaluation, design_system, workflow_process, physical_product, requirements_matrix, management_summary)
+- **Meeting persistence**: All segments and visualizations saved to PostgreSQL via Drizzle ORM. Meetings resume on rejoin — SSE hydrates from DB when room is empty in memory. Meeting archive page lists all past meetings with segment count, word count, and speakers. Delete meetings from archive.
+- **Speaker identification**: Editable speaker name in room header with colored avatar initial. Name persisted in localStorage and shared across sessions. Color assigned per speaker in transcript/participant list. Meeting title auto-saved to DB with 2s debounce.
 - **Multi-user rooms**: up to 10 participants with unique speaker colors, SSE broadcast of segments + visualizations + participants, transcript includes `[SpeakerName]: text` attribution
 - **45-second auto-viz countdown**: timer resets on each generate (mic or manual)
 - **Normalization**: fillword removal (da/en), Danish tech-term normalization (IEC 62443, ISO 27001, GDPR, SCADA, PLC, HMI, IE1–IE5, Grundfos products, m³/h)
@@ -63,15 +65,18 @@ The main product artifact. A live meeting tool for industrial/engineering contex
 - `artifacts/api-server/src/lib/classifier.ts` — server-side visualization type classification (recency zones, topic-shift overrides, weighted keywords)
 - `artifacts/api-server/src/lib/normalizer.ts` — transcript normalization + fillword removal
 - `artifacts/api-server/src/lib/visualizer.ts` — Anthropic streaming, fill-tab-panels, actions extraction, per-type FAMILY_INSTRUCTIONS
-- `artifacts/api-server/src/lib/rooms.ts` — SSE room management (in-memory, ephemeral, up to 10 participants)
+- `artifacts/api-server/src/lib/rooms.ts` — SSE room management (in-memory + DB persistence, up to 10 participants)
+- `artifacts/api-server/src/lib/meeting-store.ts` — PostgreSQL persistence layer (save/load meetings, segments, visualizations via Drizzle)
 - `artifacts/api-server/src/routes/visualize.ts` — POST /api/visualize (rate-limited SSE stream), POST /api/viz/fill-tab-panels, POST /api/actions
-- `artifacts/api-server/src/routes/sse.ts` — GET /api/sse?room=CODE
-- `artifacts/api-server/src/routes/segment.ts` — POST /api/segment
+- `artifacts/api-server/src/routes/sse.ts` — GET /api/sse?room=CODE (hydrates from DB when room is empty in memory)
+- `artifacts/api-server/src/routes/segment.ts` — POST /api/segment (persists to DB)
+- `artifacts/api-server/src/routes/meetings.ts` — GET /api/meetings, GET /api/meetings/:roomId, PATCH /api/meetings/:roomId, DELETE /api/meetings/:roomId
 - `artifacts/api-server/src/routes/deepgram.ts` — GET /api/deepgram-token
 
 ### Key frontend files
-- `artifacts/meeting-visualizer/src/pages/Home.tsx` — Room create/join landing
-- `artifacts/meeting-visualizer/src/pages/Room.tsx` — Main meeting view (mic/paste tabs + viz/decisions tabs + config row)
+- `artifacts/meeting-visualizer/src/pages/Home.tsx` — Room create/join landing + recent meetings list
+- `artifacts/meeting-visualizer/src/pages/History.tsx` — Meeting archive (list, resume, delete)
+- `artifacts/meeting-visualizer/src/pages/Room.tsx` — Main meeting view with editable speaker name, mic/paste tabs, viz/decisions tabs, config row
 - `artifacts/meeting-visualizer/src/components/IframeRenderer.tsx` — Safe AI HTML renderer with host-tab injection and fill-tab-panels API call
 - `artifacts/meeting-visualizer/src/hooks/use-speech.ts` — Web Speech API hook (da-DK default, 2500ms buffer)
 - `artifacts/meeting-visualizer/src/hooks/use-room-sse.ts` — SSE room sync
@@ -119,6 +124,7 @@ React + Vite frontend. Dark industrial design with split transcript/visualizatio
 Database layer using Drizzle ORM with PostgreSQL. Exports a Drizzle client instance and schema models.
 
 - `src/index.ts` — creates a `Pool` + Drizzle instance, exports schema
+- `src/schema/meetings.ts` — meetings, segments, visualizations tables
 - `src/schema/index.ts` — barrel re-export of all models
 - `drizzle.config.ts` — Drizzle Kit config (requires `DATABASE_URL`, automatically provided by Replit)
 - Exports: `.` (pool, db, schema), `./schema` (schema only)

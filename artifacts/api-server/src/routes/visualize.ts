@@ -14,6 +14,7 @@ import {
   type VizFamily,
 } from "../lib/classifier.js";
 import { getRoom, broadcastEvent } from "../lib/rooms.js";
+import { saveVisualization, getOrCreateMeeting, updateMeetingTitle } from "../lib/meeting-store.js";
 
 const router: IRouter = Router();
 
@@ -192,6 +193,15 @@ router.post("/visualize", async (req, res): Promise<void> => {
         if (room) {
           room.lastVisualization = cleanHtml;
           broadcastEvent(roomId, "visualization", { html: cleanHtml, meta });
+        }
+        saveVisualization(
+          roomId,
+          cleanHtml,
+          resolvedFamily ?? classification?.family ?? "generic",
+          meta.wordCount
+        ).catch(() => {});
+        if (title) {
+          updateMeetingTitle(roomId, title).catch(() => {});
         }
       }
       res.write(`data: ${JSON.stringify({ type: "done", html: cleanHtml, meta })}\n\n`);

@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import { PostSegmentBody, PostSegmentResponse } from "@workspace/api-zod";
 import { addSegment, broadcastEvent } from "../lib/rooms.js";
+import { saveSegment } from "../lib/meeting-store.js";
 import { randomUUID } from "crypto";
 
 const router: IRouter = Router();
@@ -14,8 +15,6 @@ router.post("/segment", async (req, res): Promise<void> => {
 
   const { roomId, speakerName, text, timestamp, isFinal } = parsed.data;
 
-  // Use client-provided id if present (prevents SSE dedup failure when the
-  // segment is broadcast back to the sender who already added it locally).
   const clientId = typeof req.body.id === "string" && req.body.id.length > 8
     ? req.body.id
     : null;
@@ -33,6 +32,7 @@ router.post("/segment", async (req, res): Promise<void> => {
 
   if (isFinal) {
     broadcastEvent(roomId, "transcript_segment", segment);
+    saveSegment(roomId, segment).catch(() => {});
   }
 
   res.json(PostSegmentResponse.parse({ ok: true, segmentId }));
