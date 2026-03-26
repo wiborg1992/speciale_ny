@@ -5,7 +5,7 @@ import {
   Mic, MicOff, Users, Code2, Play,
   RefreshCcw, AlertTriangle,
   ChevronDown, ChevronUp, ClipboardList, Wand2,
-  Download, Maximize2, RotateCcw, History,
+  Download, Maximize2, RotateCcw, History, FileText,
 } from "lucide-react";
 import { format } from "date-fns";
 import { v4 as uuidv4 } from "uuid";
@@ -25,7 +25,7 @@ import { IframeRenderer } from "@/components/IframeRenderer";
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 type InputTab  = "mic" | "paste";
-type OutputTab = "viz" | "actions";
+type OutputTab = "viz" | "actions" | "transcript";
 
 interface VizVersion {
   version: number;
@@ -672,7 +672,7 @@ export default function Room() {
           <div className="shrink-0 flex items-center justify-between px-4 border-b border-border bg-card/30">
             {/* Tabs */}
             <div className="flex">
-              {(["viz", "actions"] as OutputTab[]).map(tab => (
+              {(["viz", "transcript", "actions"] as OutputTab[]).map(tab => (
                 <button
                   key={tab}
                   onClick={() => setOutputTab(tab)}
@@ -683,7 +683,9 @@ export default function Room() {
                       : "text-muted-foreground hover:text-white"
                   )}
                 >
-                  {tab === "viz" ? <><Code2 className="w-3.5 h-3.5" />Visualization</> : <><ClipboardList className="w-3.5 h-3.5" />Decisions</>}
+                  {tab === "viz" && <><Code2 className="w-3.5 h-3.5" />Visualization</>}
+                  {tab === "transcript" && <><FileText className="w-3.5 h-3.5" />Transcript</>}
+                  {tab === "actions" && <><ClipboardList className="w-3.5 h-3.5" />Decisions</>}
                 </button>
               ))}
             </div>
@@ -729,6 +731,57 @@ export default function Room() {
                     )}
                   </Button>
                 </>
+              )}
+
+              {outputTab === "transcript" && segments.length > 0 && (
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const lines = segments.map(s =>
+                        `[${format(new Date(s.timestamp), "HH:mm:ss")}] ${s.speakerName}: ${s.text}`
+                      );
+                      const header = `Meeting Transcript${meetingTitle ? ` — ${meetingTitle}` : ""}\n${format(new Date(), "yyyy-MM-dd HH:mm")}\n${"─".repeat(50)}\n\n`;
+                      const blob = new Blob([header + lines.join("\n")], { type: "text/plain" });
+                      const a = document.createElement("a");
+                      a.href = URL.createObjectURL(blob);
+                      a.download = `transcript_${format(new Date(), "yyyy-MM-dd_HHmm")}.txt`;
+                      a.click();
+                      URL.revokeObjectURL(a.href);
+                    }}
+                    className="h-7 px-3 text-xs gap-1.5"
+                  >
+                    <Download className="w-3.5 h-3.5" />TXT
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const data = {
+                        title: meetingTitle || "Untitled Meeting",
+                        date: format(new Date(), "yyyy-MM-dd HH:mm"),
+                        participants: [...new Set(segments.map(s => s.speakerName))],
+                        wordCount,
+                        segments: segments.map(s => ({
+                          speaker: s.speakerName,
+                          text: s.text,
+                          timestamp: s.timestamp,
+                          time: format(new Date(s.timestamp), "HH:mm:ss"),
+                        })),
+                      };
+                      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+                      const a = document.createElement("a");
+                      a.href = URL.createObjectURL(blob);
+                      a.download = `transcript_${format(new Date(), "yyyy-MM-dd_HHmm")}.json`;
+                      a.click();
+                      URL.revokeObjectURL(a.href);
+                    }}
+                    className="h-7 px-3 text-xs gap-1.5"
+                  >
+                    <Download className="w-3.5 h-3.5" />JSON
+                  </Button>
+                </div>
               )}
 
               {outputTab === "actions" && (
@@ -785,6 +838,55 @@ export default function Room() {
                   title={meetingTitle || null}
                   context={getMeetingContext()}
                 />
+              </div>
+            )}
+
+            {outputTab === "transcript" && (
+              <div className="h-full overflow-y-auto p-4">
+                {segments.length === 0 ? (
+                  <div className="flex items-center justify-center h-full">
+                    <div className="text-center space-y-4 text-muted-foreground max-w-xs">
+                      <FileText className="w-12 h-12 mx-auto opacity-20" />
+                      <div className="space-y-1">
+                        <p className="text-sm font-display">Transcript Log</p>
+                        <p className="text-xs">Start recording to build the meeting transcript. All speech will be logged here with timestamps.</p>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-0.5">
+                    <div className="flex items-center justify-between mb-3 pb-2 border-b border-border">
+                      <div className="text-xs font-mono text-muted-foreground">
+                        {segments.length} segment{segments.length !== 1 ? "s" : ""} · {wordCount} words · {[...new Set(segments.map(s => s.speakerName))].length} speaker{[...new Set(segments.map(s => s.speakerName))].length !== 1 ? "s" : ""}
+                      </div>
+                      {segments.length > 0 && (
+                        <div className="text-[10px] font-mono text-muted-foreground/60">
+                          {format(new Date(segments[0].timestamp), "HH:mm")} — {format(new Date(segments[segments.length - 1].timestamp), "HH:mm")}
+                        </div>
+                      )}
+                    </div>
+                    {segments.map((seg, i) => {
+                      const showSpeaker = i === 0 || segments[i - 1].speakerName !== seg.speakerName;
+                      const colors = getSpeakerColor(seg.speakerName, speakerColorMap);
+                      return (
+                        <div key={seg.id} className="group flex items-start gap-3 py-1.5 px-2 rounded hover:bg-card/40 transition-colors">
+                          <span className="shrink-0 text-[10px] font-mono text-muted-foreground/60 pt-0.5 w-14 text-right">
+                            {format(new Date(seg.timestamp), "HH:mm:ss")}
+                          </span>
+                          <span className={cn("shrink-0 w-2 h-2 rounded-full mt-1.5", colors.dot)} />
+                          <div className="flex-1 min-w-0">
+                            {showSpeaker && (
+                              <span className={cn("text-[10px] font-mono font-bold uppercase tracking-wider mr-2", colors.text)}>
+                                {seg.speakerName}
+                              </span>
+                            )}
+                            <span className="text-sm text-foreground/90 leading-relaxed">{seg.text}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             )}
 
