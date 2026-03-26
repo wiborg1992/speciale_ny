@@ -818,7 +818,7 @@ export default function Room() {
                         title: meetingTitle || "Untitled Meeting",
                         date: format(new Date(), "yyyy-MM-dd HH:mm"),
                         participants: [...new Set(segments.map(s => s.speakerName))],
-                        wordCount,
+                        wordCount: currentWordCount,
                         segments: segments.map(s => ({
                           speaker: s.speakerName,
                           text: s.text,
@@ -913,7 +913,7 @@ export default function Room() {
                   <div className="space-y-0.5">
                     <div className="flex items-center justify-between mb-3 pb-2 border-b border-border">
                       <div className="text-xs font-mono text-muted-foreground">
-                        {segments.length} segment{segments.length !== 1 ? "s" : ""} · {wordCount} words · {[...new Set(segments.map(s => s.speakerName))].length} speaker{[...new Set(segments.map(s => s.speakerName))].length !== 1 ? "s" : ""}
+                        {segments.length} segment{segments.length !== 1 ? "s" : ""} · {currentWordCount} words · {[...new Set(segments.map(s => s.speakerName))].length} speaker{[...new Set(segments.map(s => s.speakerName))].length !== 1 ? "s" : ""}
                       </div>
                       {segments.length > 0 && (
                         <div className="text-[10px] font-mono text-muted-foreground/60">
