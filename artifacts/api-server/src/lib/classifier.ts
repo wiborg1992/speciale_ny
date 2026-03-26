@@ -788,6 +788,39 @@ const TOPIC_SHIFT_OVERRIDES: Array<{ pattern: string; target: VizFamily }> = [
   { pattern: "display the hardware",                 target: "physical_product" },
   { pattern: "generate pump hardware",               target: "physical_product" },
   { pattern: "create a pump illustration",           target: "physical_product" },
+  { pattern: "looking at the hardware",              target: "physical_product" },
+  { pattern: "looking at the front panel",           target: "physical_product" },
+  { pattern: "redesign the hardware",                target: "physical_product" },
+  { pattern: "redesign the appearance",              target: "physical_product" },
+  { pattern: "redesign of the front",                target: "physical_product" },
+  { pattern: "redesign the front panel",             target: "physical_product" },
+  { pattern: "the front panel for the pump",         target: "physical_product" },
+  { pattern: "the front face of the pump",           target: "physical_product" },
+  { pattern: "front panel of the pump",              target: "physical_product" },
+  { pattern: "front face of the pump",               target: "physical_product" },
+  { pattern: "appearance of the hardware",           target: "physical_product" },
+  { pattern: "redesign the appearance of the",       target: "physical_product" },
+  { pattern: "we need to redesign",                  target: "physical_product" },
+  { pattern: "moving towards the physical pump",     target: "physical_product" },
+  { pattern: "looking at the physical pump",         target: "physical_product" },
+  { pattern: "the display is and underneath",        target: "physical_product" },
+  { pattern: "buttons for moving up",                target: "physical_product" },
+  { pattern: "we need an extra button",              target: "physical_product" },
+  { pattern: "need to see the buttons",              target: "physical_product" },
+  { pattern: "control panel",                        target: "physical_product" },
+  { pattern: "control paddle",                       target: "physical_product" },
+  // Additional Danish overrides — pump (natural speech patterns)
+  { pattern: "vi kigger på hardwaren",               target: "physical_product" },
+  { pattern: "vi kigger på frontpanelet",            target: "physical_product" },
+  { pattern: "vi kigger på pumpen",                  target: "physical_product" },
+  { pattern: "redesigne frontpanelet",               target: "physical_product" },
+  { pattern: "redesign af frontpanelet",             target: "physical_product" },
+  { pattern: "redesign af pumpen",                   target: "physical_product" },
+  { pattern: "udseendet af pumpen",                  target: "physical_product" },
+  { pattern: "udseendet af hardwaren",               target: "physical_product" },
+  { pattern: "knapperne på pumpen",                  target: "physical_product" },
+  { pattern: "displayet på pumpen",                  target: "physical_product" },
+  { pattern: "den fysiske pumpe",                    target: "physical_product" },
   // Additional English overrides — timeline/management
   { pattern: "generate a timeline",                  target: "management_summary" },
   { pattern: "show it as a roadmap",                 target: "management_summary" },
@@ -1004,17 +1037,33 @@ export function classifyVisualizationIntent(transcript: string): ClassificationR
     );
   }
 
-  // ─── HARD OVERRIDE: topic-shift phrases in RECENT zone auto-win ────────────
-  // Scan the RECENT zone for explicit directives like "det skal være et interface".
-  // If found, the target family wins outright — no further scoring needed.
+  // ─── HARD OVERRIDE: topic-shift phrases in ULTRA-RECENT zone auto-win ──────
+  // First scan the LAST 1000 chars (ultra-recent = literally what was just said).
+  // If that has a match, it wins ALWAYS — this is the user's most recent intent.
+  // Then fall back to scanning the full recent zone (3000 chars).
   // We scan from end-to-start so the LAST override wins if multiple are present.
+  const ultraRecentNorm = normalizeForClassification(tail.slice(-1000));
   let hardOverrideFamily: VizFamily | null = null;
   let hardOverridePos = -1;
+
+  // Ultra-recent scan (highest priority)
   for (const shift of TOPIC_SHIFT_OVERRIDES) {
-    const pos = recentNorm.lastIndexOf(shift.pattern);
+    const pos = ultraRecentNorm.lastIndexOf(shift.pattern);
     if (pos !== -1 && pos > hardOverridePos) {
       hardOverridePos = pos;
       hardOverrideFamily = shift.target;
+    }
+  }
+
+  // If ultra-recent didn't match, scan full recent zone
+  if (!hardOverrideFamily) {
+    hardOverridePos = -1;
+    for (const shift of TOPIC_SHIFT_OVERRIDES) {
+      const pos = recentNorm.lastIndexOf(shift.pattern);
+      if (pos !== -1 && pos > hardOverridePos) {
+        hardOverridePos = pos;
+        hardOverrideFamily = shift.target;
+      }
     }
   }
   if (hardOverrideFamily) {
