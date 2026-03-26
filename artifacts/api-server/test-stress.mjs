@@ -204,6 +204,58 @@ const SCENARIOS = [
       the input and the placeholder text is #9CA3AF. Add this component spec to the existing design system.`,
     expected: "design_system",
   },
+
+  // === CRA / CYBERSECURITY DOMAIN TESTS (19-22) ===
+  {
+    id: 19,
+    name: "CRA requirements — cybersecurity compliance matrix",
+    transcript: `We need to map out our CRA compliance status. The Cyber Resilience Act requires us to address 13 functions. 
+      First is secure default configuration — all products must ship with security enabled. Second is software update 
+      mechanism — we must provide security updates for the entire support period. Third is access control — every 
+      interaction over an external interface requires authentication. Then there's transmitted data protection, 
+      process data handling, logging and monitoring, vulnerability handling, and cryptographic controls. 
+      We also need input validation, secure boot, firmware integrity checks, data minimisation, and resilience.
+      Show me the cybersecurity requirements as a structured compliance matrix with status for each function.`,
+    expected: "requirements_matrix",
+  },
+  {
+    id: 20,
+    name: "CRA journey — installer access control experience",
+    transcript: `Let's map the user journey for access control under CRA. The installer arrives on site and unpowers the pump. 
+      First touchpoint: the pump display shows a security setup prompt. Pain point: on a 4.3 inch screen with only 
+      up, down, left, right and OK buttons, entering a password is extremely frustrating. The installer then tries 
+      to pair the Grundfos GO app via Bluetooth. Second touchpoint: the app asks for authentication. 
+      If using trust chains and tokens, the login is seamless — the app already knows who you are. 
+      But with PIN codes, the installer has to remember a code or find a post-it note from the previous technician. 
+      After commissioning, the system integrator needs access too, with different permission levels.
+      Show me this as a user journey with emotions and pain points at each access control touchpoint.`,
+    expected: "user_journey",
+  },
+  {
+    id: 21,
+    name: "CRA workflow — conformity assessment certification path",
+    transcript: `We need to visualize the CRA conformity assessment process as a flowchart. Step one: the manufacturer 
+      identifies the product category — is it a default product, an important product class I, or important class II? 
+      Decision point: if default, self-assessment is allowed. If class I, use harmonised standards or third-party. 
+      If class II, mandatory third-party assessment by a notified body. Next step: prepare technical documentation 
+      including the software bill of materials. Then: apply the essential cybersecurity requirements from Annex I. 
+      Decision point: does the product handle personal data? If yes, apply GDPR requirements additionally. 
+      Final steps: issue the EU declaration of conformity and affix the CE marking. Generate a flowchart for this.`,
+    expected: "workflow_process",
+  },
+  {
+    id: 22,
+    name: "CRA comparison — security implementation approaches",
+    transcript: `We need to compare three approaches for implementing access control on our pump products to comply with CRA. 
+      Option A: traditional PIN code and password — simple to implement, works on all hardware including small HMI screens, 
+      but users forget passwords, post-it notes are a security risk, and it's a terrible UX on 4-button interfaces. 
+      Option B: trust chain with mobile app tokens — seamless UX, the GO app handles authentication, no passwords to remember, 
+      but requires Bluetooth connectivity, more complex backend, and the installer must have a smartphone. 
+      Option C: hybrid approach — token-based for app users, fallback PIN for direct HMI access when no phone is available. 
+      Evaluate on: security strength, UX quality, implementation complexity, CRA compliance level, and deployment timeline.
+      Show me a comparison matrix with weighted scoring.`,
+    expected: "comparison_evaluation",
+  },
 ];
 
 async function fetchClassification(transcript) {
@@ -249,8 +301,8 @@ async function fetchClassification(transcript) {
 
 async function main() {
   console.log("═══════════════════════════════════════════════════════════════════════════════");
-  console.log("  MEETING AI VISUALIZER — STRESS TEST (18 scenarios, all 10 families)");
-  console.log("  Direct (1-10)  |  Topic Shift (11-14)  |  Incremental (15-18)");
+  console.log("  MEETING AI VISUALIZER — STRESS TEST (22 scenarios, all 10 families + CRA)");
+  console.log("  Direct (1-10)  |  Shift (11-14)  |  Incremental (15-18)  |  CRA (19-22)");
   console.log("═══════════════════════════════════════════════════════════════════════════════\n");
 
   let passed = 0;
