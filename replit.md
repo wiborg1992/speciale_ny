@@ -73,6 +73,7 @@ The main product artifact. A live meeting tool for industrial/engineering contex
 - `artifacts/api-server/src/routes/meetings.ts` — GET /api/meetings, GET /api/meetings/:roomId, PATCH /api/meetings/:roomId, DELETE /api/meetings/:roomId
 - `artifacts/api-server/src/routes/deepgram.ts` — GET /api/deepgram-token
 - `artifacts/api-server/src/lib/refinement-detector.ts` — Detects spoken refinement intent (zoom ind, tilføj, behold formatet, etc.) and extracts modification directives for Claude
+- `artifacts/api-server/src/lib/pump-svg-templates.ts` — Complete SVG templates (CU controller, Alpha GO circulator, CR pump) with gradients/filters/shadows, injected into user message when `physical_product` family is detected; higher token budget (haiku:7000, sonnet:8500, opus:10000)
 
 ### Key frontend files
 - `artifacts/meeting-visualizer/src/pages/Home.tsx` — Room create/join landing + recent meetings list

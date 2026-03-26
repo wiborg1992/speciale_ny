@@ -1,4 +1,10 @@
 import Anthropic from "@anthropic-ai/sdk";
+import {
+  CU_CONTROLLER_TEMPLATE,
+  ALPHA_GO_TEMPLATE,
+  CR_PUMP_TEMPLATE,
+  PUMP_TEMPLATE_INSTRUCTIONS,
+} from "./pump-svg-templates.js";
 
 const client = new Anthropic();
 
@@ -14,6 +20,12 @@ const MAX_TOKENS: Record<VizModel, number> = {
   haiku:  5500,
   sonnet: 7000,
   opus:   8000,
+};
+
+const MAX_TOKENS_PUMP: Record<VizModel, number> = {
+  haiku:  7000,
+  sonnet: 8500,
+  opus:   10000,
 };
 
 const MAX_TRANSCRIPT_CHARS = 100_000;
@@ -427,205 +439,22 @@ FREKVENSOMFORMER:
 ━━━ FYSISK GRUNDFOS PUMPE & CONTROLLER VISUALISERING ━━━
 USE WHEN: transcript mentions physical pump appearance, hardware, product model, controller, CU unit, control box, pump panel.
 
-BACKGROUND: white #FFFFFF or very light #F8FAFC
-LAYOUT: Central large SVG product illustration + surrounding technical spec cards
-FONT: @import Outfit + Space Mono from Google Fonts
+When physical_product is detected, COMPLETE SVG TEMPLATES with all gradients, filters, shadows and detail
+are injected into the user message. YOU MUST:
+1. Copy the matching template (CU controller, Alpha GO, CR pump) from the user message
+2. Adapt values (display readings, model name, LED states) to match the transcript
+3. Keep ALL SVG complexity — gradients, filters, shadows, highlight dots, textured surfaces
+4. Embed the SVG in a clean white (#F8FAFC) page with product title (Outfit font), spec cards, and callout annotations
 
-GRUNDFOS HARDWARE COLOURS:
-  Signature Red (pump body / logo):   #BE1E2D
-  Grundfos Navy (brand, labels):      #002A5C
-  Grundfos Blue (accents, display):   #0077C8
-  Controller enclosure:               #2A2D30  (dark charcoal, almost black)
-  Controller light grey trim:         #9CA3AF
-  Stainless flanges / ports:          #B0B8C1
-  Coupling / shaft grey:              #6B7280
-  Base plate / feet:                  #3D4147
-  Cable jacket:                       #1C1C1C
-  LED green (running):                #22C55E
-  LED red (alarm):                    #EF4444
-  LED amber (warning):                #F59E0B
-  Display background (LCD):           #0A1628
-  Display text:                       #00C8FF  or  #7CFC00
-
-━━━ CONTROLLER/PANEL — Grundfos CU-series (CU 200, CU 300, Dedicated Controls) ━━━
-Draw as a realistic SVG front panel with these elements:
-
-ENCLOSURE BODY:
-  rect fill="#2A2D30" rx="8" — main housing, approximately 180×220px
-  Subtle gradient overlay: fill="url(#enclosureGrad)" where gradient goes from #323538 at top to #1E2124 at bottom
-  Thin highlight edge: rect fill="none" stroke="#4A4D50" stroke-width="1" (inner border)
-  Mounting holes: 4× small circles fill="#1A1C1E" stroke="#555" r="4" at corners
-
-GRUNDFOS LOGO PLATE (top section of enclosure):
-  rect fill="#BE1E2D" height="32" — red logo strip across top
-  "GRUNDFOS" text fill="#FFFFFF" font-size="11" font-weight="700" letter-spacing="0.15em" centered
-  Below: product name e.g. "CU 300" or "Dedicated Controls" fill="#ffffff" font-size="9" opacity="0.8"
-
-DIGITAL DISPLAY (center of panel):
-  rect fill="#0A1628" rx="4" stroke="#000" stroke-width="1.5" — display bezel
-  Inner rect fill="#0A1628" stroke="#001a38" stroke-width="1" — screen area (~140×60px)
-  Display content (monospace, font-family="Courier New"):
-    Line 1: flow value e.g. "18.5 m³/h" fill="#00C8FF" font-size="14" font-weight="700"
-    Line 2: pressure e.g. "4.2 bar" fill="#7CFC00" font-size="11"
-    Line 3: status e.g. "AUTO  ►  RUNNING" fill="#00C8FF" font-size="9"
-  Display frame highlight: stroke rgba(0,200,255,0.3) glow around bezel
-
-STATUS INDICATOR ROW (below display):
-  3× LED circles (r=5) with labels below (font-size="7" fill="#9CA3AF"):
-    Left: POWER — fill="#22C55E" + box-shadow glow
-    Center: RUNNING — fill="#22C55E" glow OR fill="#EF4444" if alarm
-    Right: ALARM — fill="#3D4147" (off) or fill="#EF4444" (on)
-  Each LED: circle fill=color + circle fill="white" opacity="0.3" r="2" at top-left (highlight dot)
-
-PHYSICAL BUTTONS (below LED row):
-  Navigation buttons in a cross/diamond pattern:
-    UP ▲, DOWN ▼, LEFT ◄, RIGHT ►, ENTER/OK (center)
-    Button body: rect fill="#333639" rx="3" stroke="#555" — ~20×16px each
-    Button label: text fill="#a8b8cc" font-size="7"
-  STOP button (red): rect fill="#7B1D1D" rx="3" + "STOP" label in red
-  START/RUN button (green): rect fill="#14532D" rx="3" + "START" label in green
-
-INPUT/OUTPUT PORTS (bottom of enclosure):
-  Cable gland circles: 3-4× circles fill="#1A1C1E" stroke="#6B7280" r="6" with small rect tabs
-  Labels: "L1 L2 L3 N PE" or "4-20mA  RS485  24VDC" text fill="#6B7280" font-size="6"
-
-MOUNTING RAIL (left side of enclosure): thin rect fill="#4A4D50" width="8"
-
-━━━ SVG PUMP HARDWARE ━━━
-
-SVG PUMP — ALPHA GO / ALPHA2 E / GO RANGE (compact smart circulator, inline):
-USE THIS for any mention of Alpha GO, Alpha2, GO range, smart circulator, Bluetooth pump, GO app.
-
-PUMP BODY (side view):
-  Orientation: VERTICAL — inlet at bottom, outlet at top (inline installation)
-  Main body: rect fill:#BE1E2D rx:10 ~80×140px — Grundfos signature red
-    Subtle shading: left edge slightly darker (#A01825), right edge lighter (#D42234)
-    "GRUNDFOS" text in white, font-size:8, letter-spacing:0.12em, rotated 90° on left side
-    "alpha GO" or "ALPHA2 E" badge: small rect fill:#0077C8 rx:2 with white text font-size:7
-
-  FRONT CONTROL FACE (key distinguishing feature of Alpha GO):
-    White circular disc on the front of the pump body:
-      circle cx=pump_center_x cy=pump_center_y r=28 fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1"
-      Subtle shadow: filter drop-shadow(0 2px 6px rgba(0,0,0,0.2))
-
-    LED RING (around the white disc — MOST IMPORTANT VISUAL ELEMENT):
-      Draw as SVG arc segments (total 270° arc, starting bottom-left):
-      Active mode segment: stroke="#0077C8" (proportional pressure = blue)
-        OR stroke="#22C55E" (auto-adapt = green)
-        OR stroke="#F59E0B" (constant pressure = orange)
-        OR stroke="#EF4444" (constant curve = red)
-      Inactive segments: stroke="rgba(0,0,0,0.08)"
-      All arcs: stroke-width="6" stroke-linecap="round" fill="none" r=32
-      Example active blue arc for proportional pressure:
-        <circle cx="cX" cy="cY" r="32" fill="none" stroke="#0077C8" stroke-width="6"
-          stroke-dasharray="90 272" stroke-dashoffset="-91" stroke-linecap="round"/>
-
-    CENTER DIAL / BUTTON (inside the white disc):
-      circle r=14 fill="#F3F4F6" stroke="#D1D5DB" stroke-width="1.5" — the pressable button
-      Inner circle r=10 fill="#E9EAEC" — button face depth
-      "▶" or mode icon in center: fill="#374151" font-size:9
-
-    CONNECTIVITY INDICATOR (Bluetooth):
-      Small Bluetooth icon or "B" symbol in top-right of white disc
-      circle r=5 fill="#0077C8" opacity="0.9" + "B" text fill="white" font-size:6
-
-    MINI DATA DISPLAY (below center dial):
-      rect fill="#002A5C" rx:2 ~40×16px
-      text fill="#00C8FF" font-family="Courier New" font-size:8 — shows e.g. "4.2 m" or "18W"
-
-  PIPE CONNECTIONS:
-    Bottom inlet: rect fill:#B0B8C1 ~22×35px pointing down + wider flange rect fill:#9BA3AF
-    Top outlet: rect fill:#B0B8C1 ~22×35px pointing up + wider flange rect
-    Union nuts: rect fill:#A8AEB5 rx:2 where pipes meet pump body
-    Arrow showing flow direction: small SVG arrow inside pump body stroke:#fff opacity:0.4
-
-  ELECTRICAL CONNECTION (right side of body):
-    Cable entry: circle fill:#1C1C1C r:6 with cable jacket rect fill:#1C1C1C ~5×20px
-
-GO APP DASHBOARD PANEL (show alongside the pump, represents the companion app):
-  When Alpha GO is mentioned, also generate an adjacent panel showing the GO App UI:
-  Background: white #FFFFFF, rounded card with subtle shadow
-  Layout (portrait card ~220×340px):
-
-  APP TOP BAR:
-    Grundfos logo (red circle + "G" or "GRUNDFOS" text)
-    "Grundfos GO" title, blue, font-weight:700
-    Bluetooth connected indicator (●  connected)
-
-  PUMP STATUS CIRCLE (main feature of the app):
-    Large SVG circle (r=70) — arc gauge showing current operating point:
-      Background track: stroke="#F3F4F6" stroke-width="10"
-      Active arc: stroke="#0077C8" stroke-width="10" — fills based on current setpoint %
-      Center: pump icon (SVG simplified pump outline in #002A5C)
-      Below center: "18.5 m³/h" in Space Mono bold, "4.2 m" in smaller text
-
-  MODE SELECTOR ROW (below circle, 4 icons):
-    Each mode: vertical pill with icon + label, active mode has #0077C8 background
-    Icons (simple SVG paths, not emoji):
-      ⌁ Auto-adapt | ⊟ Proportional | ≡ Constant pressure | — Constant curve
-    Active pill: background:#0077C8 text:#fff
-    Inactive: background:#F3F4F6 text:#6B7280
-
-  METRICS CARDS ROW (3 cards side by side):
-    Card 1: "FLOW" — value in Space Mono + "m³/h"
-    Card 2: "HEAD" — value + "m"
-    Card 3: "POWER" — value + "W"
-    Card style: background:#F8FAFC border:1px solid #E5E7EB border-radius:8px padding:8px
-
-  ENERGY SAVINGS BAR:
-    "Energy saved this month: 34%" with progress bar fill:#22C55E width:34%
-    IE class badge: "IE5" in navy rounded chip
-
-SVG PUMP — CR / CRI / CRE (multistage vertical inline):
-  Motor (top, cylindrical): tall ellipse/rect fill:#BE1E2D ~60px wide ×120px tall
-    Cooling ribs: 8× horizontal lines stroke:#9B1520 on motor body
-    Fan cover (top of motor): rounded rect fill:#9B1520
-    Motor rating plate: small white rect on motor side
-  Coupling cover (middle): short cylinder fill:#6B7280 ~70px wide ×30px
-    4× hex bolt heads: circles fill:#4B5563 around coupling perimeter
-  Pump stages (bottom): rect fill:#BE1E2D ~60px wide ×100px, with
-    Stage separation lines: horizontal strokes every ~15px stroke:#9B1520
-    Stage count chip: small rect showing e.g. "CR 32-3" label
-  Inlet flange (left at bottom): horizontal rect fill:#B0B8C1 + wider rect (flange face)
-    Flange bolt holes: 4× tiny circles on flange face
-  Outlet flange (right at bottom): same, pointing right
-  Base plate: wide flat rect fill:#2D2D2D below pump stages
-    Mounting feet: 4× short rects at corners fill:#3D4147
-
-SVG PUMP — CM / CME (end suction centrifugal):
-  Motor (right): horizontal cylinder fill:#BE1E2D ~120×70px
-    Cooling fins on motor (vertical lines)
-    Fan cover: circle fill:#9B1520 on right end
-  Volute/pump body (left): larger oval fill:#BE1E2D ~90×90px
-    Suction inlet: horizontal rect fill:#B0B8C1 pointing left (with flange)
-    Discharge outlet: vertical rect fill:#B0B8C1 pointing up (with flange)
-  Coupling: short cylinder fill:#6B7280 between motor and volute
-  Base frame: wide rect fill:#2D2D2D below entire assembly
+GRUNDFOS HARDWARE COLOURS (reference):
+  Signature Red: #BE1E2D | Navy: #002A5C | Blue: #0077C8
+  Enclosure: #2A2D30 | Stainless: #B0B8C1 | LED green: #22C55E | LED red: #EF4444
+  Display bg: #0A1628 | Display text: #00C8FF / #7CFC00
 
 SURROUNDING LAYOUT (for all pump/controller types):
-  Top: product name as hero title — 'Outfit' 2.2rem font-weight:700 color:#002A5C
-       Product model chip: background:#E8F4FD border:#0077C8 color:#002A5C
-  Left of product: Technical specification table:
-    Navy header row (#002A5C, white text): "SPECIFICATIONS"
-    Alternating rows: Parameter | Value | Unit
-    Include: Flow, Pressure, Power, Speed, Efficiency, IE Class, Protection class, Weight
-    Striped: #F8FAFB / white. Status col with coloured circles.
-  Right of product: 3-4 Feature highlight cards:
-    border-left:4px solid #0077C8; background:#fff; border-radius:8px; padding:12px;
-    box-shadow: 0 2px 8px rgba(0,42,92,0.08)
-    Each card: icon (SVG, 20px, #0077C8) + feature title (bold) + 1-line description
-  Below product: Installation/piping schematic (simple SVG flow lines)
-  SVG overall defs include gradient for enclosure and glow filter for LEDs:
-    <defs>
-      <linearGradient id="enclosureGrad" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stop-color="#323538"/>
-        <stop offset="100%" stop-color="#1E2124"/>
-      </linearGradient>
-      <filter id="ledGlow">
-        <feGaussianBlur stdDeviation="2" result="blur"/>
-        <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-      </filter>
-    </defs>
+  Top: product name hero title — Outfit 2.2rem font-weight:700 color:#002A5C
+  Spec cards: border-left:4px solid #0077C8; background:#fff; border-radius:8px; box-shadow
+  Callout annotations: SVG line from product part to label text outside the drawing
 
 ━━━ USER JOURNEY MAP — FULL VISUAL SPEC ━━━
 Visual language: Miro/Figma UX style. Light background #F7F8FA.
@@ -764,12 +593,13 @@ STØRRELSESSKALA — DRAMATISK HIERARKI:
   Brødtekst:           0.88rem, font-weight:400
   Label/meta:          0.68rem, letter-spacing:0.1em, text-transform:uppercase
 
-BAGGRUND OG DYBDE — ALDRIG plain hvid:
+BAGGRUND OG DYBDE — ALDRIG plain hvid (UNDTAGEN physical_product pumpe-visualiseringer som SKAL have hvid #F8FAFC):
   a) Lys struktureret: #F0F4F8 med subtle diagonal-stripe:
      background-image: repeating-linear-gradient(45deg, rgba(0,42,92,0.025) 0px, rgba(0,42,92,0.025) 1px, transparent 1px, transparent 16px);
   b) Navy accent-kolonne: venstre 280px er #002A5C (hvid tekst), resten #FFFFFF
   c) Split-tone: top 35% er #002A5C, resten #F8FAFB
   d) Papir-tekstur: #FAFAF8 med box-shadow: inset 0 0 120px rgba(0,42,92,0.04)
+  e) For physical_product: ren hvid/lysegrå #F8FAFC — produkttegningen ER det visuelle fokus
 
 KORT-DESIGN (aldrig plain hvide firkanter):
   - Venstre farve-bar (4px) i #0077C8 + hvid baggrund + blød skygge, ELLER
@@ -853,11 +683,12 @@ ABSOLUTE PROHIBITIONS (ALL TYPES):
 - Footer: diskret "Generated by Meeting AI Visualizer · Grundfos" i muted farve, font-size:0.62rem
 
 ━━━ TOKEN BUDGET ━━━
-Target: ≤4500 tokens total. Hard cap: 5500 tokens.
+Default target: ≤4500 tokens. For physical_product pump SVG visualizations: up to 8000 tokens is allowed (complex SVG templates require more space).
 - CSS: max ~900 tokens. Reuse classes, no per-element overrides.
-- HTML content: max ~3600 tokens. Fill with real data from the transcript.
+- HTML content: fill with real data from the transcript.
 - No comments in generated HTML or CSS.
-- If budget exceeded: simplify layout, reduce cards/panels, prioritise data richness over breadth.`;
+- For pump hardware: NEVER truncate or simplify the SVG template to save tokens — keep all gradients, filters, shadows.
+- For non-pump types: if budget exceeded, simplify layout, reduce cards/panels, prioritise data richness over breadth.`;
 
 const FILL_TAB_PANELS_SYSTEM = `You output ONLY a single JSON object. No markdown, no code fences, no explanation.
 Shape: {"panels":{"<id>":"<inner HTML string>",...}}
@@ -921,13 +752,30 @@ Show clear start → process nodes → decision points → end states.
 Use Grundfos colours, crisp lines, directional arrows, numbered steps.
 DO NOT use dark HMI style. DO NOT generate journey maps or pump hardware.`,
 
-  physical_product: `GENERATE: PHYSICAL PUMP HARDWARE ILLUSTRATION — realistic SVG product drawing.
-Follow the exact SVG specs in the system prompt for the specific pump type detected:
-  • Alpha GO / Alpha2 / GO app → circular LED ring interface, white control face, inline orientation
-  • CU 200 / CU 300 controller → wall-mounted enclosure with LCD, navigation cross, terminals
-  • CR / CM / Magna → motor housing with cooling fins, inlet/outlet flanges
-Include the GO App panel if Alpha GO is detected. Use Grundfos red (#BE1E2D), navy, realistic pipe joints.
-DO NOT use dark HMI dashboard style for the main layout.`,
+  physical_product: `GENERATE: PHYSICAL PUMP HARDWARE ILLUSTRATION — photorealistic SVG product drawing.
+
+YOU WILL RECEIVE COMPLETE SVG TEMPLATES BELOW. YOUR JOB:
+1. IDENTIFY which product is discussed (CU controller, Alpha GO circulator, CR/CRE pump, etc.)
+2. COPY the matching SVG template — it contains all gradients, shadows, filters, and structural detail
+3. ADAPT values: change display readings, model name, LED states, button labels to match the transcript
+4. EMBED the SVG inside a clean white (#F8FAFC) HTML page with:
+   - Product title: font-family Outfit, 2rem, font-weight 700, color #002A5C
+   - The SVG centered and large (at least 300px wide)
+   - 3-4 spec cards around/below the SVG with parameters from the transcript
+   - Callout annotations: SVG <line> elements from product parts to label text
+
+CRITICAL QUALITY RULES:
+  • NEVER simplify the SVG — keep ALL gradients, filters, shadows, highlight effects
+  • NEVER replace detailed template elements with simple flat rectangles
+  • The template SVG is your MINIMUM quality bar — you may ADD detail but never remove it
+  • Each LED must have a highlight dot (small white circle, opacity 0.3)
+  • Each button must have a gradient face (not flat fill)
+  • The enclosure must have edge highlights and shadow filters
+  • Display text must use monospace font with realistic readings
+  • If the transcript mentions specific values (flow, pressure, RPM), show them on the display
+
+DO NOT use dark HMI dashboard style. DO NOT generate journey maps or flowcharts.
+The visualization MUST be dominated by the large, detailed SVG product illustration.`,
 
   requirements_matrix: `GENERATE: REQUIREMENTS TRACEABILITY MATRIX — structured table layout.
 Columns: Req ID | Requirement | Priority (MoSCoW) | Source | Status | Notes.
@@ -997,7 +845,10 @@ export async function* streamVisualization(
   const { transcript, vizType, vizModel, title, context, previousHtml, freshStart, resolvedFamily, refinementDirective } = params;
 
   const model = MODEL_IDS[vizModel ?? "haiku"];
-  const maxTokens = MAX_TOKENS[vizModel ?? "haiku"];
+  const isPump = resolvedFamily === "physical_product";
+  const maxTokens = isPump
+    ? MAX_TOKENS_PUMP[vizModel ?? "haiku"]
+    : MAX_TOKENS[vizModel ?? "haiku"];
 
   const transcriptForModel = truncateTranscript(transcript);
 
@@ -1012,6 +863,13 @@ export async function* streamVisualization(
     userMessage += `⚡ ${source} — follow these instructions exactly:\n${FAMILY_INSTRUCTIONS[resolvedFamily]}\n\n`;
   } else if (vizType && vizType !== "auto") {
     userMessage += `⚡ USER-SELECTED TYPE: Generate SPECIFICALLY this visualization type — nothing else: ${vizType}\n\n`;
+  }
+
+  if (isPump) {
+    userMessage += `${PUMP_TEMPLATE_INSTRUCTIONS}\n\n`;
+    userMessage += `=== CU CONTROLLER TEMPLATE ===\n${CU_CONTROLLER_TEMPLATE}\n\n`;
+    userMessage += `=== ALPHA GO CIRCULATOR TEMPLATE ===\n${ALPHA_GO_TEMPLATE}\n\n`;
+    userMessage += `=== CR/CRE MULTISTAGE PUMP TEMPLATE ===\n${CR_PUMP_TEMPLATE}\n\n`;
   }
 
   userMessage += `Here is the meeting transcript:\n\n${transcriptForModel}\n\n`;
