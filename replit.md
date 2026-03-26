@@ -72,6 +72,7 @@ The main product artifact. A live meeting tool for industrial/engineering contex
 - `artifacts/api-server/src/routes/segment.ts` — POST /api/segment (persists to DB)
 - `artifacts/api-server/src/routes/meetings.ts` — GET /api/meetings, GET /api/meetings/:roomId, PATCH /api/meetings/:roomId, DELETE /api/meetings/:roomId
 - `artifacts/api-server/src/routes/deepgram.ts` — GET /api/deepgram-token
+- `artifacts/api-server/src/lib/refinement-detector.ts` — Detects spoken refinement intent (zoom ind, tilføj, behold formatet, etc.) and extracts modification directives for Claude
 
 ### Key frontend files
 - `artifacts/meeting-visualizer/src/pages/Home.tsx` — Room create/join landing + recent meetings list

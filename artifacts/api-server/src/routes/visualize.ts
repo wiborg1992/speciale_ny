@@ -15,6 +15,7 @@ import {
 } from "../lib/classifier.js";
 import { getRoom, broadcastEvent } from "../lib/rooms.js";
 import { saveVisualization, getOrCreateMeeting, updateMeetingTitle } from "../lib/meeting-store.js";
+import { detectRefinementIntent } from "../lib/refinement-detector.js";
 
 const router: IRouter = Router();
 
@@ -91,6 +92,30 @@ router.post("/visualize", async (req, res): Promise<void> => {
 
   const normalized = normalizeTranscript(effectiveTranscript);
 
+  // ─── Refinement detection ─────────────────────────────────────────────────
+  // Check if recent speech contains modification directives like "zoom ind på",
+  // "tilføj en kolonne", "behold formatet men..." — if so, force incremental mode
+  // with the previous visualization even if the frontend didn't explicitly send it.
+  let effectivePreviousHtml = previousHtml;
+  let refinementDirective: string | null = null;
+
+  if (roomId && !freshStart) {
+    const room = getRoom(roomId);
+    const hasPreviousViz = !!(effectivePreviousHtml || room?.lastVisualization);
+    const refinement = detectRefinementIntent(normalized, hasPreviousViz);
+
+    if (refinement.detected && refinement.directive) {
+      refinementDirective = refinement.directive;
+      if (!effectivePreviousHtml && room?.lastVisualization) {
+        effectivePreviousHtml = room.lastVisualization;
+      }
+      console.log(
+        `[refinement] Detected in room ${roomId} (${refinement.confidence}):`,
+        refinement.phrases.join(" | ")
+      );
+    }
+  }
+
   // ─── Server-side classification ───────────────────────────────────────────
   // Runs BEFORE calling Claude so we can pass an explicit type hint.
   // If the user explicitly chose a type, skip auto-classification.
@@ -139,7 +164,6 @@ router.post("/visualize", async (req, res): Promise<void> => {
   res.setHeader("X-Accel-Buffering", "no");
   res.flushHeaders();
 
-  // Emit classification metadata immediately so the client can see it
   if (classification) {
     res.write(
       `data: ${JSON.stringify({
@@ -151,6 +175,14 @@ router.post("/visualize", async (req, res): Promise<void> => {
           lead:     classification.lead,
           scores:   classification.scores.slice(0, 4),
         },
+        refinement: refinementDirective ? { detected: true, directive: refinementDirective } : null,
+      })}\n\n`
+    );
+  } else if (refinementDirective) {
+    res.write(
+      `data: ${JSON.stringify({
+        type: "meta",
+        refinement: { detected: true, directive: refinementDirective },
       })}\n\n`
     );
   }
@@ -165,10 +197,11 @@ router.post("/visualize", async (req, res): Promise<void> => {
         vizModel: vizModel as VizModel | null | undefined,
         title,
         context,
-        previousHtml,
+        previousHtml: effectivePreviousHtml,
         freshStart,
         roomId,
         resolvedFamily,
+        refinementDirective,
       },
       (c) => {
         res.write(`data: ${JSON.stringify({ type: "chunk", text: c })}\n\n`);
@@ -181,8 +214,9 @@ router.post("/visualize", async (req, res): Promise<void> => {
       vizType:         vizType ?? "auto",
       vizModel:        vizModel ?? "haiku",
       wordCount:       normalized.split(/\s+/).filter(Boolean).length,
-      incremental:     !freshStart && !!previousHtml,
+      incremental:     !freshStart && !!effectivePreviousHtml,
       classifiedFamily: resolvedFamily ?? classification?.family ?? null,
+      refinement:      refinementDirective ? true : false,
     };
 
     const cleanHtml = stripCodeFences(fullHtml);

@@ -67,6 +67,14 @@ export function normalizeTranscript(text: string): string {
     .replace(/\bground\s*foss?\b/gi, "Grundfos")
     .replace(/\bgrund\s*foss?\b/gi, "Grundfos")
     .replace(/\bgrundfos\b/gi, "Grundfos")
+    // Refinement words ASR corrections
+    .replace(/\bsoom\s+ind?\b/gi, "zoom ind")
+    .replace(/\bsuming?\b/gi, "zoom ind")
+    .replace(/\btil\s*føre?\b/gi, "tilføj")
+    .replace(/\bfokus\s*er[ea]?\b/gi, "fokuser")
+    .replace(/\bud\s*vid\b/gi, "udvid")
+    .replace(/\bde\s*taljer?\b/gi, "detalje")
+    .replace(/\bfremm?hæv\b/gi, "fremhæv")
     // Units split by ASR
     .replace(/\bm\s*3\s*\/?\s*h\b/gi, "m³/h")
     .replace(/\s{2,}/g, " ")

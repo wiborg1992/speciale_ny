@@ -899,8 +899,8 @@ export interface VisualizerParams {
   previousHtml?: string | null;
   freshStart?: boolean;
   roomId?: string | null;
-  /** Pre-computed server-side family classification — injected into user message for explicit AI guidance */
   resolvedFamily?: string | null;
+  refinementDirective?: string | null;
 }
 
 /** Maps server-side family IDs to clear, unambiguous instructions for the AI */
@@ -994,7 +994,7 @@ export async function* streamVisualization(
   params: VisualizerParams,
   onChunk: (chunk: string) => void
 ): AsyncGenerator<string> {
-  const { transcript, vizType, vizModel, title, context, previousHtml, freshStart, resolvedFamily } = params;
+  const { transcript, vizType, vizModel, title, context, previousHtml, freshStart, resolvedFamily, refinementDirective } = params;
 
   const model = MODEL_IDS[vizModel ?? "haiku"];
   const maxTokens = MAX_TOKENS[vizModel ?? "haiku"];
@@ -1021,8 +1021,28 @@ export async function* streamVisualization(
     const tail = truncated
       ? "\n\n[Prior HTML was compressed — preserve and extend the structure you already established.]\n\n"
       : "\n\n";
-    userMessage +=
-      `INCREMENTAL UPDATE — CRITICAL RULES:
+
+    if (refinementDirective) {
+      userMessage +=
+        `🎯 REFINEMENT MODE — THE USER SPOKE A SPECIFIC MODIFICATION REQUEST:
+The participants are directing you to modify the existing visualization in a specific way.
+Their spoken instructions have been parsed into these directives:
+
+${refinementDirective}
+
+CRITICAL RULES FOR REFINEMENT:
+1. KEEP the existing visualization layout, style, and type EXACTLY — do not regenerate from scratch
+2. APPLY the directives above as precise, surgical modifications to the existing HTML
+3. PRESERVE all existing content unless the directive explicitly says to remove something
+4. The directive takes HIGHEST PRIORITY — it represents what the user explicitly asked for
+5. Also incorporate any new information from the latest transcript, but the directive comes first
+6. If the directive says "zoom in" or "focus on" something, make that element the visual hero (larger, more detailed, more prominent) while keeping the rest as supporting context
+
+CURRENT VISUALIZATION (modify this — do not discard):
+${snippet}${tail}`;
+    } else {
+      userMessage +=
+        `INCREMENTAL UPDATE — CRITICAL RULES:
 The meeting has continued since the last visualization was generated.
 
 STEP 1 — TOPIC CONTINUITY CHECK:
@@ -1058,6 +1078,7 @@ DO NOT:
 
 CURRENT VISUALIZATION (reference — keep and improve when topic is the same):
 ${snippet}${tail}`;
+    }
   }
 
   userMessage += "Generate the HTML visualization now.";

@@ -781,6 +781,11 @@ export default function Room() {
                       <><Wand2 className="w-3.5 h-3.5 mr-1.5" />Visualize</>
                     )}
                   </Button>
+                  {streamMeta?.refinement && !isGenerating && (
+                    <Badge variant="outline" className="h-5 text-[10px] border-amber-500/40 text-amber-400 bg-amber-500/10">
+                      Refined
+                    </Badge>
+                  )}
                 </>
               )}
 
