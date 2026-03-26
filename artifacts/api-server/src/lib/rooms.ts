@@ -16,6 +16,7 @@ export interface RoomState {
   participants: Map<string, number>;
   lastVisualization: string | null;
   lastVizWordCount: number;
+  lastFamily: string | null;
 }
 
 const rooms = new Map<string, RoomState>();
@@ -30,6 +31,7 @@ export function getOrCreateRoom(roomId: string): RoomState {
       participants: new Map(),
       lastVisualization: null,
       lastVizWordCount: 0,
+      lastFamily: null,
     });
   }
   return rooms.get(roomId)!;

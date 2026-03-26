@@ -158,6 +158,20 @@ router.post("/visualize", async (req, res): Promise<void> => {
     resolvedFamily = classification.family;
   }
 
+  // ─── Topic-shift detection ─────────────────────────────────────────────────
+  // When the classified family CHANGES from the previous visualization's family,
+  // force a fresh start — don't try to incrementally update a user_journey into
+  // a physical_product, etc. This prevents the most common topic-shift failure.
+  if (resolvedFamily && roomId && !freshStart && !refinementDirective) {
+    const room = getRoom(roomId);
+    if (room?.lastFamily && room.lastFamily !== resolvedFamily) {
+      console.log(
+        `[topic-shift] Family changed: ${room.lastFamily} → ${resolvedFamily} in room ${roomId} — forcing fresh visualization`
+      );
+      effectivePreviousHtml = undefined;
+    }
+  }
+
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");
   res.setHeader("Connection", "keep-alive");
@@ -226,6 +240,7 @@ router.post("/visualize", async (req, res): Promise<void> => {
         const room = getRoom(roomId);
         if (room) {
           room.lastVisualization = cleanHtml;
+          room.lastFamily = resolvedFamily ?? classification?.family ?? null;
           broadcastEvent(roomId, "visualization", { html: cleanHtml, meta });
         }
         saveVisualization(

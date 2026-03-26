@@ -47,6 +47,7 @@ router.get("/sse", async (req, res): Promise<void> => {
         if (dbData.visualizations.length > 0) {
           room.lastVisualization = dbData.visualizations[0].html;
           room.lastVizWordCount = dbData.visualizations[0].wordCount;
+          room.lastFamily = (dbData.visualizations[0] as any).family ?? null;
         }
       }
     } catch (err) {
