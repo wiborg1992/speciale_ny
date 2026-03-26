@@ -943,7 +943,38 @@ export async function* streamVisualization(
       ? "\n\n[Prior HTML was compressed — preserve and extend the structure you already established.]\n\n"
       : "\n\n";
     userMessage +=
-      `INCREMENTAL UPDATE: The meeting has continued. Use the transcript tail (newest content) as the PRIMARY signal — extend and refine the visualization when the topic is the same; change layout/type only if the conversation clearly shifted.\n\nCURRENT VISUALIZATION (reference — keep when still appropriate):\n${snippet}${tail}`;
+      `INCREMENTAL UPDATE — CRITICAL RULES:
+The meeting has continued since the last visualization was generated.
+
+STEP 1 — TOPIC CONTINUITY CHECK:
+Compare the NEWEST transcript content (last ~2000 chars) with the visualization type already shown.
+  • SAME TOPIC → proceed to STEP 2 (incremental improvement)
+  • CLEARLY DIFFERENT TOPIC (e.g., was discussing pumps, now discussing user journeys) → generate a FRESH visualization for the new topic. Discard the previous layout entirely.
+
+STEP 2 — INCREMENTAL IMPROVEMENT (same topic):
+You MUST keep the existing layout structure, visual style, and type. Then ENHANCE it:
+  a) ADD new data: insert new cards, rows, nodes, or panels with information from the newest transcript segments
+  b) REFINE existing content: update values, add missing details, correct inaccuracies based on newer discussion
+  c) ENRICH visuals: add more detail to SVG diagrams, fill in placeholder values, expand abbreviated sections
+  d) EXTEND sections: if the discussion deepened a subtopic, expand that section with more granular content
+  e) PRESERVE structure: keep the same CSS classes, color scheme, grid layout, and component hierarchy
+
+WHAT "INCREMENTAL" MEANS — CONCRETE EXAMPLES:
+  • HMI dashboard: add new metric cards, update gauge values, populate empty tab panels with real data
+  • User journey: add new touchpoints, extend phases, add newly discussed pain points or opportunities
+  • Workflow: add new process steps, decision nodes, or swim lane actors mentioned in newer speech
+  • Requirements: add new rows to the table, update priority/status columns, add newly discussed specs
+  • Timeline: extend the timeline with new milestones, update phase durations, add new decision entries
+  • Pump hardware: add newly discussed specs to the callout labels, update operating parameters
+
+DO NOT:
+  ✗ Regenerate from scratch when the topic hasn't changed
+  ✗ Remove existing content that is still relevant
+  ✗ Change the visualization type unless the conversation CLEARLY shifted
+  ✗ Simplify or reduce detail — always add, never subtract
+
+CURRENT VISUALIZATION (reference — keep and improve when topic is the same):
+${snippet}${tail}`;
   }
 
   userMessage += "Generate the HTML visualization now.";
