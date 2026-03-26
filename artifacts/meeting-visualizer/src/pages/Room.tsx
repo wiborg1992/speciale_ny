@@ -38,15 +38,18 @@ const VIZ_TYPES = [
   { value: "auto",         label: "Auto-detect" },
   { value: "hmi",          label: "HMI / SCADA" },
   { value: "journey",      label: "User Journey" },
-  { value: "workflow",     label: "Workflow" },
+  { value: "persona",      label: "Persona / Research" },
+  { value: "blueprint",    label: "Service Blueprint" },
+  { value: "comparison",   label: "Comparison / Evaluation" },
+  { value: "designsystem", label: "Design System" },
+  { value: "workflow",     label: "Workflow / Process" },
   { value: "product",      label: "Product / Hardware" },
   { value: "requirements", label: "Requirements" },
   { value: "management",   label: "Management Overview" },
+  { value: "timeline",     label: "Timeline / Roadmap" },
+  { value: "stakeholders", label: "Stakeholder Map" },
   { value: "kanban",       label: "Kanban / Tasks" },
   { value: "decisions",    label: "Decision Log" },
-  { value: "timeline",     label: "Timeline / Roadmap" },
-  { value: "comparison",   label: "Comparison Cards" },
-  { value: "stakeholders", label: "Stakeholder Map" },
 ];
 
 const VIZ_MODELS = [

@@ -1,16 +1,17 @@
 /**
- * Stress test: 10 scenarios testing classification + incremental/shift behavior.
+ * Stress test: 18 scenarios testing classification across ALL visualization families.
  * All tests use the /api/visualize endpoint but ABORT after receiving the
  * classification meta event — no need to wait for full Claude generation.
  *
- * Tests 1-4: Direct classification accuracy
- * Tests 5-7: Topic shift detection (earlier topic → explicit new request)
- * Tests 8-10: Incremental update classification (same topic + additions)
+ * Tests 1-10:  Direct classification accuracy (all 10 families)
+ * Tests 11-14: Topic shift detection (earlier topic → explicit new request)
+ * Tests 15-18: Incremental update classification (same topic + additions)
  */
 
 const BASE_URL = `http://localhost:8080`;
 
 const SCENARIOS = [
+  // === DIRECT CLASSIFICATION (1-10) ===
   {
     id: 1,
     name: "HMI — natural speech about dashboard and controls",
@@ -49,70 +50,159 @@ const SCENARIOS = [
   },
   {
     id: 5,
-    name: "SHIFT: HMI discussion → user journey request",
-    transcript: `We've been discussing the HMI dashboard layout with the tabs and alarm panels, that looks good. 
-      The navigation tabs and setpoint controls are well designed. The alarm LED indicators work correctly.
-      But now let's switch gears completely. We need to think about the end user experience. 
-      Show me a user journey for how a building manager interacts with our system from first contact through daily operation. 
-      I want to see the touchpoints, emotions, and pain points mapped out across the phases.`,
-    expected: "user_journey",
+    name: "Persona — installer user profile with needs and frustrations",
+    transcript: `Let's create a persona for our typical installer. His name is Thomas, 42 years old, works for a small 
+      plumbing company in Jutland. He's been installing pumps for 15 years. His main user needs are quick access to 
+      installation manuals and wiring diagrams. His frustrations include confusing model numbering and hard-to-find 
+      spare parts documentation. His motivation is to finish jobs quickly and get good reviews from building managers. 
+      He uses the Grundfos GO app on site but finds Bluetooth pairing unreliable. His behavioral pattern shows he 
+      always checks YouTube for installation videos before reading the official manual. Show me a persona profile.`,
+    expected: "persona_research",
   },
   {
     id: 6,
-    name: "SHIFT: journey discussion → pump hardware request",
-    transcript: `The user journey map we just discussed covers the digital touchpoints nicely. The personas and phases are clear.
-      The pain points at each touchpoint have been identified and the emotion curve shows the user sentiment well.
-      But actually, can we now look at the physical product itself? I want to see the Alpha GO pump with the LED ring 
-      and the Bluetooth control face. Show me the pump hardware with the GO app panel next to it. 
-      We need to present this at the product review meeting tomorrow.`,
-    expected: "physical_product",
+    name: "Service blueprint — pump installation service layers",
+    transcript: `We need to map out our pump installation service as a service blueprint. The customer action starts with 
+      requesting a quote through our website. Frontstage: the sales engineer calls back within 24 hours. Then the 
+      line of visibility separates what the customer sees from the backstage processes. Backstage: the warehouse 
+      checks stock levels and the logistics team arranges delivery. Support processes include the ERP system 
+      generating a pick list and the courier service API integration. We also need to show the physical evidence 
+      at each touchpoint — the quote PDF, the delivery notification email, and the installation certificate.`,
+    expected: "service_blueprint",
   },
   {
     id: 7,
-    name: "SHIFT: workflow discussion → timeline/roadmap request",
-    transcript: `OK so the installation workflow is clear, the flowchart with the decision diamonds looks great. The process steps 
-      from receiving to commissioning are all covered. The swim lanes show installer vs electrician responsibilities.
-      But we can move on from that now. What I really need now is a project timeline. We have three major milestones: 
-      prototype ready by March 15, field testing starts April 1, and production release June 30. There's also a 
-      regulatory review in May that could delay things. Let's make a roadmap that shows all these phases clearly marked.`,
-    expected: "management_summary",
+    name: "Comparison — evaluating three pump controller options",
+    transcript: `We need to compare three controller options for the new water utility project. Option A is the CU 300 
+      with full Modbus and BACnet support, higher cost but most flexible. Option B is the CU 200 with basic Modbus only, 
+      lower cost but limited integration. Option C is a third-party PLC with custom firmware, cheapest but requires 
+      ongoing maintenance. Evaluation criteria include: integration capability, total cost of ownership, maintenance 
+      burden, customer satisfaction risk, and time to deploy. Let's create a comparison matrix with weighted scoring 
+      to make the decision. We should also consider the competitive analysis — what do Wilo and Xylem offer in this space?`,
+    expected: "comparison_evaluation",
   },
   {
     id: 8,
-    name: "INCREMENTAL: HMI + add temperature gauge (should stay HMI)",
-    transcript: `We need an HMI dashboard for pump monitoring. The operator panel should show flow rate, pressure, and power consumption 
-      with live gauges. Include an alarm panel and navigation tabs for Overview and Trends. The dashboard needs setpoint controls 
-      and a system status LED showing if the pump is running or stopped.
-      
-      We also need to add a temperature gauge to the monitoring panel. The pump runs at 65 degrees Celsius 
-      normally but alarms at 85 degrees. And add an efficiency percentage display showing the current pump efficiency. 
-      Keep everything else the same in the dashboard, just add these two new sensor readings to the existing layout.`,
-    expected: "hmi_interface",
+    name: "Design system — component documentation and tokens",
+    transcript: `We need to document our Grundfos design system for the new digital platform. Start with the design tokens: 
+      our primary color is navy #002A5C, secondary is blue #0077C8, accent is cyan #00B4D8. The typography scale uses 
+      Outfit for body text at 14px/16px/18px and Playfair Display for headings at 24px/32px/48px. Spacing follows an 
+      8px grid system with tokens at 4/8/16/24/32/48/64. We need to document the Button component with all its states: 
+      default, hover, active, disabled, and loading. There are three size variants: small, medium, and large. 
+      The component anatomy shows icon slot, label, and optional badge. Show me the design system specification.`,
+    expected: "design_system",
   },
   {
     id: 9,
-    name: "INCREMENTAL: Journey + add support phase (should stay journey)",
-    transcript: `Create a user journey for the pump installer. Phases: Discovery, Purchase, Installation, Commissioning. 
-      Show touchpoints at each phase including website, documentation, and the Grundfos GO app. Mark the pain point 
-      at Installation where documentation is confusing and hard to find. The user journey should map emotions at each touchpoint.
-      
-      Actually we forgot the Support phase at the end. After commissioning, the installer sometimes calls 
-      our hotline when they get unexpected error codes on the controller display. That's a major pain point because 
-      the wait time is too long and the support agents don't always know the specific pump model. Also add an 
-      Opportunity at Installation: we could provide QR-code based video guides on the pump label. Keep the existing phases.`,
-    expected: "user_journey",
+    name: "Physical product — pump hardware illustration",
+    transcript: `We need to present the Alpha GO pump at the product review meeting. The pump has the circular LED ring 
+      around the control face showing the current operating mode. The Bluetooth module is inside the electronics housing. 
+      Next to the pump, show the Grundfos GO app panel with the main screen displaying flow rate and energy consumption. 
+      The pump body is the standard inline design with DN25 flanges. Include the motor housing with IE5 classification.`,
+    expected: "physical_product",
   },
   {
     id: 10,
-    name: "INCREMENTAL: Requirements + add safety rows (should stay req)",
-    transcript: `Requirements for the new CU 300 firmware: Must-have Modbus RTU support at 9600 baud, display flow in m3/h, 
-      alarm on dry-run condition within 3 seconds response time. Should-have BACnet IP connectivity for building management 
-      integration. Show me the requirements in a structured specification table.
+    name: "Management summary — project roadmap with milestones",
+    transcript: `Let me outline the project roadmap. We have three major milestones: prototype ready by March 15, 
+      field testing starts April 1, and production release June 30. There's a regulatory review in May that 
+      could delay things. The steering committee meets quarterly and the budget was approved for Q1 and Q2. 
+      Key decision: we decided to go with the CU 300 controller instead of the third-party PLC. 
+      We need a clear timeline showing all these phases and the risk register for the regulatory dependency.`,
+    expected: "management_summary",
+  },
+
+  // === TOPIC SHIFT DETECTION (11-14) ===
+  {
+    id: 11,
+    name: "SHIFT: HMI discussion → persona request",
+    transcript: `We've been discussing the HMI dashboard layout with the tabs and alarm panels, that looks good. 
+      The navigation tabs and setpoint controls are well designed. The alarm LED indicators work correctly.
+      But now let's switch to something completely different. We need to understand who actually uses this system.
+      Show me a persona for the typical pump station operator. What are their needs, frustrations, and daily workflow?
+      I want to see an empathy map with what they think, feel, say, and do during a typical shift.`,
+    expected: "persona_research",
+  },
+  {
+    id: 12,
+    name: "SHIFT: Journey discussion → service blueprint request",
+    transcript: `The user journey map we just discussed covers the digital touchpoints nicely. The personas and phases are clear.
+      The pain points at each touchpoint have been identified and the emotion curve shows the user sentiment well.
+      But we need to go deeper into what happens behind the scenes. Let's create a service blueprint showing the 
+      backstage processes and support systems. I want to see the line of visibility and all the backend systems 
+      involved in the customer's installation experience. Show me a service blueprint with all layers.`,
+    expected: "service_blueprint",
+  },
+  {
+    id: 13,
+    name: "SHIFT: Workflow discussion → comparison request",
+    transcript: `OK so the installation workflow is clear, the flowchart with the decision diamonds looks great. The process steps 
+      from receiving to commissioning are all covered. The swim lanes show installer vs electrician responsibilities.
+      Actually, let's step back. Before we finalize the process, we should compare the three installation approaches.
+      Show me a comparison matrix of our three options: standard installation, quick-connect installation, and 
+      modular pre-fab installation. I want to evaluate them on cost, time, skill level required, and error rate.`,
+    expected: "comparison_evaluation",
+  },
+  {
+    id: 14,
+    name: "SHIFT: Product discussion → design system request",
+    transcript: `The pump hardware illustration looks good with the Alpha GO and the LED ring. The GO app panel is clear.
+      The product cutaway shows the impeller and volute nicely. The motor housing dimensions are accurate.
+      OK but now we need to talk about the digital side. We're building a new app and we need to document 
+      our design system. Show me a design system spec with our color palette, typography scale, spacing tokens, 
+      and the Button component with all its states. We need this for the development handoff.`,
+    expected: "design_system",
+  },
+
+  // === INCREMENTAL UPDATES (15-18) ===
+  {
+    id: 15,
+    name: "INCREMENTAL: Persona + add new frustration (should stay persona)",
+    transcript: `We're building a persona for Thomas the installer. He's 42, works in Jutland, installs pumps daily.
+      His user needs include quick manual access and wiring diagrams. His main frustration is confusing model numbers.
+      His motivation is finishing jobs quickly. He checks YouTube before reading official documentation.
       
-      Two more requirements came up in the safety review meeting. Must-have: password protection for setpoint changes — 
-      this is a critical safety requirement to prevent unauthorized modifications. And Should-have: automatic firmware update 
-      capability over USB for field technicians. Update the existing requirements table with these additions, keep all existing rows.`,
-    expected: "requirements_matrix",
+      Actually, we just learned from the latest interview that Thomas also has a major frustration with the 
+      warranty registration process. He has to enter 20-digit serial numbers manually on a tiny phone screen on site.
+      Also add that his favorite tool is the thermal camera for checking pipe insulation. And his behavioral 
+      pattern shows he always takes photos of the installation for his own records. Keep the existing persona.`,
+    expected: "persona_research",
+  },
+  {
+    id: 16,
+    name: "INCREMENTAL: Service blueprint + add support layer (should stay blueprint)",
+    transcript: `Our service blueprint shows the customer requesting a quote, sales calling back, warehouse checking stock,
+      logistics arranging delivery, and the ERP generating pick lists. The frontstage and backstage layers are clear.
+      The line of visibility correctly separates what the customer sees from internal processes.
+      
+      We need to add the after-installation support layer. After the installer finishes, the customer calls our 
+      support hotline if they have issues. Backstage: the support agent looks up the installation record in Salesforce, 
+      checks the pump model in our product database, and if needed, dispatches a field technician through the 
+      scheduling system. Add these support processes to the existing blueprint.`,
+    expected: "service_blueprint",
+  },
+  {
+    id: 17,
+    name: "INCREMENTAL: Comparison + add new criterion (should stay comparison)",
+    transcript: `We're comparing three controller options: CU 300 with full Modbus and BACnet, CU 200 with basic Modbus, 
+      and third-party PLC with custom firmware. Criteria: integration capability, cost, maintenance, satisfaction risk.
+      
+      The procurement team just added two more criteria we need to evaluate. First: supply chain reliability — 
+      the CU 300 has 8-week lead time, CU 200 has 4 weeks, and the third-party PLC has 12 weeks due to chip shortage.
+      Second: training requirement — CU 300 needs 2 days training, CU 200 is half a day, and the PLC needs 5 days.
+      Update the comparison matrix with these additional criteria and recalculate the weighted scores.`,
+    expected: "comparison_evaluation",
+  },
+  {
+    id: 18,
+    name: "INCREMENTAL: Design system + add new component (should stay design system)",
+    transcript: `Our design system has the color tokens, typography scale, spacing system, and the Button component documented.
+      The Button has all states: default, hover, active, disabled, loading. Three sizes: S, M, L.
+      
+      We also need to add the Input Field component to the design system. It should show states: empty, focused, 
+      filled, error, disabled. The error state shows a red border with an error message below. The label sits above 
+      the input and the placeholder text is #9CA3AF. Add this component spec to the existing design system.`,
+    expected: "design_system",
   },
 ];
 
@@ -158,10 +248,10 @@ async function fetchClassification(transcript) {
 }
 
 async function main() {
-  console.log("═══════════════════════════════════════════════════════════════════════════");
-  console.log("  MEETING AI VISUALIZER — STRESS TEST (10 English scenarios)");
-  console.log("  Tests: Classification (1-4), Topic Shift (5-7), Incremental (8-10)");
-  console.log("═══════════════════════════════════════════════════════════════════════════\n");
+  console.log("═══════════════════════════════════════════════════════════════════════════════");
+  console.log("  MEETING AI VISUALIZER — STRESS TEST (18 scenarios, all 10 families)");
+  console.log("  Direct (1-10)  |  Topic Shift (11-14)  |  Incremental (15-18)");
+  console.log("═══════════════════════════════════════════════════════════════════════════════\n");
 
   let passed = 0;
   let failed = 0;
@@ -193,13 +283,13 @@ async function main() {
     }
   }
 
-  console.log("\n═══════════════════════════════════════════════════════════════════════════");
+  console.log("\n═══════════════════════════════════════════════════════════════════════════════");
   if (failed === 0) {
-    console.log(`  ALL 10 TESTS PASSED`);
+    console.log(`  ALL ${SCENARIOS.length} TESTS PASSED`);
   } else {
-    console.log(`  RESULTS: ${passed}/10 passed, ${failed}/10 failed`);
+    console.log(`  RESULTS: ${passed}/${SCENARIOS.length} passed, ${failed}/${SCENARIOS.length} failed`);
   }
-  console.log("═══════════════════════════════════════════════════════════════════════════");
+  console.log("═══════════════════════════════════════════════════════════════════════════════");
 
   process.exit(failed > 0 ? 1 : 0);
 }

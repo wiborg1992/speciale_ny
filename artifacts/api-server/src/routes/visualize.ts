@@ -112,8 +112,20 @@ router.post("/visualize", async (req, res): Promise<void> => {
       "kanban":       "management_summary",
       "decisions":    "management_summary",
       "timeline":     "management_summary",
-      "comparison":   "generic",
-      "stakeholders": "generic",
+      "persona":      "persona_research",
+      "research":     "persona_research",
+      "empathy":      "persona_research",
+      "blueprint":    "service_blueprint",
+      "architecture": "service_blueprint",
+      "sitemap":      "service_blueprint",
+      "stakeholders": "service_blueprint",
+      "comparison":   "comparison_evaluation",
+      "evaluation":   "comparison_evaluation",
+      "swot":         "comparison_evaluation",
+      "scorecard":    "comparison_evaluation",
+      "designsystem": "design_system",
+      "styleguide":   "design_system",
+      "components":   "design_system",
     };
     resolvedFamily = typeToFamily[vizType!] ?? null;
   } else if (classification && !classification.ambiguous) {

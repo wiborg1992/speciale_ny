@@ -48,7 +48,11 @@ If no directive appears, use SELECTION FALLBACK below.
 
 SELECTION FALLBACK (only when no ⚡ directive):
   HMI / SCADA signals → HMI DASHBOARD (dark navy, cyans, tabs, gauge widgets)
-  user journey / brugerrejse / touchpoint / persona → USER JOURNEY MAP (light, swim lanes)
+  user journey / brugerrejse / touchpoint → USER JOURNEY MAP (light, swim lanes)
+  persona / empathy map / research findings / user needs → PERSONA / RESEARCH INSIGHTS (editorial cards)
+  service blueprint / information architecture / sitemap / ecosystem → SERVICE BLUEPRINT (layered diagram)
+  comparison / SWOT / competitive analysis / prioritization / scorecard → COMPARISON / EVALUATION (matrix)
+  design system / component spec / tokens / style guide → DESIGN SYSTEM SPEC (technical docs)
   workflow / flowchart / process / decision diamond → WORKFLOW DIAGRAM (light, SVG arrows)
   physical pump / Alpha GO / GO app / LED ring / CU 200 → PHYSICAL PUMP ILLUSTRATION (SVG hardware)
   requirements / kravspec / MoSCoW / traceability → REQUIREMENTS MATRIX (structured table)
@@ -906,8 +910,52 @@ Use dramatic typography hierarchy (Playfair Display for headings, Outfit for bod
 Grundfos navy and blue accents. Print-ready proportions.
 DO NOT use dark HMI style or pump hardware illustrations.`,
 
+  persona_research: `GENERATE: PERSONA / RESEARCH INSIGHTS — editorial card-based layout.
+Create a rich persona card or research insight summary. For PERSONAS: include a profile section (name, role, archetype, 
+photo placeholder silhouette), demographics sidebar, goals & motivations (green), frustrations & pain points (red), 
+behavioral patterns, a "Day in the Life" timeline, and a Jobs-to-be-Done section. For EMPATHY MAPS: 4-quadrant layout 
+(Says, Thinks, Does, Feels) with the persona at center. For RESEARCH FINDINGS: structured insight cards with supporting 
+quotes, thematic clusters, severity/frequency indicators, and actionable recommendations.
+Use Grundfos brand colours (#002A5C navy, #0077C8 blue), clean editorial layout, Google Fonts.
+Light background. Professional UX research deliverable quality.
+DO NOT use dark HMI backgrounds, gauges, or pump hardware.`,
+
+  service_blueprint: `GENERATE: SERVICE BLUEPRINT / EXPERIENCE ARCHITECTURE — layered horizontal diagram.
+Create a structured service design artifact. For SERVICE BLUEPRINTS: horizontal swim-lane layout with layers: 
+Customer Actions (top), Frontstage (visible touchpoints), Line of Visibility (dashed), Backstage Processes, 
+Support Processes (bottom). Show time progression left-to-right, vertical connections between layers, 
+evidence items at each touchpoint. For INFORMATION ARCHITECTURE: hierarchical sitemap/tree diagram showing 
+navigation structure, content grouping, and page relationships. For ECOSYSTEM/STAKEHOLDER MAPS: radial or 
+network diagram showing actors, relationships, data flows, and system integrations.
+Use Grundfos brand colours, clean lines, clear layer separations with distinct background tints.
+Light background. DO NOT use dark HMI style.`,
+
+  comparison_evaluation: `GENERATE: COMPARISON / EVALUATION MATRIX — structured analytical layout.
+Create a professional comparison or evaluation artifact. For COMPARISON MATRICES: table with options as 
+columns, criteria as rows, colour-coded scoring (green=strong, amber=moderate, red=weak), weighted totals 
+at bottom. For SWOT ANALYSIS: 2×2 grid (Strengths green, Weaknesses red, Opportunities blue, Threats amber) 
+with bullet points in each quadrant and a strategic summary. For PRIORITIZATION: 2D scatter plot or matrix 
+(Impact vs Effort, Value vs Complexity) with items positioned as labeled circles, quadrant labels 
+(Quick Wins, Strategic Bets, Fill-Ins, Deprioritize). For SCORECARDS: radar/spider chart or weighted 
+scoring table with visual indicators.
+Use Grundfos brand colours, professional analytical layout, Google Fonts.
+Light background. DO NOT use dark HMI style.`,
+
+  design_system: `GENERATE: DESIGN SYSTEM / COMPONENT SPECIFICATION — technical documentation layout.
+Create a professional design system deliverable. For COMPONENT SPECS: show component anatomy (labeled diagram), 
+all states (default, hover, active, disabled, error), sizing variants (S/M/L), spacing rules with pixel 
+annotations, and prop/API table. For DESIGN TOKENS: organized sections for Color Palette (swatches with 
+hex/RGB values, semantic naming), Typography Scale (font samples at each size), Spacing Scale (visual ruler), 
+Border Radius, Shadows, and Breakpoints. For STYLE GUIDES: brand colour usage, typography hierarchy, 
+iconography samples, do/don't examples side by side. For DESIGN PRINCIPLES: numbered principle cards with 
+title, description, and visual "Do" vs "Don't" example pairs.
+Use clean, technical documentation style. Grid-aligned. Code-adjacent feel.
+Light background with subtle grid. DO NOT use dark HMI style.`,
+
   generic: `GENERATE: The most appropriate visualization type based on the transcript content.
-Read the transcript carefully and choose from: HMI dashboard, user journey, workflow, pump hardware, comparison, stakeholder map, timeline, kanban, or decision log.
+Read the transcript carefully and choose the best format: HMI dashboard, user journey, workflow/flowchart, 
+pump hardware, persona/empathy map, service blueprint, comparison/evaluation matrix, design system spec, 
+timeline/roadmap, kanban, or decision log.
 Commit fully to one type — do not mix styles.`,
 };
 
@@ -928,11 +976,11 @@ export async function* streamVisualization(
   if (title) userMessage += `Meeting title: ${title}\n\n`;
   if (context) userMessage += `MEETING CONTEXT:\n${context}\n\n`;
 
-  // Inject server-side classification as an explicit, high-confidence directive
-  if (vizType && vizType !== "auto") {
+  if (resolvedFamily && FAMILY_INSTRUCTIONS[resolvedFamily]) {
+    const source = (vizType && vizType !== "auto") ? "USER-SELECTED TYPE" : "SERVER CLASSIFICATION (high confidence)";
+    userMessage += `⚡ ${source} — follow these instructions exactly:\n${FAMILY_INSTRUCTIONS[resolvedFamily]}\n\n`;
+  } else if (vizType && vizType !== "auto") {
     userMessage += `⚡ USER-SELECTED TYPE: Generate SPECIFICALLY this visualization type — nothing else: ${vizType}\n\n`;
-  } else if (resolvedFamily && FAMILY_INSTRUCTIONS[resolvedFamily]) {
-    userMessage += `⚡ SERVER CLASSIFICATION (high confidence) — follow these instructions exactly:\n${FAMILY_INSTRUCTIONS[resolvedFamily]}\n\n`;
   }
 
   userMessage += `Here is the meeting transcript:\n\n${transcriptForModel}\n\n`;
@@ -966,6 +1014,10 @@ WHAT "INCREMENTAL" MEANS — CONCRETE EXAMPLES:
   • Requirements: add new rows to the table, update priority/status columns, add newly discussed specs
   • Timeline: extend the timeline with new milestones, update phase durations, add new decision entries
   • Pump hardware: add newly discussed specs to the callout labels, update operating parameters
+  • Persona/research: add new quotes, expand needs/frustrations, add newly discovered behavioral patterns
+  • Service blueprint: add new touchpoints, extend layers, add backstage processes mentioned in discussion
+  • Comparison/evaluation: add new criteria rows, update scores, add newly discussed options or dimensions
+  • Design system: add new component variants, expand token tables, add newly discussed states or rules
 
 DO NOT:
   ✗ Regenerate from scratch when the topic hasn't changed

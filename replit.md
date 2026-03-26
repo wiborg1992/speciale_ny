@@ -43,7 +43,7 @@ The main product artifact. A live meeting tool for industrial/engineering contex
 ### Features
 - **Speech-to-text**: Web Speech API (da-DK / en-US, 4000ms commit buffer — gives speakers time to pause naturally), optional Deepgram WebSocket
 - **AI Visualization**: Claude (Anthropic) generates HTML+CSS visualizations from transcript
-  - Types: Auto-detect, HMI/SCADA, User Journey, Workflow, Product/Hardware, Requirements, Management, Kanban, Decision Log, Timeline, Comparison Cards, Stakeholder Map
+  - Types: Auto-detect, HMI/SCADA, User Journey, Persona/Research, Service Blueprint, Comparison/Evaluation, Design System, Workflow, Product/Hardware, Requirements, Management, Timeline, Stakeholder Map, Kanban, Decision Log
   - Models: Haiku (fast), Sonnet (balanced), Opus (best quality)
   - Streamed via SSE, rendered safely in `<iframe>` (never innerHTML)
   - Incremental updates (builds on previous) or fresh start
@@ -54,7 +54,7 @@ The main product artifact. A live meeting tool for industrial/engineering contex
 - **Decisions/Actions tab**: separate Claude Haiku call extracts decisions and action items
 - **Version history**: in-session v1/v2/v3 pills for revisiting prior visualizations
 - **Meeting context**: title, purpose, projects, participants, extra context passed to AI
-- **Server-side classification** (`classifier.ts`): weighted keyword scoring with recency zones + hard topic-shift overrides for instant type switching (6 families + generic fallback)
+- **Server-side classification** (`classifier.ts`): weighted keyword scoring with recency zones + hard topic-shift overrides for instant type switching (10 families + generic fallback: hmi_interface, user_journey, persona_research, service_blueprint, comparison_evaluation, design_system, workflow_process, physical_product, requirements_matrix, management_summary)
 - **Multi-user rooms**: up to 10 participants with unique speaker colors, SSE broadcast of segments + visualizations + participants, transcript includes `[SpeakerName]: text` attribution
 - **45-second auto-viz countdown**: timer resets on each generate (mic or manual)
 - **Normalization**: fillword removal (da/en), Danish tech-term normalization (IEC 62443, ISO 27001, GDPR, SCADA, PLC, HMI, IE1–IE5, Grundfos products, m³/h)
