@@ -245,6 +245,18 @@ const SCENARIOS = [
   },
   {
     id: 22,
+    name: "CRA + physical product — pump hardware security features",
+    transcript: `Let's look at the physical pump and how CRA affects the hardware design. The pump casing needs a tamper-evident 
+      seal on the control board compartment. The PCB layout shows the secure element chip next to the main processor — 
+      that's where the cryptographic keys are stored for firmware integrity verification. The LED ring on the pump front 
+      should indicate security status: green means firmware is verified and up to date, amber means an update is available, 
+      red means a security alert. The physical USB debug port on the side must be disabled in production mode per CRA 
+      secure default configuration requirements. Show me a cutaway illustration of the pump with these security hardware 
+      components highlighted — the secure element, the tamper seal, the status LEDs, and the locked debug port.`,
+    expected: "physical_product",
+  },
+  {
+    id: 23,
     name: "CRA comparison — security implementation approaches",
     transcript: `We need to compare three approaches for implementing access control on our pump products to comply with CRA. 
       Option A: traditional PIN code and password — simple to implement, works on all hardware including small HMI screens, 
@@ -301,8 +313,8 @@ async function fetchClassification(transcript) {
 
 async function main() {
   console.log("═══════════════════════════════════════════════════════════════════════════════");
-  console.log("  MEETING AI VISUALIZER — STRESS TEST (22 scenarios, all 10 families + CRA)");
-  console.log("  Direct (1-10)  |  Shift (11-14)  |  Incremental (15-18)  |  CRA (19-22)");
+  console.log("  MEETING AI VISUALIZER — STRESS TEST (23 scenarios, all 10 families + CRA)");
+  console.log("  Direct (1-10)  |  Shift (11-14)  |  Incremental (15-18)  |  CRA (19-23)");
   console.log("═══════════════════════════════════════════════════════════════════════════════\n");
 
   let passed = 0;
