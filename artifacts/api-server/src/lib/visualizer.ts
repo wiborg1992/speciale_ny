@@ -763,6 +763,44 @@ FORBUDT I IKKE-HMI:
   ✗ Manglende font-import (system-ui er FORBUDT for ikke-HMI)
   ✗ Ensformigt kortgrid (3 × N ens kort = FORBUDT)
 
+━━━ LAYOUT QUALITY RULES — FOR NON-HMI TYPES (journey, workflow, pump, requirements, management, generic) ━━━
+These rules prevent common visual defects in non-HMI visualizations. HMI dashboards follow the iSolutions spec above instead.
+
+SPACING & CONTAINMENT:
+  1. Root container: use max-width:1200px; margin:0 auto; padding:24px 32px; width:100%; box-sizing:border-box;
+  2. Cards/panels: MINIMUM padding:16px. Never less.
+  3. Grid gaps: MINIMUM gap:16px between cards. Never touching edges.
+  4. Section spacing: margin-bottom:32px between major sections.
+  5. Text never touches container edges — always has parent padding.
+
+ALIGNMENT & GRID:
+  6. Use CSS Grid or Flexbox for layouts — never absolute positioning for content blocks.
+  7. Grid columns: use fr units or percentage, never fixed px widths that break on resize.
+  8. All cards in a row MUST be equal height (use align-items:stretch or grid auto-rows).
+  9. Center the entire visualization in the viewport — never left-aligned floating.
+
+SIZING & READABILITY:
+  10. Body text: minimum 0.85rem (never smaller).
+  11. Headings: minimum 1.2rem for section headers.
+  12. SVG diagrams: minimum 300px wide, use viewBox for scaling.
+  13. Tables: width:100% with cell padding:10px 14px minimum.
+  14. No text truncation or overflow:hidden on content text — always visible.
+
+━━━ LAYOUT QUALITY RULES — FOR ALL TYPES (including HMI) ━━━
+  15. Every card/panel must have a visible border, shadow, OR background contrast — never invisible containers.
+  16. Color contrast: dark text on light bg or light text on dark bg — ALWAYS readable.
+  17. No empty panels — every visible area has real content from the transcript.
+  18. SVG arrow markers: ALWAYS define <defs><marker> before using marker-end.
+
+ABSOLUTE PROHIBITIONS (ALL TYPES):
+  ✗ Elements overlapping each other
+  ✗ Content extending beyond viewport right edge (no horizontal scroll)
+  ✗ Tiny cramped cards (< 120px any dimension)
+  ✗ Orphan elements floating outside the grid structure
+  ✗ White text on white/light background or dark text on dark background
+  ✗ SVG elements with 0 width/height or missing viewBox
+  ✗ Tables with columns too narrow to read (< 60px)
+
 ━━━ OUTPUT-KRAV ━━━
 - Returnér KUN HTML: <style>/* al CSS */</style><div>/* indhold */</div>
 - Brug én <style>-blok øverst til al CSS

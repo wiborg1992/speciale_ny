@@ -48,9 +48,21 @@ export interface UseSpeechProps {
   language?: string;
 }
 
-// How long to wait after the last final result before committing the segment (ms).
-// 4 seconds gives the speaker time to pause and continue without cutting mid-thought.
-const COMMIT_DELAY_MS = 4000;
+const COMMIT_DELAY_MS = 4500;
+
+const MIN_MEANINGFUL_WORDS = 2;
+
+const FILLER_PATTERNS = /\b(øh+|uhm+|hmm+|uh+|nå+h?)\b/gi;
+
+function cleanTranscript(raw: string): string {
+  let cleaned = raw.replace(FILLER_PATTERNS, " ");
+  cleaned = cleaned.replace(/\s{2,}/g, " ").trim();
+  return cleaned;
+}
+
+function countMeaningfulWords(text: string): number {
+  return text.split(/\s+/).filter(w => w.length > 1).length;
+}
 
 export function useSpeech({ onSegmentFinalized, language = "da-DK" }: UseSpeechProps) {
   const [isRecording, setIsRecording] = useState(false);
@@ -74,18 +86,26 @@ export function useSpeech({ onSegmentFinalized, language = "da-DK" }: UseSpeechP
       clearTimeout(commitTimerRef.current);
       commitTimerRef.current = null;
     }
-    const text = pendingTextRef.current.trim();
+    const raw = pendingTextRef.current.trim();
     pendingTextRef.current = "";
-    if (text) onSegmentFinalizedRef.current(text);
+    if (!raw) return;
+    const cleaned = cleanTranscript(raw);
+    if (countMeaningfulWords(cleaned) >= MIN_MEANINGFUL_WORDS) {
+      onSegmentFinalizedRef.current(cleaned);
+    }
   }, []);
 
   const scheduleCommit = useCallback(() => {
     if (commitTimerRef.current) clearTimeout(commitTimerRef.current);
     commitTimerRef.current = setTimeout(() => {
       commitTimerRef.current = null;
-      const text = pendingTextRef.current.trim();
+      const raw = pendingTextRef.current.trim();
       pendingTextRef.current = "";
-      if (text) onSegmentFinalizedRef.current(text);
+      if (!raw) return;
+      const cleaned = cleanTranscript(raw);
+      if (countMeaningfulWords(cleaned) >= MIN_MEANINGFUL_WORDS) {
+        onSegmentFinalizedRef.current(cleaned);
+      }
     }, COMMIT_DELAY_MS);
   }, []);
 

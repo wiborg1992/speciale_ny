@@ -410,6 +410,41 @@ const TOPIC_SHIFT_OVERRIDES: Array<{ pattern: string; target: VizFamily }> = [
   // English: requirements
   { pattern: "show me the requirements",            target: "requirements_matrix" },
   { pattern: "make it a requirements matrix",       target: "requirements_matrix" },
+  // Additional Danish overrides — interface
+  { pattern: "nu designer vi et interface",          target: "hmi_interface" },
+  { pattern: "lad os bygge et interface",            target: "hmi_interface" },
+  { pattern: "nu bygger vi et interface",            target: "hmi_interface" },
+  { pattern: "vi skal lave et interface",            target: "hmi_interface" },
+  { pattern: "vi vil gerne have et interface",       target: "hmi_interface" },
+  { pattern: "vis det som et interface",             target: "hmi_interface" },
+  { pattern: "generer et interface",                 target: "hmi_interface" },
+  { pattern: "det skal visualiseres som interface",  target: "hmi_interface" },
+  // Additional Danish overrides — journey
+  { pattern: "nu laver vi en brugerrejse",           target: "user_journey" },
+  { pattern: "det skal være en journey",             target: "user_journey" },
+  { pattern: "vis det som en brugerrejse",           target: "user_journey" },
+  { pattern: "lad os lave en journey map",           target: "user_journey" },
+  { pattern: "generer en brugerrejse",               target: "user_journey" },
+  // Additional Danish overrides — workflow
+  { pattern: "nu laver vi et flowchart",             target: "workflow_process" },
+  { pattern: "vis det som et flowchart",             target: "workflow_process" },
+  { pattern: "generer et flowdiagram",               target: "workflow_process" },
+  { pattern: "lad os lave et flowdiagram",           target: "workflow_process" },
+  { pattern: "vis processen",                        target: "workflow_process" },
+  // Additional Danish overrides — pump
+  { pattern: "vis pumpen",                           target: "physical_product" },
+  { pattern: "generer en pumpe",                     target: "physical_product" },
+  { pattern: "vis produktet",                        target: "physical_product" },
+  { pattern: "vis controlleren",                     target: "physical_product" },
+  // Additional Danish overrides — timeline/management
+  { pattern: "generer en timeline",                  target: "management_summary" },
+  { pattern: "vis det som en roadmap",               target: "management_summary" },
+  { pattern: "lav en timeline",                      target: "management_summary" },
+  { pattern: "generer en gantt",                     target: "management_summary" },
+  // Additional Danish overrides — requirements
+  { pattern: "generer en kravspecifikation",         target: "requirements_matrix" },
+  { pattern: "vis det som krav",                     target: "requirements_matrix" },
+  { pattern: "lav en kravmatrix",                    target: "requirements_matrix" },
 ];
 
 function scoreZone(
