@@ -44,7 +44,7 @@ The main product artifact. A live meeting tool for industrial/engineering contex
 - **Speech-to-text**: Web Speech API (da-DK / en-US, 4000ms commit buffer — gives speakers time to pause naturally), optional Deepgram WebSocket
 - **AI Visualization**: Claude (Anthropic) generates HTML+CSS visualizations from transcript
   - Types: Auto-detect, HMI/SCADA, User Journey, Persona/Research, Service Blueprint, Comparison/Evaluation, Design System, Workflow, Product/Hardware, Requirements, Management, Timeline, Stakeholder Map, Kanban, Decision Log
-  - Models: Haiku (fast), Sonnet (balanced), Opus (best quality)
+  - Models: Haiku (claude-haiku-4-5, fast initial), Sonnet (claude-sonnet-4-6, balanced), Opus (claude-opus-4-6, best quality). Auto-upgrades from Haiku→Opus after first successful visualization.
   - Streamed via SSE, rendered safely in `<iframe>` (never innerHTML)
   - Incremental updates (builds on previous) or fresh start
   - Code fence stripping (model sometimes emits ```html wrappers)
@@ -73,7 +73,7 @@ The main product artifact. A live meeting tool for industrial/engineering contex
 - `artifacts/api-server/src/routes/meetings.ts` — GET /api/meetings, GET /api/meetings/:roomId, PATCH /api/meetings/:roomId, DELETE /api/meetings/:roomId
 - `artifacts/api-server/src/routes/deepgram.ts` — GET /api/deepgram-token
 - `artifacts/api-server/src/lib/refinement-detector.ts` — Detects spoken refinement intent (zoom ind, tilføj, behold formatet, etc.) and extracts modification directives for Claude
-- `artifacts/api-server/src/lib/pump-svg-templates.ts` — Complete SVG templates (CU controller, Alpha GO circulator, CR pump) with gradients/filters/shadows, injected into user message when `physical_product` family is detected; higher token budget (haiku:7000, sonnet:8500, opus:10000)
+- `artifacts/api-server/src/lib/pump-svg-templates.ts` — Complete SVG templates (CU controller, Alpha GO circulator, CR pump) with gradients/filters/shadows, injected into user message when `physical_product` family is detected; higher token budget (haiku:8192, sonnet:10000, opus:12000)
 
 ### Key frontend files
 - `artifacts/meeting-visualizer/src/pages/Home.tsx` — Room create/join landing + recent meetings list
