@@ -1329,25 +1329,64 @@ export function classifyVisualizationIntent(transcript: string): ClassificationR
     );
   }
 
-  // ─── HARD OVERRIDE: topic-shift phrases in ULTRA-RECENT zone auto-win ──────
-  // First scan the LAST 1000 chars (ultra-recent = literally what was just said).
-  // If that has a match, it wins ALWAYS — this is the user's most recent intent.
-  // Then fall back to scanning the full recent zone (3000 chars).
+  // ─── HARD OVERRIDE: topic-shift phrases in LAST SEGMENT auto-win ───────────
+  // The transcript is cumulative: "[Speaker]: old stuff\n[Speaker]: new stuff".
+  // We extract the LAST speaker segment (everything after the final [Speaker]:)
+  // because that's what was *just* said — regardless of how long the transcript is.
+  // Priority: 1) last segment, 2) last 2 segments, 3) ultra-recent 1000 chars, 4) full recent zone.
   // We scan from end-to-start so the LAST override wins if multiple are present.
-  const ultraRecentNorm = normalizeForClassification(tail.slice(-1000));
+
+  const segmentMarkerRegex = /\n?\[[\w\s\-æøåÆØÅäöüÄÖÜ]+\]\s*:\s*/g;
+  const segmentPositions: number[] = [];
+  let segMatch: RegExpExecArray | null;
+  while ((segMatch = segmentMarkerRegex.exec(tail)) !== null) {
+    segmentPositions.push(segMatch.index + segMatch[0].length);
+  }
+
   let hardOverrideFamily: VizFamily | null = null;
   let hardOverridePos = -1;
 
-  // Ultra-recent scan (highest priority)
-  for (const shift of TOPIC_SHIFT_OVERRIDES) {
-    const pos = ultraRecentNorm.lastIndexOf(shift.pattern);
-    if (pos !== -1 && pos > hardOverridePos) {
-      hardOverridePos = pos;
-      hardOverrideFamily = shift.target;
+  // Priority 1: scan ONLY the last speaker segment
+  if (segmentPositions.length > 0) {
+    const lastSegStart = segmentPositions[segmentPositions.length - 1];
+    const lastSegText = normalizeForClassification(tail.slice(lastSegStart));
+    for (const shift of TOPIC_SHIFT_OVERRIDES) {
+      const pos = lastSegText.lastIndexOf(shift.pattern);
+      if (pos !== -1 && pos > hardOverridePos) {
+        hardOverridePos = pos;
+        hardOverrideFamily = shift.target;
+      }
     }
   }
 
-  // If ultra-recent didn't match, scan full recent zone
+  // Priority 2: scan last 2 segments (in case the shift spans two turns)
+  if (!hardOverrideFamily && segmentPositions.length > 1) {
+    const secondLastSegStart = segmentPositions[segmentPositions.length - 2];
+    const lastTwoSegsText = normalizeForClassification(tail.slice(secondLastSegStart));
+    hardOverridePos = -1;
+    for (const shift of TOPIC_SHIFT_OVERRIDES) {
+      const pos = lastTwoSegsText.lastIndexOf(shift.pattern);
+      if (pos !== -1 && pos > hardOverridePos) {
+        hardOverridePos = pos;
+        hardOverrideFamily = shift.target;
+      }
+    }
+  }
+
+  // Priority 3: ultra-recent 1000 chars (fallback for transcripts without [Speaker]: markers)
+  if (!hardOverrideFamily) {
+    const ultraRecentNorm = normalizeForClassification(tail.slice(-1000));
+    hardOverridePos = -1;
+    for (const shift of TOPIC_SHIFT_OVERRIDES) {
+      const pos = ultraRecentNorm.lastIndexOf(shift.pattern);
+      if (pos !== -1 && pos > hardOverridePos) {
+        hardOverridePos = pos;
+        hardOverrideFamily = shift.target;
+      }
+    }
+  }
+
+  // Priority 4: full recent zone (3000 chars)
   if (!hardOverrideFamily) {
     hardOverridePos = -1;
     for (const shift of TOPIC_SHIFT_OVERRIDES) {
