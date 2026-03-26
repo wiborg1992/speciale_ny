@@ -210,10 +210,12 @@ export default function Room() {
   }, []);
 
   // When a new viz arrives from streaming, add it to history
+  // After the first successful visualization, auto-upgrade to Opus for better quality
   useEffect(() => {
     if (!isGenerating && streamedHtml && streamedHtml.length > 50) {
       setDisplayHtml(streamedHtml);
       addVizVersion(streamedHtml);
+      setVizModel(prev => prev === "haiku" ? "opus" : prev);
     }
   }, [isGenerating, streamedHtml, addVizVersion]);
 
