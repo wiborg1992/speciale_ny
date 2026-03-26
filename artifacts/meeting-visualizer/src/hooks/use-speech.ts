@@ -52,7 +52,7 @@ const COMMIT_DELAY_MS = 4500;
 
 const MIN_MEANINGFUL_WORDS = 2;
 
-const FILLER_PATTERNS = /\b(øh+|uhm+|hmm+|uh+|nå+h?)\b/gi;
+const FILLER_PATTERNS = /\b(øh+|uhm+|hmm+|uh+|nå+h?|umm+|ahh+|huh)\b/gi;
 
 function cleanTranscript(raw: string): string {
   let cleaned = raw.replace(FILLER_PATTERNS, " ");
