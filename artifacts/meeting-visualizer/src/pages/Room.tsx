@@ -425,7 +425,7 @@ export default function Room() {
           <select
             value={language}
             onChange={e => setLanguage(e.target.value)}
-            className="bg-transparent text-xs font-mono text-muted-foreground border border-border rounded px-2 py-1 cursor-pointer hover:text-white transition-colors"
+            className="bg-secondary text-xs font-mono text-foreground border border-border rounded px-2 py-1 cursor-pointer hover:text-white transition-colors [&>option]:bg-secondary [&>option]:text-foreground"
           >
             <option value="da-DK">DA-DK</option>
             <option value="en-US">EN-US</option>
