@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import OpenAI from "openai";
 import {
   CU_CONTROLLER_TEMPLATE,
   ALPHA_GO_TEMPLATE,
@@ -8,6 +9,16 @@ import {
 
 const client = new Anthropic();
 
+let _openaiClient: OpenAI | null = null;
+function getOpenAIClient(): OpenAI | null {
+  if (_openaiClient) return _openaiClient;
+  const baseURL = process.env.AI_INTEGRATIONS_OPENAI_BASE_URL;
+  const apiKey = process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
+  if (!baseURL || !apiKey) return null;
+  _openaiClient = new OpenAI({ apiKey, baseURL });
+  return _openaiClient;
+}
+
 export type VizModel = "haiku" | "sonnet" | "opus";
 
 const MODEL_IDS: Record<VizModel, string> = {
@@ -15,6 +26,8 @@ const MODEL_IDS: Record<VizModel, string> = {
   sonnet: "claude-sonnet-4-6",
   opus:   "claude-opus-4-6",
 };
+
+const OPENAI_FALLBACK_MODEL = "gpt-4o";
 
 const MAX_TOKENS: Record<VizModel, number> = {
   haiku:  8192,
@@ -935,16 +948,17 @@ ${snippet}${tail}`;
 
   userMessage += "Generate the HTML visualization now.";
 
-  const FALLBACK_CHAIN: string[] = [];
-  FALLBACK_CHAIN.push(model);
-  if (model === MODEL_IDS.opus && !FALLBACK_CHAIN.includes(MODEL_IDS.sonnet))
-    FALLBACK_CHAIN.push(MODEL_IDS.sonnet);
-  if (!FALLBACK_CHAIN.includes(MODEL_IDS.haiku))
-    FALLBACK_CHAIN.push(MODEL_IDS.haiku);
+  const ANTHROPIC_CHAIN: string[] = [];
+  ANTHROPIC_CHAIN.push(model);
+  if (model === MODEL_IDS.opus && !ANTHROPIC_CHAIN.includes(MODEL_IDS.sonnet))
+    ANTHROPIC_CHAIN.push(MODEL_IDS.sonnet);
+  if (!ANTHROPIC_CHAIN.includes(MODEL_IDS.haiku))
+    ANTHROPIC_CHAIN.push(MODEL_IDS.haiku);
 
   let lastError: unknown = null;
+  let anthropicExhausted = false;
 
-  for (const tryModel of FALLBACK_CHAIN) {
+  for (const tryModel of ANTHROPIC_CHAIN) {
     const MAX_RETRIES = 2;
     for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
       try {
@@ -983,17 +997,51 @@ ${snippet}${tail}`;
         const status = err?.status ?? err?.statusCode;
         if (status === 529 || status === 503 || status === 500 || status === 502) {
           console.warn(
-            `[retry] Model ${tryModel} returned ${status} (attempt ${attempt + 1}/${MAX_RETRIES + 1})`
+            `[retry] Anthropic ${tryModel} returned ${status} (attempt ${attempt + 1}/${MAX_RETRIES + 1})`
           );
           continue;
         }
         throw err;
       }
     }
-    console.warn(`[retry] All attempts exhausted for model ${tryModel}, trying next fallback...`);
+    console.warn(`[retry] All attempts exhausted for Anthropic model ${tryModel}, trying next fallback...`);
   }
 
-  throw lastError ?? new Error("All model attempts failed");
+  anthropicExhausted = true;
+
+  const openaiClient = getOpenAIClient();
+  if (anthropicExhausted && openaiClient) {
+    console.log(`[fallback] All Anthropic models exhausted — falling back to OpenAI ${OPENAI_FALLBACK_MODEL}`);
+    try {
+      const openaiStream = await openaiClient.chat.completions.create({
+        model: OPENAI_FALLBACK_MODEL,
+        max_completion_tokens: maxTokens,
+        messages: [
+          { role: "system", content: SYSTEM_PROMPT },
+          { role: "user", content: userMessage },
+        ],
+        stream: true,
+      });
+
+      let fullText = "";
+
+      for await (const chunk of openaiStream) {
+        const content = chunk.choices[0]?.delta?.content;
+        if (content) {
+          fullText += content;
+          onChunk(content);
+          yield content;
+        }
+      }
+
+      return fullText;
+    } catch (openaiErr: any) {
+      console.error(`[fallback] OpenAI fallback also failed:`, openaiErr?.message ?? openaiErr);
+      lastError = openaiErr;
+    }
+  }
+
+  throw lastError ?? new Error("All model attempts failed (Anthropic + OpenAI)");
 }
 
 export async function fillTabPanels(

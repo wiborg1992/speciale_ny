@@ -44,7 +44,7 @@ The main product artifact. A live meeting tool for industrial/engineering contex
 - **Speech-to-text**: Web Speech API (da-DK / en-US, 4000ms commit buffer — gives speakers time to pause naturally), optional Deepgram WebSocket
 - **AI Visualization**: Claude (Anthropic) generates HTML+CSS visualizations from transcript
   - Types: Auto-detect, HMI/SCADA, User Journey, Persona/Research, Service Blueprint, Comparison/Evaluation, Design System, Workflow, Product/Hardware, Requirements, Management, Timeline, Stakeholder Map, Kanban, Decision Log
-  - Models: Haiku (claude-haiku-4-5, fast initial), Sonnet (claude-sonnet-4-6, balanced), Opus (claude-opus-4-6, best quality). Auto-upgrades from Haiku→Opus after first successful visualization.
+  - Models: Haiku (claude-haiku-4-5, fast initial), Sonnet (claude-sonnet-4-6, balanced), Opus (claude-opus-4-6, best quality). Auto-upgrades from Haiku→Opus after first successful visualization. Fallback chain: Opus→Sonnet→Haiku→OpenAI GPT-4o (via Replit AI Integrations, no extra API key needed).
   - Streamed via SSE, rendered safely in `<iframe>` (never innerHTML)
   - Incremental updates (builds on previous) or fresh start
   - Code fence stripping (model sometimes emits ```html wrappers)
@@ -88,6 +88,7 @@ The main product artifact. A live meeting tool for industrial/engineering contex
 - `ANTHROPIC_API_KEY` — Required for AI visualization
 - `DEEPGRAM_API_KEY` — Optional, for Deepgram STT
 - `ALLOW_DEEPGRAM_KEY_TO_BROWSER` — Set to `false` to disable Deepgram in browser (default: allowed)
+- `AI_INTEGRATIONS_OPENAI_BASE_URL` + `AI_INTEGRATIONS_OPENAI_API_KEY` — Auto-provisioned by Replit AI Integrations for OpenAI fallback (GPT-4o) when Anthropic is overloaded
 - `PORT` — Set by Replit automatically
 
 ## TypeScript & Composite Projects
