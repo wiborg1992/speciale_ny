@@ -257,9 +257,14 @@ router.post("/visualize", async (req, res): Promise<void> => {
     } else {
       res.write(`data: ${JSON.stringify({ type: "error", error: "Generated visualization was incomplete. Please try again." })}\n\n`);
     }
-  } catch (err) {
+  } catch (err: any) {
     req.log.error({ err }, "Visualization generation failed");
-    res.write(`data: ${JSON.stringify({ type: "error", error: "Visualization generation failed." })}\n\n`);
+    const status = err?.status ?? err?.statusCode;
+    const isOverloaded = status === 529 || status === 503;
+    const errorMsg = isOverloaded
+      ? "AI-modellen er midlertidigt overbelastet. Prøv igen om et øjeblik."
+      : "Visualization generation failed.";
+    res.write(`data: ${JSON.stringify({ type: "error", error: errorMsg, retryable: isOverloaded })}\n\n`);
   }
 
   res.end();

@@ -935,28 +935,65 @@ ${snippet}${tail}`;
 
   userMessage += "Generate the HTML visualization now.";
 
-  const stream = client.messages.stream({
-    model,
-    max_tokens: maxTokens,
-    system: SYSTEM_PROMPT,
-    messages: [{ role: "user", content: userMessage }],
-  });
+  const FALLBACK_CHAIN: string[] = [];
+  FALLBACK_CHAIN.push(model);
+  if (model === MODEL_IDS.opus && !FALLBACK_CHAIN.includes(MODEL_IDS.sonnet))
+    FALLBACK_CHAIN.push(MODEL_IDS.sonnet);
+  if (!FALLBACK_CHAIN.includes(MODEL_IDS.haiku))
+    FALLBACK_CHAIN.push(MODEL_IDS.haiku);
 
-  let fullText = "";
+  let lastError: unknown = null;
 
-  for await (const event of stream) {
-    if (
-      event.type === "content_block_delta" &&
-      event.delta.type === "text_delta"
-    ) {
-      const chunk = event.delta.text;
-      fullText += chunk;
-      onChunk(chunk);
-      yield chunk;
+  for (const tryModel of FALLBACK_CHAIN) {
+    const MAX_RETRIES = 2;
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        if (attempt > 0 || tryModel !== model) {
+          const wait = Math.min(1000 * Math.pow(2, attempt), 4000);
+          await new Promise((r) => setTimeout(r, wait));
+          console.log(
+            `[retry] Attempt ${attempt + 1} with model ${tryModel} (original: ${model})`
+          );
+        }
+
+        const stream = client.messages.stream({
+          model: tryModel,
+          max_tokens: maxTokens,
+          system: SYSTEM_PROMPT,
+          messages: [{ role: "user", content: userMessage }],
+        });
+
+        let fullText = "";
+
+        for await (const event of stream) {
+          if (
+            event.type === "content_block_delta" &&
+            event.delta.type === "text_delta"
+          ) {
+            const chunk = event.delta.text;
+            fullText += chunk;
+            onChunk(chunk);
+            yield chunk;
+          }
+        }
+
+        return fullText;
+      } catch (err: any) {
+        lastError = err;
+        const status = err?.status ?? err?.statusCode;
+        if (status === 529 || status === 503 || status === 500 || status === 502) {
+          console.warn(
+            `[retry] Model ${tryModel} returned ${status} (attempt ${attempt + 1}/${MAX_RETRIES + 1})`
+          );
+          continue;
+        }
+        throw err;
+      }
     }
+    console.warn(`[retry] All attempts exhausted for model ${tryModel}, trying next fallback...`);
   }
 
-  return fullText;
+  throw lastError ?? new Error("All model attempts failed");
 }
 
 export async function fillTabPanels(
