@@ -1056,7 +1056,10 @@ ${snippet}${tail}`;
           );
           continue;
         }
-        throw err;
+        console.warn(
+          `[retry] Anthropic ${tryModel} returned non-retryable status ${status} — skipping to next fallback`
+        );
+        break;
       }
     }
     console.warn(`[retry] All attempts exhausted for Anthropic model ${tryModel}, trying next fallback...`);
