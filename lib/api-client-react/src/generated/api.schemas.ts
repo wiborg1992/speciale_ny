@@ -31,6 +31,12 @@ export interface VisualizeRequest {
    * @nullable
    */
   speakerName?: string | null;
+  /**
+   * Workspace corpus — grundfos (industrial pumps default), gabriel (furniture/textiles), or generic/neutral/other. Omitted or null defaults to grundfos on the server.
+
+   * @nullable
+   */
+  workspaceDomain?: string | null;
 }
 
 export interface DeepgramTokenResponse {

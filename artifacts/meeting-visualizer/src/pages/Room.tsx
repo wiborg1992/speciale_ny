@@ -58,6 +58,16 @@ const VIZ_MODELS = [
   { value: "opus",   label: "Opus (best)" },
 ];
 
+/** Styrer system-prompt og branding (Grundfos vs Gabriel vs neutral). */
+const WORKSPACE_DOMAINS = [
+  { value: "grundfos", label: "Grundfos" },
+  { value: "gabriel",  label: "Gabriel (data)" },
+  { value: "generic",  label: "Generisk" },
+] as const;
+
+/** Kommasepareret — gemmes i localStorage; bruges som hurtigvalg for [Navn]: i transskriptet. */
+const WORKSHOP_ROSTER_DEFAULT = "Jesper,Klaus,Maria,Anna,Facilitator";
+
 function extractVizName(html: string): string | null {
   const div = document.createElement("div");
   div.innerHTML = html;
@@ -71,6 +81,13 @@ function extractVizName(html: string): string | null {
 }
 
 const MAX_VIZ_HISTORY = 20;
+const MAX_PASTE_HISTORY = 25;
+
+interface PasteHistoryEntry {
+  id: string;
+  savedAt: number;
+  text: string;
+}
 const BASE = import.meta.env.BASE_URL;
 
 const SPEAKER_COLORS = [
@@ -99,6 +116,11 @@ function getSpeakerColor(speakerName: string, speakerMap: Map<string, number>): 
 export default function Room() {
   const { id: roomId } = useParams<{ id: string }>();
   const [speakerName, setSpeakerName] = useLocalStorage("meetingVisualizer_speakerName", "Anonymous");
+  const [workshopRosterCsv, setWorkshopRosterCsv] = useLocalStorage(
+    "meetingVisualizer_workshopRoster",
+    WORKSHOP_ROSTER_DEFAULT
+  );
+  const [workspaceDomain, setWorkspaceDomain] = useLocalStorage("meetingVisualizer_workspaceDomain", "grundfos");
   const [isEditingName, setIsEditingName] = useState(false);
   const [editNameValue, setEditNameValue] = useState("");
   const [language, setLanguage] = useState("da-DK");
@@ -108,6 +130,7 @@ export default function Room() {
   // Input tabs
   const [inputTab, setInputTab] = useState<InputTab>("mic");
   const [pasteText, setPasteText] = useState("");
+  const [pasteHistory, setPasteHistory] = useState<PasteHistoryEntry[]>([]);
 
   // Output tabs
   const [outputTab, setOutputTab] = useState<OutputTab>("viz");
@@ -141,7 +164,7 @@ export default function Room() {
   // API & SSE hooks
   const { segments, participants, visualization: sseViz, connectionStatus, addLocalSegment } = useRoomSSE(roomId!);
   const { mutateAsync: postSegment } = usePostSegment();
-  const { generate, isGenerating, streamedHtml, meta: streamMeta } = useVisualizeStream();
+  const { generate, isGenerating, streamedHtml, meta: streamMeta, error: vizStreamError } = useVisualizeStream();
 
   const activeHtml = isGenerating ? streamedHtml : (displayHtml || sseViz.html);
 
@@ -176,11 +199,32 @@ export default function Room() {
     [fullText]
   );
 
+  const workshopQuickNames = useMemo(
+    () =>
+      workshopRosterCsv
+        .split(",")
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0)
+        .slice(0, 16),
+    [workshopRosterCsv]
+  );
+
   // The transcript to use for visualization
   const getActiveTranscript = useCallback(() => {
     if (inputTab === "paste") return pasteText.trim();
     return fullText.trim();
   }, [inputTab, pasteText, fullText]);
+
+  const appendPasteHistoryIfNeeded = useCallback((text: string) => {
+    const t = text.trim();
+    if (!t) return;
+    setPasteHistory((prev) => {
+      if (prev.length > 0 && prev[prev.length - 1].text === t) return prev;
+      const entry: PasteHistoryEntry = { id: uuidv4(), savedAt: Date.now(), text: t };
+      const next = [...prev, entry];
+      return next.length > MAX_PASTE_HISTORY ? next.slice(-MAX_PASTE_HISTORY) : next;
+    });
+  }, []);
 
   const getMeetingContext = useCallback(() => {
     const parts: string[] = [];
@@ -267,6 +311,8 @@ export default function Room() {
     const transcript = getActiveTranscript();
     if (!transcript) return;
 
+    if (inputTab === "paste") appendPasteHistoryIfNeeded(transcript);
+
     const previous = !freshStart ? (prevHtmlRef.current || null) : null;
 
     generate({
@@ -279,8 +325,22 @@ export default function Room() {
       title: meetingTitle || null,
       context: getMeetingContext(),
       freshStart,
+      workspaceDomain,
     });
-  }, [getActiveTranscript, freshStart, roomId, speakerName, vizType, vizModel, meetingTitle, getMeetingContext, generate]);
+  }, [
+    getActiveTranscript,
+    freshStart,
+    roomId,
+    speakerName,
+    vizType,
+    vizModel,
+    meetingTitle,
+    getMeetingContext,
+    generate,
+    workspaceDomain,
+    inputTab,
+    appendPasteHistoryIfNeeded,
+  ]);
 
   // Auto-scroll transcript
   useEffect(() => {
@@ -334,6 +394,7 @@ export default function Room() {
           roomId,
           title: meetingTitle || null,
           context: getMeetingContext(),
+          workspaceDomain,
         }),
       });
       if (!res.ok || !res.body) throw new Error("Server error");
@@ -364,7 +425,7 @@ export default function Room() {
     } finally {
       setIsLoadingActions(false);
     }
-  }, [getActiveTranscript, roomId, meetingTitle, getMeetingContext]);
+  }, [getActiveTranscript, roomId, meetingTitle, getMeetingContext, workspaceDomain]);
 
   // Auto-load actions when tab switches
   const hasLoadedActionsRef = useRef(false);
@@ -435,7 +496,7 @@ export default function Room() {
               <button
                 onClick={() => { setEditNameValue(speakerName); setIsEditingName(true); }}
                 className="flex items-center gap-1 text-muted-foreground hover:text-white transition-colors"
-                title="Change your name"
+                title="Aktiv taler — denne bruger får mærkat [Navn]: i transskriptet"
               >
                 <span className="text-white">{speakerName}</span>
                 <Pencil className="w-2.5 h-2.5 opacity-50" />
@@ -518,7 +579,7 @@ export default function Room() {
             ))}
           </div>
 
-          {speechError && (
+          {speechError && inputTab === "mic" && (
             <div className="p-2 mx-3 mt-2 bg-destructive/10 border border-destructive/50 rounded-lg flex items-start gap-2 shrink-0">
               <AlertTriangle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
               <p className="text-xs text-destructive-foreground">{speechError}</p>
@@ -527,10 +588,45 @@ export default function Room() {
 
           {/* Mic Tab */}
           {inputTab === "mic" && (
-            <div
-              className="flex-1 overflow-y-auto p-3 space-y-3"
-              ref={transcriptRef}
-            >
+            <div className="flex-1 flex flex-col min-h-0">
+              <div className="shrink-0 px-3 py-2 border-b border-border bg-card/40 space-y-2">
+                <div className="flex flex-wrap gap-1 items-center">
+                  <span className="text-[9px] font-mono uppercase tracking-wider text-muted-foreground mr-0.5">
+                    Hurtigvalg
+                  </span>
+                  {workshopQuickNames.map((name) => (
+                    <button
+                      key={name}
+                      type="button"
+                      onClick={() => setSpeakerName(name)}
+                      title={`Sæt aktiv taler til ${name}`}
+                      className={cn(
+                        "px-2 py-0.5 rounded-md text-[10px] font-mono border transition-colors",
+                        speakerName === name
+                          ? "border-primary bg-primary/15 text-primary"
+                          : "border-border bg-secondary/40 text-muted-foreground hover:text-foreground hover:border-primary/40"
+                      )}
+                    >
+                      {name}
+                    </button>
+                  ))}
+                </div>
+                <details className="group text-[10px]">
+                  <summary className="cursor-pointer text-muted-foreground hover:text-foreground list-none flex items-center gap-1 [&::-webkit-details-marker]:hidden">
+                    <span className="opacity-60 group-open:rotate-90 transition-transform inline-block">▸</span>
+                    Tilpas navneliste (kommasepareret)
+                  </summary>
+                  <input
+                    type="text"
+                    value={workshopRosterCsv}
+                    onChange={(e) => setWorkshopRosterCsv(e.target.value)}
+                    className="mt-1.5 w-full h-7 bg-secondary/50 border border-border rounded px-2 text-[11px] font-mono text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary/40"
+                    placeholder="Jesper, Klaus, Maria, …"
+                    spellCheck={false}
+                  />
+                </details>
+              </div>
+              <div className="flex-1 overflow-y-auto p-3 space-y-3 min-h-0" ref={transcriptRef}>
               <AnimatePresence initial={false}>
                 {segments.map((seg, i) => {
                   const isMe = seg.speakerName === speakerName;
@@ -585,31 +681,105 @@ export default function Room() {
                   </div>
                 </div>
               )}
+              </div>
             </div>
           )}
 
           {/* Paste Tab */}
           {inputTab === "paste" && (
-            <div className="flex-1 flex flex-col min-h-0 p-3">
-              <p className="text-[11px] text-muted-foreground mb-2 shrink-0">
-                Paste Teams, Zoom or other transcript text below
-              </p>
-              <textarea
-                value={pasteText}
-                onChange={e => setPasteText(e.target.value)}
-                placeholder="[Speaker A]: Vi skal se på pumpe-effektiviteten..."
-                className="flex-1 min-h-0 bg-secondary/30 border border-border rounded-lg p-3 text-sm font-mono text-foreground placeholder:text-muted-foreground/40 resize-none focus:outline-none focus:ring-1 focus:ring-primary/50"
-              />
-              <div className="flex items-center justify-between mt-2 shrink-0">
-                <span className="text-[10px] font-mono text-muted-foreground">
-                  {pasteText.trim() ? pasteText.trim().split(/\s+/).length + " words" : "0 words"}
-                </span>
-                <button
-                  onClick={() => setPasteText("")}
-                  className="text-[10px] font-mono text-muted-foreground hover:text-destructive transition-colors"
-                >
-                  Clear
-                </button>
+            <div className="flex-1 flex flex-col min-h-0">
+              <div className="shrink-0 p-3 pb-2">
+                <p className="text-[11px] text-muted-foreground leading-relaxed">
+                  Indsæt eksport fra Teams, Zoom m.fl. Brug linjer som{" "}
+                  <code className="text-[10px] bg-secondary/50 px-1 rounded">[Jesper]:</code> eller{" "}
+                  <code className="text-[10px] bg-secondary/50 px-1 rounded">Navn: …</code> pr. taler — så matcher det
+                  mic-formatet og AI-pipelines.
+                </p>
+              </div>
+              <div className="flex-1 min-h-0 px-3 flex flex-col gap-0">
+                <textarea
+                  value={pasteText}
+                  onChange={e => setPasteText(e.target.value)}
+                  placeholder="[Jesper]: Lad os kigge på Excel-arket...&#10;[Klaus]: KPI for sidste kvartal..."
+                  className="flex-1 min-h-[140px] bg-secondary/30 border border-border rounded-lg p-3 text-sm font-mono text-foreground placeholder:text-muted-foreground/40 resize-none focus:outline-none focus:ring-1 focus:ring-primary/50"
+                />
+                {vizStreamError && (
+                  <div className="mt-2 p-2 rounded-md bg-destructive/10 border border-destructive/40 text-[11px] text-destructive-foreground flex gap-2 items-start">
+                    <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                    <span>{vizStreamError}</span>
+                  </div>
+                )}
+                <div className="mt-2 flex flex-col gap-2 shrink-0 border-t border-border pt-2 pb-2">
+                  <Button
+                    type="button"
+                    variant="default"
+                    className="w-full h-9 text-xs font-mono"
+                    onClick={() => {
+                      handleGenerate(false);
+                      setOutputTab("viz");
+                    }}
+                    disabled={isGenerating || !pasteText.trim()}
+                  >
+                    {isGenerating ? (
+                      <><RefreshCcw className="w-3.5 h-3.5 mr-1.5 animate-spin" />Genererer…</>
+                    ) : (
+                      <><Wand2 className="w-3.5 h-3.5 mr-1.5" />Visualize fra indsæt tekst</>
+                    )}
+                  </Button>
+                  <details className="group rounded-md border border-border bg-card/40">
+                    <summary className="cursor-pointer list-none px-2 py-1.5 flex items-center gap-2 text-[10px] font-mono uppercase tracking-wider text-muted-foreground hover:text-foreground [&::-webkit-details-marker]:hidden">
+                      <History className="w-3.5 h-3.5 opacity-70" />
+                      <span>Transskript-historik</span>
+                      <span className="text-muted-foreground/60">({pasteHistory.length})</span>
+                      <span className="opacity-50 group-open:rotate-90 transition-transform ml-auto">▸</span>
+                    </summary>
+                    <div className="max-h-40 overflow-y-auto border-t border-border px-2 py-1.5 space-y-1">
+                      {pasteHistory.length === 0 ? (
+                        <p className="text-[10px] text-muted-foreground py-2">Ingen gemte udgaver endnu. De tilføjes ved Visualize.</p>
+                      ) : (
+                        [...pasteHistory].reverse().map((h) => {
+                          const preview = h.text.replace(/\s+/g, " ").trim().slice(0, 72);
+                          return (
+                            <div
+                              key={h.id}
+                              className="flex items-start gap-2 rounded border border-border/60 bg-secondary/20 p-1.5"
+                            >
+                              <div className="flex-1 min-w-0">
+                                <div className="text-[9px] font-mono text-muted-foreground">
+                                  {format(new Date(h.savedAt), "dd. MMM HH:mm")}
+                                </div>
+                                <p className="text-[10px] text-foreground/90 line-clamp-2 break-words" title={h.text}>
+                                  {preview}{h.text.length > preview.length ? "…" : ""}
+                                </p>
+                              </div>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="h-7 shrink-0 text-[10px] px-2"
+                                onClick={() => setPasteText(h.text)}
+                              >
+                                Gendan
+                              </Button>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  </details>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-mono text-muted-foreground">
+                      {pasteText.trim() ? pasteText.trim().split(/\s+/).length + " ord" : "0 ord"}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setPasteText("")}
+                      className="text-[10px] font-mono text-muted-foreground hover:text-destructive transition-colors"
+                    >
+                      Ryd tekst
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
           )}
@@ -640,8 +810,19 @@ export default function Room() {
               value={meetingTitle}
               onChange={e => setMeetingTitle(e.target.value)}
               placeholder="Meeting title (optional)"
-              className="flex-1 min-w-[160px] max-w-[280px] h-8 bg-secondary/50 border border-border rounded px-3 text-sm font-mono text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-primary/40"
+              className="flex-1 min-w-[160px] max-w-[240px] h-8 bg-secondary/50 border border-border rounded px-3 text-sm font-mono text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-primary/40"
             />
+
+            <select
+              value={workspaceDomain}
+              onChange={e => setWorkspaceDomain(e.target.value)}
+              title="Arbejdsområde — Gabriel: Excel/mødedata & visualisering (Gabriel-minded stil)"
+              className="h-8 bg-secondary/50 border border-border rounded px-2 text-xs font-mono text-foreground focus:outline-none cursor-pointer max-w-[140px]"
+            >
+              {WORKSPACE_DOMAINS.map(d => (
+                <option key={d.value} value={d.value}>{d.label}</option>
+              ))}
+            </select>
 
             {/* Viz type */}
             <select
@@ -773,7 +954,10 @@ export default function Room() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => handleGenerate(false)}
+                    onClick={() => {
+                      handleGenerate(false);
+                      setOutputTab("viz");
+                    }}
                     disabled={isGenerating || (getActiveTranscript().length === 0)}
                     className={cn("h-7 px-3 text-xs transition-all", isGenerating && "border-primary text-primary")}
                   >
@@ -895,6 +1079,7 @@ export default function Room() {
                   roomId={roomId}
                   title={meetingTitle || null}
                   context={getMeetingContext()}
+                  workspaceDomain={workspaceDomain}
                 />
               </div>
             )}

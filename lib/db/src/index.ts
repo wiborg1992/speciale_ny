@@ -1,16 +1,21 @@
-import { drizzle } from "drizzle-orm/node-postgres";
+import { drizzle, type NodePgDatabase } from "drizzle-orm/node-postgres";
 import pg from "pg";
 import * as schema from "./schema";
 
 const { Pool } = pg;
 
-if (!process.env.DATABASE_URL) {
-  throw new Error(
-    "DATABASE_URL must be set. Did you forget to provision a database?",
+const url = process.env.DATABASE_URL?.trim();
+
+export const pool: pg.Pool | null = url ? new Pool({ connectionString: url }) : null;
+
+export type AppDb = NodePgDatabase<typeof schema>;
+
+export const db: AppDb | null = pool ? drizzle(pool, { schema }) : null;
+
+if (!url) {
+  console.warn(
+    "[@workspace/db] DATABASE_URL er ikke sat — ingen PostgreSQL-persistens (api-server og visualisering kører stadig).",
   );
 }
-
-export const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-export const db = drizzle(pool, { schema });
 
 export * from "./schema";

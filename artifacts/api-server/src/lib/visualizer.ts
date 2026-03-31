@@ -6,6 +6,13 @@ import {
   CR_PUMP_TEMPLATE,
   PUMP_TEMPLATE_INSTRUCTIONS,
 } from "./pump-svg-templates.js";
+import {
+  adaptAuxiliarySystemPrompt,
+  adaptSystemPromptForDomain,
+  brandNameForDomain,
+  normalizeWorkspaceDomain,
+  type WorkspaceDomain,
+} from "./workspace-domain.js";
 
 const client = new Anthropic();
 
@@ -61,7 +68,7 @@ function truncatePreviousViz(html: string): { snippet: string; truncated: boolea
   return { snippet, truncated: true };
 }
 
-const SYSTEM_PROMPT = `You are an expert at analysing meeting transcripts from Grundfos and generating the single most appropriate professional HTML visualisation for the participants.
+const SYSTEM_PROMPT_GRUNDFOS = `You are an expert at analysing meeting transcripts from Grundfos and generating the single most appropriate professional HTML visualisation for the participants.
 
 Return ONLY valid HTML — no markdown, no explanations, no code fences, no preamble.
 Your first character MUST be '<' and your last character MUST be '>'.
@@ -703,7 +710,7 @@ Default target: up to 8192 tokens. For physical_product pump SVG visualizations:
 - For pump hardware: NEVER truncate or simplify the SVG template to save tokens — keep all gradients, filters, shadows.
 - For non-pump types: if budget exceeded, simplify layout, reduce cards/panels, prioritise data richness over breadth.`;
 
-const FILL_TAB_PANELS_SYSTEM = `You output ONLY a single JSON object. No markdown, no code fences, no explanation.
+const FILL_TAB_PANELS_SYSTEM_BASE = `You output ONLY a single JSON object. No markdown, no code fences, no explanation.
 Shape: {"panels":{"<id>":"<inner HTML string>",...}}
 Keys MUST exactly match the tab ids given in the user message.
 Each value is inner HTML for that panel. No <style> blocks. Inline style= attributes are OK. No <script> blocks.
@@ -722,7 +729,7 @@ CONTENT RULES — make each panel RICH and DOMAIN-SPECIFIC based on the tab labe
 For any other label: extract the most relevant metrics, decisions, and actions from the transcript that belong to that category.
 Fill ALL placeholder values with realistic data — no empty strings, no "—", no "N/A".`;
 
-const ACTIONS_SYSTEM = `You analyze a meeting transcript and extract structured output. Return ONLY valid HTML — no markdown fences.
+const ACTIONS_SYSTEM_BASE = `You analyze a meeting transcript and extract structured output. Return ONLY valid HTML — no markdown fences.
 
 Generate a clean, scannable HTML document showing:
 1. KEY DECISIONS (what was decided) — each as a card with: what was decided, who decided it (if mentioned), impact
@@ -745,6 +752,8 @@ export interface VisualizerParams {
   roomId?: string | null;
   resolvedFamily?: string | null;
   refinementDirective?: string | null;
+  /** grundfos | gabriel | generic — drives system prompt and branding */
+  workspaceDomain?: string | null;
 }
 
 /** Maps server-side family IDs to clear, unambiguous instructions for the AI */
@@ -851,14 +860,57 @@ timeline/roadmap, kanban, or decision log.
 Commit fully to one type — do not mix styles.`,
 };
 
+function systemPromptForDomain(domain: WorkspaceDomain): string {
+  return adaptSystemPromptForDomain(SYSTEM_PROMPT_GRUNDFOS, domain);
+}
+
+function familyInstructionForDomain(
+  family: string,
+  domain: WorkspaceDomain
+): string | undefined {
+  const base = FAMILY_INSTRUCTIONS[family];
+  if (!base) return undefined;
+  if (domain === "grundfos") return base;
+
+  const bn = brandNameForDomain(domain);
+  const text = base.replace(/Grundfos/g, bn);
+
+  if (family === "physical_product") {
+    if (domain === "gabriel") {
+      return `GENERATE: DATA-FIRST VISUAL BOARD — charts, KPI tiles, and legible tables. Use stated figures when the transcript supplies them; if the meeting is about **how** to visualise (layout, chart types, dashboard concepts) without concrete numbers, populate with **coherent example / placeholder values** and a small "Example data" cue. Optional modest illustration only if the talk is truly about a physical sample or asset. SoMe, links, or campaigns: clear strip (real URLs/handles only if stated). Do NOT use Grundfos pump hardware templates. Dark SCADA chrome only if the meeting explicitly discusses control-room monitoring.`;
+    }
+    if (domain === "generic") {
+      return `GENERATE: PHYSICAL PRODUCT OR TANGIBLE ARTIFACT — infer the object from the transcript (equipment, spatial design, consumer product, etc.).
+Centre a detailed illustration or exploded diagram with spec callouts. Avoid defaulting to industrial pumps unless the transcript discusses fluids/pumps.`;
+    }
+  }
+
+  return text;
+}
+
 export async function* streamVisualization(
   params: VisualizerParams,
   onChunk: (chunk: string) => void
 ): AsyncGenerator<string> {
-  const { transcript, vizType, vizModel, title, context, previousHtml, freshStart, resolvedFamily, refinementDirective } = params;
+  const {
+    transcript,
+    vizType,
+    vizModel,
+    title,
+    context,
+    previousHtml,
+    freshStart,
+    resolvedFamily,
+    refinementDirective,
+    workspaceDomain,
+  } = params;
+
+  const domain = normalizeWorkspaceDomain(workspaceDomain);
+  const systemPrompt = systemPromptForDomain(domain);
 
   const model = MODEL_IDS[vizModel ?? "haiku"];
-  const isPump = resolvedFamily === "physical_product";
+  const isPump =
+    domain === "grundfos" && resolvedFamily === "physical_product";
   const maxTokens = isPump
     ? MAX_TOKENS_PUMP[vizModel ?? "haiku"]
     : MAX_TOKENS[vizModel ?? "haiku"];
@@ -871,9 +923,12 @@ export async function* streamVisualization(
   if (title) userMessage += `Meeting title: ${title}\n\n`;
   if (context) userMessage += `MEETING CONTEXT:\n${context}\n\n`;
 
-  if (resolvedFamily && FAMILY_INSTRUCTIONS[resolvedFamily]) {
+  const familyDirective = resolvedFamily
+    ? familyInstructionForDomain(resolvedFamily, domain)
+    : undefined;
+  if (resolvedFamily && familyDirective) {
     const source = (vizType && vizType !== "auto") ? "USER-SELECTED TYPE" : "SERVER CLASSIFICATION (high confidence)";
-    userMessage += `⚡ ${source} — follow these instructions exactly:\n${FAMILY_INSTRUCTIONS[resolvedFamily]}\n\n`;
+    userMessage += `⚡ ${source} — follow these instructions exactly:\n${familyDirective}\n\n`;
   } else if (vizType && vizType !== "auto") {
     userMessage += `⚡ USER-SELECTED TYPE: Generate SPECIFICALLY this visualization type — nothing else: ${vizType}\n\n`;
   }
@@ -973,7 +1028,7 @@ ${snippet}${tail}`;
         const stream = client.messages.stream({
           model: tryModel,
           max_tokens: maxTokens,
-          system: SYSTEM_PROMPT,
+          system: systemPrompt,
           messages: [{ role: "user", content: userMessage }],
         });
 
@@ -1017,7 +1072,7 @@ ${snippet}${tail}`;
         model: OPENAI_FALLBACK_MODEL,
         max_completion_tokens: maxTokens,
         messages: [
-          { role: "system", content: SYSTEM_PROMPT },
+          { role: "system", content: systemPrompt },
           { role: "user", content: userMessage },
         ],
         stream: true,
@@ -1048,8 +1103,11 @@ export async function fillTabPanels(
   transcript: string,
   tabs: Array<{ id: string; label: string }>,
   title?: string | null,
-  context?: string | null
+  context?: string | null,
+  workspaceDomain?: string | null
 ): Promise<Record<string, string>> {
+  const domain = normalizeWorkspaceDomain(workspaceDomain);
+  const fillSystem = adaptAuxiliarySystemPrompt(FILL_TAB_PANELS_SYSTEM_BASE, domain);
   const transcriptForModel = truncateTranscript(transcript);
   const tabLines = tabs.map(t => `- id "${t.id}" — label: ${t.label || "section"}`).join("\n");
 
@@ -1064,7 +1122,7 @@ export async function fillTabPanels(
   const response = await client.messages.create({
     model: MODEL_IDS.haiku,
     max_tokens: 3500,
-    system: FILL_TAB_PANELS_SYSTEM,
+    system: fillSystem,
     messages: [{ role: "user", content: userMsg }],
   });
 
@@ -1086,8 +1144,12 @@ export async function* streamActions(
   transcript: string,
   title?: string | null,
   context?: string | null,
-  onChunk?: (chunk: string) => void
+  onChunk?: (chunk: string) => void,
+  workspaceDomain?: string | null
 ): AsyncGenerator<string> {
+  const domain = normalizeWorkspaceDomain(workspaceDomain);
+  const actionsSystem = adaptAuxiliarySystemPrompt(ACTIONS_SYSTEM_BASE, domain);
+
   let userMsg = "";
   if (title) userMsg += `Meeting title: ${title}\n\n`;
   if (context) userMsg += `MEETING CONTEXT:\n${context}\n\n`;
@@ -1096,7 +1158,7 @@ export async function* streamActions(
   const stream = client.messages.stream({
     model: MODEL_IDS.haiku,
     max_tokens: 2000,
-    system: ACTIONS_SYSTEM,
+    system: actionsSystem,
     messages: [{ role: "user", content: userMsg }],
   });
 

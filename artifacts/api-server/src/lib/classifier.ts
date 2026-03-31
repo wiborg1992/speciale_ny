@@ -5,6 +5,8 @@
  * This eliminates ambiguity and dramatically sharpens type selection.
  */
 
+import { normalizeWorkspaceDomain } from "./workspace-domain.js";
+
 export type VizFamily =
   | "hmi_interface"
   | "user_journey"
@@ -1285,6 +1287,69 @@ const TOPIC_SHIFT_OVERRIDES: Array<{ pattern: string; target: VizFamily }> = [
   { pattern: "create a ui kit",                      target: "design_system" },
 ];
 
+/**
+ * Gabriel / møde-dataviz: ekstra hard overrides når mønstret findes i sidste segment
+ * (eller ultra-recent zone) — samme “vinder med 999”-sti som øvrige TOPIC_SHIFT_OVERRIDES.
+ */
+const TOPIC_SHIFT_GABRIEL_OVERRIDES: Array<{ pattern: string; target: VizFamily }> = [
+  { pattern: "excel fil", target: "management_summary" },
+  { pattern: "excelark", target: "management_summary" },
+  { pattern: "excel arket", target: "management_summary" },
+  { pattern: "regnearket", target: "management_summary" },
+  { pattern: "regneark", target: "management_summary" },
+  { pattern: "pivottabel", target: "management_summary" },
+  { pattern: "pivot table", target: "management_summary" },
+  { pattern: "kpi rapport", target: "management_summary" },
+  { pattern: "kpi board", target: "management_summary" },
+  { pattern: "data dashboard", target: "management_summary" },
+  { pattern: "marketing dashboard", target: "management_summary" },
+  { pattern: "vis tallene i et", target: "management_summary" },
+  { pattern: "visualisér data", target: "management_summary" },
+  { pattern: "visualisere data", target: "management_summary" },
+  { pattern: "søjlediagram", target: "management_summary" },
+  { pattern: "linjediagram", target: "management_summary" },
+  { pattern: "cirkeldiagram", target: "management_summary" },
+  { pattern: "power bi", target: "management_summary" },
+  { pattern: "lav en graf", target: "management_summary" },
+  { pattern: "ny graf til", target: "management_summary" },
+  { pattern: "som et diagram", target: "management_summary" },
+  { pattern: "som en graf", target: "management_summary" },
+  { pattern: "sammenlign de to kolonner", target: "comparison_evaluation" },
+  { pattern: "sammenlign kolonner", target: "comparison_evaluation" },
+  { pattern: "helt andet emne", target: "generic" },
+  { pattern: "lad os skifte emne", target: "generic" },
+  { pattern: "start forfra med visualisering", target: "generic" },
+  { pattern: "ny session om", target: "generic" },
+];
+
+/** Ekstra score i seneste zone (3000 tegn) for Gabriel — uden at erstatte hard override. */
+function gabrielRecentDatavizBoost(recentNorm: string): number {
+  let b = 0;
+  const terms: Array<[string, number]> = [
+    ["excel", 44],
+    ["regneark", 40],
+    ["spreadsheet", 40],
+    ["csv", 28],
+    ["pivot", 36],
+    ["kpi", 38],
+    ["dashboard", 42],
+    ["datavisualisering", 46],
+    ["visualisering af data", 44],
+    ["som graf", 24],
+    ["diagram", 26],
+    [" bar chart", 28],
+    ["line chart", 28],
+    ["campaign metrics", 30],
+    ["social media", 26],
+    ["reach og", 22],
+    ["impressions", 24],
+  ];
+  for (const [t, w] of terms) {
+    if (recentNorm.includes(t)) b += w;
+  }
+  return Math.min(b, 130);
+}
+
 function scoreZone(
   normText: string,
   signals: typeof VIZ_FAMILY_SIGNALS,
@@ -1301,7 +1366,16 @@ function scoreZone(
   return scores;
 }
 
-export function classifyVisualizationIntent(transcript: string): ClassificationResult {
+export function classifyVisualizationIntent(
+  transcript: string,
+  workspaceDomain?: string | null
+): ClassificationResult {
+  const domain = normalizeWorkspaceDomain(workspaceDomain);
+  const topicShiftOverrides =
+    domain === "gabriel"
+      ? [...TOPIC_SHIFT_OVERRIDES, ...TOPIC_SHIFT_GABRIEL_OVERRIDES]
+      : TOPIC_SHIFT_OVERRIDES;
+
   const tail = transcript.slice(-VIZ_CLASSIFY_TAIL_CHARS);
 
   // Split tail into three recency zones
@@ -1329,6 +1403,16 @@ export function classifyVisualizationIntent(transcript: string): ClassificationR
     );
   }
 
+  if (domain === "gabriel") {
+    const gb = gabrielRecentDatavizBoost(recentNorm);
+    if (gb > 0) {
+      mergedMap.set(
+        "management_summary",
+        (mergedMap.get("management_summary") ?? 0) + gb
+      );
+    }
+  }
+
   // ─── HARD OVERRIDE: topic-shift phrases in LAST SEGMENT auto-win ───────────
   // The transcript is cumulative: "[Speaker]: old stuff\n[Speaker]: new stuff".
   // We extract the LAST speaker segment (everything after the final [Speaker]:)
@@ -1350,7 +1434,7 @@ export function classifyVisualizationIntent(transcript: string): ClassificationR
   if (segmentPositions.length > 0) {
     const lastSegStart = segmentPositions[segmentPositions.length - 1];
     const lastSegText = normalizeForClassification(tail.slice(lastSegStart));
-    for (const shift of TOPIC_SHIFT_OVERRIDES) {
+    for (const shift of topicShiftOverrides) {
       const pos = lastSegText.lastIndexOf(shift.pattern);
       if (pos !== -1 && pos > hardOverridePos) {
         hardOverridePos = pos;
@@ -1364,7 +1448,7 @@ export function classifyVisualizationIntent(transcript: string): ClassificationR
     const secondLastSegStart = segmentPositions[segmentPositions.length - 2];
     const lastTwoSegsText = normalizeForClassification(tail.slice(secondLastSegStart));
     hardOverridePos = -1;
-    for (const shift of TOPIC_SHIFT_OVERRIDES) {
+    for (const shift of topicShiftOverrides) {
       const pos = lastTwoSegsText.lastIndexOf(shift.pattern);
       if (pos !== -1 && pos > hardOverridePos) {
         hardOverridePos = pos;
@@ -1377,7 +1461,7 @@ export function classifyVisualizationIntent(transcript: string): ClassificationR
   if (!hardOverrideFamily) {
     const ultraRecentNorm = normalizeForClassification(tail.slice(-1000));
     hardOverridePos = -1;
-    for (const shift of TOPIC_SHIFT_OVERRIDES) {
+    for (const shift of topicShiftOverrides) {
       const pos = ultraRecentNorm.lastIndexOf(shift.pattern);
       if (pos !== -1 && pos > hardOverridePos) {
         hardOverridePos = pos;
@@ -1389,7 +1473,7 @@ export function classifyVisualizationIntent(transcript: string): ClassificationR
   // Priority 4: full recent zone (3000 chars)
   if (!hardOverrideFamily) {
     hardOverridePos = -1;
-    for (const shift of TOPIC_SHIFT_OVERRIDES) {
+    for (const shift of topicShiftOverrides) {
       const pos = recentNorm.lastIndexOf(shift.pattern);
       if (pos !== -1 && pos > hardOverridePos) {
         hardOverridePos = pos;
@@ -1398,16 +1482,25 @@ export function classifyVisualizationIntent(transcript: string): ClassificationR
     }
   }
   if (hardOverrideFamily) {
-    const overrideFam = VIZ_FAMILY_SIGNALS.find(f => f.id === hardOverrideFamily)!;
+    const topicLabel =
+      (VIZ_FAMILY_SIGNALS.find((f) => f.id === hardOverrideFamily)?.label ??
+        VIZ_FAMILY_LABEL[hardOverrideFamily]) + " (explicit override)";
     const scored = VIZ_FAMILY_SIGNALS.map((fam) => ({
       id:    fam.id,
       label: fam.label,
       score: fam.id === hardOverrideFamily ? 999 : Math.round((mergedMap.get(fam.id) ?? 0) * 10) / 10,
     }));
+    if (hardOverrideFamily === "generic") {
+      scored.push({
+        id:    "generic",
+        label: VIZ_FAMILY_LABEL.generic,
+        score: 999,
+      });
+    }
     const sorted = [...scored].sort((a, b) => b.score - a.score);
     return {
       family:   hardOverrideFamily,
-      topic:    overrideFam.label + " (explicit override)",
+      topic:    topicLabel,
       scores:   sorted,
       ambiguous: false,
       lead:     999,

@@ -1,364 +1,434 @@
 import { useRef, useCallback, useEffect } from "react";
 
-const EDIT_STYLES = `
-.__viz-edit-hover {
-  outline: 2px dashed rgba(0,200,255,0.4) !important;
-  outline-offset: 2px;
-  cursor: move !important;
-}
-.__viz-edit-selected {
-  outline: 2px solid #00c8ff !important;
-  outline-offset: 2px;
-  box-shadow: 0 0 0 4px rgba(0,200,255,0.18) !important;
-}
-.__viz-edit-dragging {
-  opacity: 0.85;
-  z-index: 99999 !important;
-}
-.__viz-toolbar {
-  position: fixed;
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  padding: 4px 6px;
-  background: #1a1f2e;
-  border: 1px solid rgba(0,200,255,0.35);
-  border-radius: 8px;
-  box-shadow: 0 4px 24px rgba(0,0,0,0.7);
-  z-index: 999999;
-  font-family: system-ui, -apple-system, sans-serif;
-}
-.__viz-toolbar button {
-  width: 28px;
-  height: 28px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: none;
-  background: transparent;
-  color: #94a3b8;
-  border-radius: 5px;
-  cursor: pointer;
-  font-size: 13px;
-  font-weight: 600;
-  transition: background 0.15s, color 0.15s;
-}
-.__viz-toolbar button:hover {
-  background: rgba(0,200,255,0.18);
-  color: #fff;
-}
-.__viz-toolbar .sep {
-  width: 1px;
-  height: 20px;
-  background: rgba(255,255,255,0.1);
-  margin: 0 3px;
-}
-.__viz-toolbar .clr-btn {
-  width: 18px;
-  height: 18px;
-  border-radius: 4px;
-  border: 2px solid rgba(255,255,255,0.15);
-  cursor: pointer;
-  padding: 0;
-  min-width: 18px;
-}
-.__viz-toolbar .clr-btn:hover {
-  border-color: #fff;
-}
-.__viz-edit-active,
-.__viz-edit-active * {
-  user-select: none !important;
-  -webkit-user-select: none !important;
-}
-`;
+/** Samme mønster som specialev-rkt-j/public/index.html: værktøjslinje i parent window + injiceret script i iframen. */
+const TOOLBAR_ID = "__speciale-viz-float-toolbar";
 
-const IGNORED_TAGS: Record<string, boolean> = {
-  HTML: true, BODY: true, HEAD: true, SCRIPT: true, STYLE: true,
-  LINK: true, META: true, TITLE: true, BR: true, HR: true,
+export type SpecialeVizEditBridge = {
+  repositionToolbar: (el: Element) => void;
+  showFloatToolbar: (iframe: HTMLIFrameElement, el: Element) => void;
+  hideFloatToolbar: () => void;
+  notifyChange: () => void;
+  rgbToHex: (rgb: string) => string | null;
 };
 
-const COLORS = [
-  ["#0d1421", "Dark"], ["#1e293b", "Slate"], ["#002A5C", "Navy"],
-  ["#0077C8", "Blue"], ["#00c8ff", "Cyan"], ["#00d084", "Green"],
-  ["#ffb800", "Amber"], ["#ff4757", "Red"], ["#ffffff", "White"],
-];
-
-function isEditTarget(el: Element): boolean {
-  if (!el || !el.tagName || IGNORED_TAGS[el.tagName]) return false;
-  if (el.classList?.contains("__viz-toolbar") || el.closest(".__viz-toolbar")) return false;
-  const r = el.getBoundingClientRect();
-  return r.width >= 20 && r.height >= 10;
-}
-
-function findBestTarget(el: Element | null, body: Element): Element | null {
-  while (el && el !== body) {
-    if (isEditTarget(el)) {
-      const r = el.getBoundingClientRect();
-      if (r.width > 40 && r.height > 20) return el;
-    }
-    el = el.parentElement;
+declare global {
+  interface Window {
+    __SpecialeVizEditBridge?: SpecialeVizEditBridge;
   }
-  return null;
 }
 
-export function useIframeEdit(iframeRef: React.RefObject<HTMLIFrameElement | null>) {
-  const activeRef = useRef(false);
-  const selectedRef = useRef<HTMLElement | null>(null);
-  const hoverRef = useRef<HTMLElement | null>(null);
-  const toolbarRef = useRef<HTMLElement | null>(null);
-  const dragCleanupRef = useRef<(() => void) | null>(null);
-  const handlersRef = useRef<{
-    mouseMove: (e: MouseEvent) => void;
-    mouseDown: (e: MouseEvent) => void;
-    dblClick: (e: MouseEvent) => void;
-    keyDown: (e: KeyboardEvent) => void;
-  } | null>(null);
+function rgbToHex(rgb: string): string | null {
+  if (!rgb || rgb === "transparent") return null;
+  const m = rgb.match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/);
+  if (!m) return null;
+  return (
+    "#" +
+    [m[1], m[2], m[3]].map((x) => parseInt(x, 10).toString(16).padStart(2, "0")).join("")
+  );
+}
 
-  const getDoc = useCallback((): Document | null => {
-    return iframeRef.current?.contentDocument ?? null;
+function buildInjectedEditorScript(): string {
+  return `(function(){
+  if (window.__vizEditorActive) return;
+  window.__vizEditorActive = true;
+
+  var BR = window.parent.__SpecialeVizEditBridge;
+  if (!BR) return;
+
+  var SKIP = new Set(['HTML','HEAD','BODY','SCRIPT','STYLE','LINK','META','TITLE','NOSCRIPT','BR','HR']);
+  function isChrome(el) {
+    if (!el || !el.closest) return true;
+    if (el.closest('[data-viz-filter]')) return true;
+    if (el.closest('[role="tab"][data-viz-tab]')) return true;
+    if (el.closest('[data-viz-toggle]')) return true;
+    if (el.closest('#__viz-editor-badge')) return true;
+    return false;
+  }
+
+  var sel = null;
+  var dragEl = null, dragStartX = 0, dragStartY = 0, mouseDownX = 0, mouseDownY = 0, isDragging = false;
+
+  var __origTransforms = new Map();
+  document.querySelectorAll('*').forEach(function(el) {
+    if (!SKIP.has(el.tagName)) {
+      __origTransforms.set(el, {
+        transform: el.style.transform || '',
+        position: el.style.position || '',
+        zIndex: el.style.zIndex || ''
+      });
+    }
+  });
+
+  window.__vizResetPositions = function() {
+    __origTransforms.forEach(function(orig, el) {
+      if (!document.contains(el)) return;
+      el.style.transform = orig.transform;
+      el.style.position = orig.position;
+      el.style.zIndex = orig.zIndex;
+      el.style.cursor = '';
+    });
+    if (sel) deselect();
+  };
+
+  var badge = document.createElement('div');
+  badge.id = '__viz-editor-badge';
+  badge.style.cssText = 'position:fixed;bottom:8px;left:50%;transform:translateX(-50%);max-width:96vw;background:rgba(37,99,235,.92);color:#fff;font-size:.62rem;padding:6px 14px;border-radius:10px;z-index:2147483646;pointer-events:none;font-family:system-ui;text-align:center;line-height:1.35';
+  badge.textContent = 'Redigering: klik = vælg · dobbeltklik = tekst · træk = flyt · Esc = afvælg · Del = slet — filtre/tabs virker stadig';
+  document.body.appendChild(badge);
+
+  function getTransform(el) {
+    var m = (el.style.transform || '').match(/translate\\((-?[\\d.]+)px,\\s*(-?[\\d.]+)px\\)/);
+    return m ? { x: parseFloat(m[1]), y: parseFloat(m[2]) } : { x: 0, y: 0 };
+  }
+
+  function select(el) {
+    if (sel && sel !== el) deselect();
+    sel = el;
+    el.setAttribute('data-orig-outline', el.style.outline || '');
+    el.style.outline = '2px solid #3b82f6';
+    el.style.outlineOffset = '2px';
+    el.style.cursor = 'grab';
+    BR.showFloatToolbar(window.frameElement, el);
+  }
+
+  function deselect() {
+    if (!sel) return;
+    sel.style.outline = sel.getAttribute('data-orig-outline') || '';
+    sel.style.outlineOffset = '';
+    sel.style.cursor = '';
+    if (sel.contentEditable === 'true') sel.contentEditable = 'false';
+    sel.removeAttribute('contenteditable');
+    sel = null;
+    BR.hideFloatToolbar();
+  }
+
+  function onMouseDown(e) {
+    if (e.button !== 0) return;
+    if (!e.target || isChrome(e.target)) return;
+    var t = e.target;
+    if (t.nodeType === 3) t = t.parentElement;
+    if (!t || SKIP.has(t.tagName)) return;
+    if (t.contentEditable === 'true') return;
+    var existing = getTransform(t);
+    dragEl = t;
+    dragStartX = e.clientX - existing.x;
+    dragStartY = e.clientY - existing.y;
+    mouseDownX = e.clientX;
+    mouseDownY = e.clientY;
+    isDragging = false;
+  }
+
+  function onMouseMove(e) {
+    if (!dragEl) return;
+    if (!isDragging) {
+      if (Math.abs(e.clientX - mouseDownX) + Math.abs(e.clientY - mouseDownY) < 5) return;
+      isDragging = true;
+      dragEl.style.cursor = 'grabbing';
+      document.body.style.userSelect = 'none';
+    }
+    var dx = e.clientX - dragStartX;
+    var dy = e.clientY - dragStartY;
+    dragEl.style.transform = 'translate(' + dx + 'px,' + dy + 'px)';
+    dragEl.style.position = 'relative';
+    dragEl.style.zIndex = '1000';
+    BR.repositionToolbar(dragEl);
+  }
+
+  function onMouseUp() {
+    if (!dragEl) return;
+    if (isDragging) {
+      dragEl.style.cursor = dragEl === sel ? 'grab' : '';
+      document.body.style.userSelect = '';
+      BR.notifyChange();
+    }
+    dragEl = null;
+  }
+
+  function onClick(e) {
+    if (e.button !== 0) return;
+    if (isDragging) { isDragging = false; return; }
+    if (!e.target || isChrome(e.target)) return;
+    var t = e.target;
+    if (t.nodeType === 3) t = t.parentElement;
+    if (!t || SKIP.has(t.tagName)) return;
+    e.stopPropagation();
+    if (sel === t) { deselect(); return; }
+    select(t);
+  }
+
+  function onDblClick(e) {
+    if (!e.target || isChrome(e.target)) return;
+    var t = e.target;
+    if (t.nodeType === 3) t = t.parentElement;
+    if (!t || SKIP.has(t.tagName)) return;
+    e.preventDefault();
+    e.stopPropagation();
+    select(t);
+    t.contentEditable = 'true';
+    t.style.cursor = 'text';
+    t.focus();
+    t.addEventListener('blur', function() {
+      t.contentEditable = 'false';
+      t.style.cursor = 'grab';
+      BR.notifyChange();
+    }, { once: true });
+  }
+
+  function onKeyDown(e) {
+    if (!sel) return;
+    if (sel.contentEditable === 'true') return;
+    if (e.key === 'Delete' || e.key === 'Backspace') {
+      e.preventDefault();
+      sel.remove();
+      sel = null;
+      BR.hideFloatToolbar();
+      BR.notifyChange();
+    }
+    if (e.key === 'Escape') deselect();
+  }
+
+  function onMouseOver(e) {
+    var t = e.target;
+    if (!t || t.nodeType !== 1 || SKIP.has(t.tagName) || t === sel || dragEl || isChrome(t)) return;
+    if (!t.__hoverSaved) t.__hoverSaved = t.style.outline || 'none';
+    t.style.outline = '1px dashed rgba(59,130,246,.45)';
+  }
+
+  function onMouseOut(e) {
+    var t = e.target;
+    if (t && t !== sel && t.__hoverSaved !== undefined) {
+      t.style.outline = t.__hoverSaved === 'none' ? '' : t.__hoverSaved;
+    }
+  }
+
+  document.addEventListener('mousedown', onMouseDown, true);
+  document.addEventListener('mousemove', onMouseMove, true);
+  document.addEventListener('mouseup', onMouseUp, true);
+  document.addEventListener('click', onClick, true);
+  document.addEventListener('dblclick', onDblClick, true);
+  document.addEventListener('keydown', onKeyDown, true);
+  document.addEventListener('mouseover', onMouseOver, true);
+  document.addEventListener('mouseout', onMouseOut, true);
+
+  window.__vizEditorCleanup = function() {
+    document.removeEventListener('mousedown', onMouseDown, true);
+    document.removeEventListener('mousemove', onMouseMove, true);
+    document.removeEventListener('mouseup', onMouseUp, true);
+    document.removeEventListener('click', onClick, true);
+    document.removeEventListener('dblclick', onDblClick, true);
+    document.removeEventListener('keydown', onKeyDown, true);
+    document.removeEventListener('mouseover', onMouseOver, true);
+    document.removeEventListener('mouseout', onMouseOut, true);
+    var b = document.getElementById('__viz-editor-badge');
+    if (b) b.remove();
+    document.querySelectorAll('[data-orig-outline]').forEach(function(el) {
+      el.style.outline = el.getAttribute('data-orig-outline') || '';
+      el.removeAttribute('data-orig-outline');
+    });
+    document.querySelectorAll('[contenteditable]').forEach(function(el) {
+      el.contentEditable = 'false';
+      el.removeAttribute('contenteditable');
+    });
+    window.__vizEditorActive = false;
+    delete window.__vizEditorCleanup;
+    delete window.__vizResetPositions;
+  };
+})();`;
+}
+
+function ensureFloatToolbar(
+  iframeRef: React.RefObject<HTMLIFrameElement | null>,
+  onMutated?: () => void
+): HTMLElement {
+  let t = document.getElementById(TOOLBAR_ID);
+  if (t && window.__SpecialeVizEditBridge) return t;
+  t?.remove();
+
+  t = document.createElement("div");
+  t.id = TOOLBAR_ID;
+  t.style.cssText = [
+    "position:fixed",
+    "display:none",
+    "flex-wrap:wrap",
+    "align-items:center",
+    "gap:4px 8px",
+    "z-index:2147483647",
+    "padding:8px 10px",
+    "background:#1a1f2e",
+    "border:1px solid rgba(59,130,246,.45)",
+    "border-radius:10px",
+    "box-shadow:0 8px 32px rgba(0,0,0,.55)",
+    "font-family:system-ui,sans-serif",
+  ].join(";");
+  t.innerHTML = `
+    <label style="font-size:9px;color:#64748b;font-weight:600">Txt</label>
+    <input type="color" id="__fbt-color" title="Tekstfarve" style="width:28px;height:26px;padding:0;border:1px solid #334155;border-radius:4px;cursor:pointer"/>
+    <label style="font-size:9px;color:#64748b;font-weight:600">Bg</label>
+    <input type="color" id="__fbt-bg" title="Baggrund" style="width:28px;height:26px;padding:0;border:1px solid #334155;border-radius:4px;cursor:pointer"/>
+    <div style="width:1px;height:20px;background:#334155;margin:0 2px"></div>
+    <button type="button" id="__fbt-bold" title="Fed" style="width:28px;height:28px;border:none;background:transparent;color:#94a3b8;border-radius:5px;cursor:pointer"><b>B</b></button>
+    <button type="button" id="__fbt-italic" title="Kursiv" style="width:28px;height:28px;border:none;background:transparent;color:#94a3b8;border-radius:5px;cursor:pointer"><i>I</i></button>
+    <div style="width:1px;height:20px;background:#334155;margin:0 2px"></div>
+    <button type="button" id="__fbt-del" title="Slet" style="width:28px;height:28px;border:none;background:transparent;color:#f87171;border-radius:5px;cursor:pointer;font-weight:700">✕</button>
+  `;
+  document.body.appendChild(t);
+
+  type FloatTarget = { iframe: HTMLIFrameElement; el: HTMLElement };
+  let floatTarget: FloatTarget | null = null;
+
+  const syncFloatTargetStyles = () => {
+    if (!floatTarget) return;
+    const cs = floatTarget.iframe.contentWindow?.getComputedStyle(floatTarget.el);
+    if (!cs) return;
+    const c = rgbToHex(cs.color);
+    const bg = rgbToHex(cs.backgroundColor);
+    const inC = t.querySelector<HTMLInputElement>("#__fbt-color");
+    const inB = t.querySelector<HTMLInputElement>("#__fbt-bg");
+    if (c && inC) inC.value = c;
+    if (bg && inB) inB.value = bg;
+  };
+
+  const repositionToolbar = (el: Element) => {
+    const iframe = iframeRef.current;
+    if (!iframe || !t) return;
+    const iRect = iframe.getBoundingClientRect();
+    const eRect = el.getBoundingClientRect();
+    const top = iRect.top + eRect.top - 52;
+    const left = iRect.left + eRect.left;
+    t.style.top = `${Math.max(8, top)}px`;
+    t.style.left = `${Math.max(8, Math.min(window.innerWidth - 360, left))}px`;
+  };
+
+  const hideFloatToolbar = () => {
+    t!.style.display = "none";
+    if (floatTarget?.el) {
+      floatTarget.el.style.outline = floatTarget.el.getAttribute("data-orig-outline") || "";
+      floatTarget.el.style.outlineOffset = "";
+    }
+    floatTarget = null;
+  };
+
+  const showFloatToolbar = (iframe: HTMLIFrameElement, el: Element) => {
+    floatTarget = { iframe, el: el as HTMLElement };
+    syncFloatTargetStyles();
+    repositionToolbar(el);
+    t!.style.display = "flex";
+  };
+
+  t.querySelector<HTMLInputElement>("#__fbt-color")!.oninput = (e) => {
+    if (floatTarget) {
+      floatTarget.el.style.color = (e.target as HTMLInputElement).value;
+      onMutated?.();
+    }
+  };
+  t.querySelector<HTMLInputElement>("#__fbt-bg")!.oninput = (e) => {
+    if (floatTarget) {
+      floatTarget.el.style.backgroundColor = (e.target as HTMLInputElement).value;
+      onMutated?.();
+    }
+  };
+  (t.querySelector("#__fbt-bold") as HTMLButtonElement).onclick = () => {
+    if (!floatTarget?.iframe.contentWindow) return;
+    const fw = floatTarget.iframe.contentWindow.getComputedStyle(floatTarget.el).fontWeight;
+    floatTarget.el.style.fontWeight =
+      parseInt(fw, 10) >= 700 || fw === "bold" ? "400" : "700";
+    onMutated?.();
+  };
+  (t.querySelector("#__fbt-italic") as HTMLButtonElement).onclick = () => {
+    if (!floatTarget?.iframe.contentWindow) return;
+    const fs = floatTarget.iframe.contentWindow.getComputedStyle(floatTarget.el).fontStyle;
+    floatTarget.el.style.fontStyle = fs === "italic" ? "normal" : "italic";
+    onMutated?.();
+  };
+  (t.querySelector("#__fbt-del") as HTMLButtonElement).onclick = () => {
+    if (floatTarget) {
+      floatTarget.el.remove();
+      hideFloatToolbar();
+      onMutated?.();
+    }
+  };
+
+  docClickCleanup?.();
+  const onDocClick = (e: MouseEvent) => {
+    if (!t || t.style.display === "none") return;
+    if (t.contains(e.target as Node)) return;
+    const iframe = iframeRef.current;
+    if (iframe?.contains(e.target as Node)) return;
+    hideFloatToolbar();
+  };
+  document.addEventListener("click", onDocClick);
+  docClickCleanup = () => document.removeEventListener("click", onDocClick);
+
+  window.__SpecialeVizEditBridge = {
+    repositionToolbar,
+    showFloatToolbar,
+    hideFloatToolbar,
+    notifyChange: () => onMutated?.(),
+    rgbToHex,
+  };
+
+  return t;
+}
+
+let docClickCleanup: (() => void) | null = null;
+
+function removeFloatToolbar(): void {
+  docClickCleanup?.();
+  docClickCleanup = null;
+  document.getElementById(TOOLBAR_ID)?.remove();
+  delete window.__SpecialeVizEditBridge;
+}
+
+export function useIframeEdit(
+  iframeRef: React.RefObject<HTMLIFrameElement | null>,
+  options?: { onDocumentMutated?: () => void }
+) {
+  const onMutated = options?.onDocumentMutated;
+  const injectedRef = useRef(false);
+
+  const runCleanupInFrame = useCallback(() => {
+    const doc = iframeRef.current?.contentDocument;
+    const win = doc?.defaultView as (Window & { __vizEditorCleanup?: () => void }) | undefined;
+    win?.__vizEditorCleanup?.();
   }, [iframeRef]);
 
-  const positionToolbar = useCallback((el: HTMLElement) => {
-    const tb = toolbarRef.current;
-    if (!tb) return;
-    const doc = getDoc();
-    if (!doc) return;
-    const win = doc.defaultView;
-    if (!win) return;
-    const r = el.getBoundingClientRect();
-    const tw = tb.offsetWidth;
-    let left = r.left + (r.width - tw) / 2;
-    if (left < 4) left = 4;
-    if (left + tw > win.innerWidth - 4) left = win.innerWidth - tw - 4;
-    let top = r.top - 44;
-    if (top < 4) top = r.bottom + 8;
-    tb.style.left = `${left}px`;
-    tb.style.top = `${top}px`;
-  }, [getDoc]);
-
-  const deselect = useCallback(() => {
-    if (selectedRef.current) {
-      selectedRef.current.classList.remove("__viz-edit-selected");
-      selectedRef.current = null;
-    }
-    if (toolbarRef.current) toolbarRef.current.style.display = "none";
-  }, []);
-
-  const createToolbar = useCallback((doc: Document) => {
-    if (toolbarRef.current) toolbarRef.current.remove();
-    const t = doc.createElement("div");
-    t.className = "__viz-toolbar";
-
-    COLORS.forEach(([color, name]) => {
-      const b = doc.createElement("button");
-      b.className = "clr-btn";
-      b.style.background = color;
-      b.title = name;
-      b.addEventListener("click", (e) => {
-        e.stopPropagation();
-        if (selectedRef.current) selectedRef.current.style.backgroundColor = color;
-      });
-      t.appendChild(b);
-    });
-
-    const sep1 = doc.createElement("div"); sep1.className = "sep"; t.appendChild(sep1);
-
-    const btnBold = doc.createElement("button");
-    btnBold.innerHTML = "<b>B</b>";
-    btnBold.title = "Bold";
-    btnBold.addEventListener("click", (e) => {
-      e.stopPropagation();
-      if (!selectedRef.current) return;
-      const win = doc.defaultView;
-      if (!win) return;
-      const cur = win.getComputedStyle(selectedRef.current).fontWeight;
-      selectedRef.current.style.fontWeight = (parseInt(cur) >= 700 || cur === "bold") ? "normal" : "bold";
-    });
-    t.appendChild(btnBold);
-
-    const btnItalic = doc.createElement("button");
-    btnItalic.innerHTML = "<i>I</i>";
-    btnItalic.title = "Italic";
-    btnItalic.addEventListener("click", (e) => {
-      e.stopPropagation();
-      if (!selectedRef.current) return;
-      const win = doc.defaultView;
-      if (!win) return;
-      const cur = win.getComputedStyle(selectedRef.current).fontStyle;
-      selectedRef.current.style.fontStyle = cur === "italic" ? "normal" : "italic";
-    });
-    t.appendChild(btnItalic);
-
-    const sep2 = doc.createElement("div"); sep2.className = "sep"; t.appendChild(sep2);
-
-    const btnDel = doc.createElement("button");
-    btnDel.innerHTML = "\u2715";
-    btnDel.title = "Delete element";
-    btnDel.style.color = "#ff4757";
-    btnDel.addEventListener("click", (e) => {
-      e.stopPropagation();
-      if (selectedRef.current) {
-        selectedRef.current.remove();
-        deselect();
-      }
-    });
-    t.appendChild(btnDel);
-
-    doc.body.appendChild(t);
-    toolbarRef.current = t;
-  }, [deselect]);
-
-  const selectElement = useCallback((el: HTMLElement) => {
-    deselect();
-    selectedRef.current = el;
-    el.classList.add("__viz-edit-selected");
-    const doc = getDoc();
-    if (doc && !toolbarRef.current) createToolbar(doc);
-    if (toolbarRef.current) {
-      toolbarRef.current.style.display = "flex";
-      positionToolbar(el);
-    }
-  }, [deselect, getDoc, createToolbar, positionToolbar]);
+  const disable = useCallback(() => {
+    runCleanupInFrame();
+    window.__SpecialeVizEditBridge?.hideFloatToolbar();
+    removeFloatToolbar();
+    injectedRef.current = false;
+  }, [runCleanupInFrame]);
 
   const enable = useCallback(() => {
-    if (activeRef.current) return;
-    const doc = getDoc();
-    if (!doc || !doc.body) return;
-    activeRef.current = true;
+    if (injectedRef.current) return;
+    let attempts = 0;
+    const tryInject = () => {
+      const iframe = iframeRef.current;
+      const doc = iframe?.contentDocument;
+      if (!iframe || !doc?.body) {
+        if (attempts++ < 90) requestAnimationFrame(tryInject);
+        return;
+      }
+      runCleanupInFrame();
+      ensureFloatToolbar(iframeRef, onMutated);
 
-    let styleEl = doc.getElementById("__viz-edit-styles");
-    if (!styleEl) {
-      styleEl = doc.createElement("style");
-      styleEl.id = "__viz-edit-styles";
-      styleEl.textContent = EDIT_STYLES;
-      doc.head.appendChild(styleEl);
-    }
-    doc.body.classList.add("__viz-edit-active");
+      const old = doc.getElementById("__speciale-viz-editor-script");
+      old?.remove();
 
-    const handlers = {
-      mouseMove: (e: MouseEvent) => {
-        if (dragCleanupRef.current) return;
-        const target = findBestTarget(e.target as Element, doc.body);
-        if (target === hoverRef.current) return;
-        if (hoverRef.current) hoverRef.current.classList.remove("__viz-edit-hover");
-        hoverRef.current = target as HTMLElement | null;
-        if (hoverRef.current && hoverRef.current !== selectedRef.current) {
-          hoverRef.current.classList.add("__viz-edit-hover");
-        }
-      },
-
-      mouseDown: (e: MouseEvent) => {
-        const el = e.target as Element | null;
-        if (el && el.nodeType === 1 && el.closest?.(".__viz-toolbar")) return;
-
-        const target = findBestTarget(el, doc.body) as HTMLElement | null;
-        if (!target) { deselect(); return; }
-
-        e.preventDefault();
-        e.stopPropagation();
-        selectElement(target);
-
-        if (!target.style.position || target.style.position === "static") {
-          target.style.position = "relative";
-        }
-
-        const startX = e.clientX;
-        const startY = e.clientY;
-        const origLeft = parseInt(target.style.left) || 0;
-        const origTop = parseInt(target.style.top) || 0;
-        let moved = false;
-
-        target.classList.add("__viz-edit-dragging");
-
-        const onDragMove = (ev: MouseEvent) => {
-          const dx = ev.clientX - startX;
-          const dy = ev.clientY - startY;
-          if (Math.abs(dx) > 2 || Math.abs(dy) > 2) moved = true;
-          target.style.left = `${origLeft + dx}px`;
-          target.style.top = `${origTop + dy}px`;
-          positionToolbar(target);
-        };
-
-        const onDragEnd = () => {
-          doc.removeEventListener("mousemove", onDragMove, true);
-          doc.removeEventListener("mouseup", onDragEnd, true);
-          target.classList.remove("__viz-edit-dragging");
-          dragCleanupRef.current = null;
-          if (moved) positionToolbar(target);
-        };
-
-        dragCleanupRef.current = () => {
-          doc.removeEventListener("mousemove", onDragMove, true);
-          doc.removeEventListener("mouseup", onDragEnd, true);
-          target.classList.remove("__viz-edit-dragging");
-          dragCleanupRef.current = null;
-        };
-
-        doc.addEventListener("mousemove", onDragMove, true);
-        doc.addEventListener("mouseup", onDragEnd, true);
-      },
-
-      dblClick: (e: MouseEvent) => {
-        const target = findBestTarget(e.target as Element, doc.body) as HTMLElement | null;
-        if (!target) return;
-        e.preventDefault();
-        e.stopPropagation();
-        target.contentEditable = "true";
-        target.focus();
-        const onBlur = () => {
-          target.contentEditable = "false";
-          target.removeEventListener("blur", onBlur);
-        };
-        target.addEventListener("blur", onBlur);
-      },
-
-      keyDown: (e: KeyboardEvent) => {
-        if (!selectedRef.current) return;
-        if ((selectedRef.current as HTMLElement).isContentEditable) return;
-        if (e.key === "Delete" || e.key === "Backspace") {
-          e.preventDefault();
-          selectedRef.current.remove();
-          deselect();
-        }
-      },
+      const script = doc.createElement("script");
+      script.id = "__speciale-viz-editor-script";
+      script.textContent = buildInjectedEditorScript();
+      doc.body.appendChild(script);
+      injectedRef.current = true;
     };
-
-    handlersRef.current = handlers;
-    doc.addEventListener("mousemove", handlers.mouseMove, true);
-    doc.addEventListener("mousedown", handlers.mouseDown, true);
-    doc.addEventListener("dblclick", handlers.dblClick, true);
-    doc.addEventListener("keydown", handlers.keyDown, true);
-  }, [getDoc, deselect, selectElement, positionToolbar]);
-
-  const disable = useCallback(() => {
-    if (!activeRef.current) return;
-    activeRef.current = false;
-    if (dragCleanupRef.current) dragCleanupRef.current();
-    deselect();
-    if (hoverRef.current) {
-      hoverRef.current.classList.remove("__viz-edit-hover");
-      hoverRef.current = null;
-    }
-    if (toolbarRef.current) {
-      toolbarRef.current.remove();
-      toolbarRef.current = null;
-    }
-    const doc = getDoc();
-    if (doc && handlersRef.current) {
-      doc.body?.classList.remove("__viz-edit-active");
-      doc.removeEventListener("mousemove", handlersRef.current.mouseMove, true);
-      doc.removeEventListener("mousedown", handlersRef.current.mouseDown, true);
-      doc.removeEventListener("dblclick", handlersRef.current.dblClick, true);
-      doc.removeEventListener("keydown", handlersRef.current.keyDown, true);
-      handlersRef.current = null;
-      const styleEl = doc.getElementById("__viz-edit-styles");
-      if (styleEl) styleEl.remove();
-    }
-  }, [getDoc, deselect]);
+    tryInject();
+  }, [iframeRef, onMutated, runCleanupInFrame]);
 
   useEffect(() => {
-    return () => { disable(); };
+    return () => {
+      disable();
+    };
   }, [disable]);
 
-  return { enable, disable, isActive: () => activeRef.current };
+  return { enable, disable, isActive: () => injectedRef.current };
 }

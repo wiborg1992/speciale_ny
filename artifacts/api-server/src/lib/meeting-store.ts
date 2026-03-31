@@ -7,6 +7,8 @@ import {
 import { eq, desc, sql } from "drizzle-orm";
 
 export async function getOrCreateMeeting(roomId: string, title?: string) {
+  if (!db) return undefined;
+
   const [meeting] = await db
     .insert(meetingsTable)
     .values({
@@ -40,6 +42,7 @@ export async function saveSegment(
 ) {
   try {
     const meeting = await getOrCreateMeeting(roomId);
+    if (!meeting || !db) return;
 
     await db.insert(segmentsTable).values({
       meetingId: meeting.id,
@@ -80,6 +83,7 @@ export async function saveVisualization(
 ) {
   try {
     const meeting = await getOrCreateMeeting(roomId);
+    if (!meeting || !db) return;
 
     const existingViz = await db
       .select()
@@ -108,6 +112,7 @@ export async function saveVisualization(
 }
 
 export async function updateMeetingTitle(roomId: string, title: string) {
+  if (!db) return;
   try {
     await db
       .update(meetingsTable)
@@ -119,6 +124,7 @@ export async function updateMeetingTitle(roomId: string, title: string) {
 }
 
 export async function listMeetings(limit = 50) {
+  if (!db) return [];
   return db
     .select()
     .from(meetingsTable)
@@ -127,6 +133,8 @@ export async function listMeetings(limit = 50) {
 }
 
 export async function getMeetingByRoom(roomId: string) {
+  if (!db) return null;
+
   const meetings = await db
     .select()
     .from(meetingsTable)
@@ -154,6 +162,7 @@ export async function getMeetingByRoom(roomId: string) {
 }
 
 export async function deleteMeeting(roomId: string) {
+  if (!db) return false;
   const result = await db
     .delete(meetingsTable)
     .where(eq(meetingsTable.roomId, roomId))

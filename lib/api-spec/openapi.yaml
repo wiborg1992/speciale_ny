@@ -161,6 +161,11 @@ components:
         speakerName:
           type: ["string", "null"]
           description: Name of the participant triggering visualization
+        workspaceDomain:
+          type: ["string", "null"]
+          description: >
+            Workspace corpus — grundfos (industrial pumps default), gabriel (furniture/textiles),
+            or generic/neutral/other. Omitted or null defaults to grundfos on the server.
       required:
         - transcript
 

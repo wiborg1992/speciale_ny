@@ -1,0 +1,111 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+
+  "permissions": {
+    "allow": [
+      "Bash(pnpm install *)",
+      "Bash(pnpm run *)",
+      "Bash(pnpm exec *)",
+      "Bash(pnpm --filter * run *)",
+      "Bash(pnpm -r *)",
+      "Bash(npm run *)",
+      "Bash(npm test *)",
+      "Bash(node *)",
+      "Bash(git status)",
+      "Bash(git diff *)",
+      "Bash(git log *)",
+      "Bash(git branch *)",
+      "Bash(git stash *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git fetch *)",
+      "Bash(git checkout *)",
+      "Bash(git switch *)",
+      "Bash(gh pr *)",
+      "Bash(gh issue *)",
+      "Bash(gh run *)"
+    ],
+    "deny": [
+      "Read(**/.env)",
+      "Read(**/.env.*)",
+      "Read(**/secrets/**)",
+      "Read(**/*.pem)",
+      "Read(**/*.key)",
+      "Write(**/.env)",
+      "Write(**/.env.*)",
+      "Write(**/secrets/**)",
+      "Write(**/*.pem)",
+      "Write(**/*.key)",
+      "Edit(**/.env)",
+      "Edit(**/.env.*)",
+      "Edit(**/secrets/**)",
+      "Edit(**/*.pem)",
+      "Edit(**/*.key)"
+    ]
+  },
+
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/protect-files.sh\"",
+            "timeout": 5000,
+            "statusMessage": "Filbeskyttelse (secrets/genererede filer)..."
+          },
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/warn-large-files.sh\"",
+            "timeout": 5000,
+            "statusMessage": "Tjekker build/artifacts..."
+          },
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/scan-secrets.sh\"",
+            "timeout": 5000,
+            "statusMessage": "Secret-scan..."
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/block-dangerous-commands.sh\"",
+            "timeout": 5000,
+            "statusMessage": "Kommandosikkerhed..."
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/format-on-save.sh\"",
+            "timeout": 60000,
+            "statusMessage": "Formatter (Prettier/Biome hvis konfigureret)..."
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/session-start.sh\"",
+            "timeout": 5000,
+            "statusMessage": "Projektkontekst (git)..."
+          }
+        ]
+      }
+    ]
+  }
+}

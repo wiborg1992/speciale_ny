@@ -1,0 +1,23 @@
+# Lokal PostgreSQL til Meeting Visualizer / api-server
+# Start: docker compose up -d
+# Stop:  docker compose down
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: speciale-postgres
+    environment:
+      POSTGRES_USER: speciale
+      POSTGRES_PASSWORD: speciale
+      POSTGRES_DB: speciale
+    ports:
+      - "5432:5432"
+    volumes:
+      - speciale_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U speciale -d speciale"]
+      interval: 3s
+      timeout: 5s
+      retries: 15
+
+volumes:
+  speciale_pg_data:

@@ -6,44 +6,68 @@ import { useIframeEdit } from "@/hooks/use-iframe-edit";
 
 const BASE = import.meta.env.BASE_URL;
 
+/** Delegation på document.body + markør på documentElement (ikke window) — så scriptet virker igen efter doc.write() og på lazy-indhold. */
 const VIZ_INTERACT_SCRIPT = `
 (function() {
-  if (window.__vizInteractInit) return;
-  window.__vizInteractInit = true;
+  var root = document.documentElement;
+  if (root && root.getAttribute('data-viz-interact-bound') === '1') return;
+  if (root) root.setAttribute('data-viz-interact-bound', '1');
 
-  document.querySelectorAll('[data-viz-host-tabs]').forEach(function(host) {
-    var tabs  = host.querySelectorAll('[role="tab"][data-viz-tab]');
+  function activateTab(host, idx) {
+    var tabs = host.querySelectorAll('[role="tab"][data-viz-tab]');
     var panels = host.querySelectorAll('[data-viz-tab-panel]');
+    tabs.forEach(function(t) {
+      var active = String(t.getAttribute('data-viz-tab')) === String(idx);
+      t.setAttribute('aria-selected', active ? 'true' : 'false');
+      t.classList.toggle('viz-tab-active', active);
+    });
+    panels.forEach(function(p) {
+      var show = String(p.getAttribute('data-viz-tab-panel')) === String(idx);
+      p.style.display = show ? '' : 'none';
+      if (show) p.removeAttribute('hidden');
+      else p.setAttribute('hidden', '');
+    });
+  }
 
-    function activate(idx) {
-      tabs.forEach(function(t) {
-        var active = String(t.getAttribute('data-viz-tab')) === String(idx);
-        t.setAttribute('aria-selected', active ? 'true' : 'false');
-        t.classList.toggle('viz-tab-active', active);
+  document.body.addEventListener('click', function(e) {
+    var t = e.target;
+    if (!t || !t.closest) return;
+
+    var filterBtn = t.closest('[data-viz-filter]');
+    if (filterBtn) {
+      var host = filterBtn.closest('[data-viz-filter-host]');
+      if (!host) return;
+      e.preventDefault();
+      var val = filterBtn.getAttribute('data-viz-filter') || 'all';
+      host.querySelectorAll('[data-viz-filter]').forEach(function(b) {
+        b.setAttribute('aria-pressed', b === filterBtn ? 'true' : 'false');
       });
-      panels.forEach(function(p) {
-        var show = String(p.getAttribute('data-viz-tab-panel')) === String(idx);
-        p.style.display = show ? '' : 'none';
-        if (show) p.removeAttribute('hidden');
-        else p.setAttribute('hidden', '');
+      host.querySelectorAll('[data-viz-row-cat]').forEach(function(row) {
+        var c = row.getAttribute('data-viz-row-cat') || '';
+        row.style.display = (val === 'all' || c === val) ? '' : 'none';
       });
+      return;
     }
 
-    tabs.forEach(function(tab) {
-      tab.addEventListener('click', function() {
-        activate(tab.getAttribute('data-viz-tab'));
-      });
-    });
-  });
+    var tab = t.closest('[role="tab"][data-viz-tab]');
+    if (tab) {
+      var tabHost = tab.closest('[data-viz-host-tabs]');
+      if (!tabHost) return;
+      e.preventDefault();
+      activateTab(tabHost, tab.getAttribute('data-viz-tab'));
+      return;
+    }
 
-  document.querySelectorAll('[data-viz-toggle]').forEach(function(btn) {
-    btn.addEventListener('click', function() {
-      var sel = btn.getAttribute('data-viz-toggle');
-      document.querySelectorAll(sel).forEach(function(el) {
-        el.classList.toggle('viz-open');
-      });
-    });
-  });
+    var toggleBtn = t.closest('[data-viz-toggle]');
+    if (toggleBtn) {
+      var sel = toggleBtn.getAttribute('data-viz-toggle');
+      if (sel) {
+        document.querySelectorAll(sel).forEach(function(el) {
+          el.classList.toggle('viz-open');
+        });
+      }
+    }
+  }, true);
 })();
 `;
 
@@ -300,6 +324,8 @@ interface IframeRendererProps {
   roomId?: string | null;
   title?: string | null;
   context?: string | null;
+  /** grundfos | gabriel | generic — passed to lazy tab fill API */
+  workspaceDomain?: string | null;
 }
 
 export function IframeRenderer({
@@ -309,6 +335,7 @@ export function IframeRenderer({
   roomId,
   title,
   context,
+  workspaceDomain,
 }: IframeRendererProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -399,7 +426,7 @@ ${t}
       const res = await fetch(`${BASE}api/viz/fill-tab-panels`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ transcript, roomId, title, context, tabs }),
+        body: JSON.stringify({ transcript, roomId, title, context, tabs, workspaceDomain }),
       });
       if (!res.ok) return;
       const data = await res.json();
@@ -417,7 +444,7 @@ ${t}
     } finally {
       fillPendingRef.current = false;
     }
-  }, [roomId, title, context]);
+  }, [roomId, title, context, workspaceDomain]);
 
   useEffect(() => {
     if (!html || !renderable || !iframeRef.current) return;
@@ -521,7 +548,7 @@ ${t}
       {isEditMode && !isEmpty && !showSkeleton && (
         <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-20 px-3 py-1.5 rounded-full bg-primary/20 border border-primary/30 backdrop-blur-sm">
           <span className="text-[10px] font-mono text-primary tracking-wider uppercase">
-            ✎ Edit · click to select · double-click for text · drag to move · Del/Backspace to delete
+            ✎ Edit · klik = præcis det element du rammer · dobbeltklik = tekst · træk = flyt · vælg farve i værktøjslinjen · Del = slet
           </span>
         </div>
       )}
@@ -557,8 +584,8 @@ ${t}
             showSkeleton ? "absolute opacity-0 pointer-events-none h-0" : "flex-1",
             isEditMode ? "border-primary/40 ring-1 ring-primary/20" : "border-border"
           )}
-          sandbox="allow-scripts allow-same-origin"
           title="AI Visualization"
+          style={{ pointerEvents: "auto" }}
         />
       )}
     </div>

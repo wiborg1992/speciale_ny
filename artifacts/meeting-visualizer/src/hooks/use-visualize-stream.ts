@@ -25,7 +25,21 @@ export function useVisualizeStream() {
       });
 
       if (!response.ok) {
-        throw new Error(`Server responded with ${response.status}`);
+        let detail = "";
+        try {
+          const raw = await response.text();
+          const parsed = raw
+            ? (JSON.parse(raw) as { error?: string; hint?: string })
+            : null;
+          if (parsed?.error) {
+            detail = `: ${parsed.error}`;
+            if (parsed.hint) detail += ` — ${parsed.hint}`;
+          }
+          else if (raw) detail = `: ${raw.slice(0, 280)}`;
+        } catch {
+          /* ignore */
+        }
+        throw new Error(`Server responded with ${response.status}${detail}`);
       }
 
       if (!response.body) throw new Error("No response body");

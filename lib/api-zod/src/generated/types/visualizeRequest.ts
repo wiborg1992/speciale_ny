@@ -25,27 +25,9 @@ export interface VisualizeRequest {
    */
   speakerName?: string | null;
   /**
-   * Visualization type override (auto = let AI decide)
+   * Workspace corpus — grundfos (industrial pumps default), gabriel (furniture/textiles), or generic/neutral/other. Omitted or null defaults to grundfos on the server.
+
    * @nullable
    */
-  vizType?: string | null;
-  /**
-   * Claude model: haiku | sonnet | opus
-   * @nullable
-   */
-  vizModel?: string | null;
-  /**
-   * Meeting title for context
-   * @nullable
-   */
-  title?: string | null;
-  /**
-   * Meeting context (purpose, projects, participants)
-   * @nullable
-   */
-  context?: string | null;
-  /**
-   * If true, generate a fresh visualization rather than updating the previous one
-   */
-  freshStart?: boolean;
+  workspaceDomain?: string | null;
 }

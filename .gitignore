@@ -27,6 +27,11 @@ node_modules
 !.vscode/launch.json
 !.vscode/extensions.json
 
+# Secrets / lokalt miljø (brug .env.example som skabelon)
+.env
+.env.local
+.env.*.local
+
 # misc
 /.sass-cache
 /connect.lock
@@ -47,3 +52,9 @@ Thumbs.db
 # Replit
 .cache/
 .local/
+
+# Store-kopier af tredjeparts Claude-repos (hent igen med .claude/fetch-external.ps1)
+.claude/external/
+
+# Lokale Claude Code-tilladelser (maskinspecifikke)
+.claude/settings.local.json

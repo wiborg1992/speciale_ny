@@ -35,26 +35,12 @@ export const VisualizeBody = zod.object({
     .string()
     .nullish()
     .describe("Name of the participant triggering visualization"),
-  vizType: zod
+  workspaceDomain: zod
     .string()
     .nullish()
-    .describe("Visualization type override"),
-  vizModel: zod
-    .string()
-    .nullish()
-    .describe("Claude model: haiku | sonnet | opus"),
-  title: zod
-    .string()
-    .nullish()
-    .describe("Meeting title"),
-  context: zod
-    .string()
-    .nullish()
-    .describe("Meeting context"),
-  freshStart: zod
-    .boolean()
-    .optional()
-    .describe("Generate fresh visualization instead of incremental"),
+    .describe(
+      "Workspace corpus — grundfos (industrial pumps default), gabriel (furniture\/textiles), or generic\/neutral\/other. Omitted or null defaults to grundfos on the server.\n",
+    ),
 });
 
 /**

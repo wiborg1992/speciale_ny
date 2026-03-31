@@ -14,7 +14,15 @@ router.get("/meetings", async (_req, res): Promise<void> => {
     res.json({ meetings });
   } catch (err) {
     console.error("Failed to list meetings:", err);
-    res.status(500).json({ error: "Failed to load meetings" });
+    const msg = err instanceof Error ? err.message : String(err);
+    // 200 så forsidens React Query ikke bryder sammen; klient kan vise tom liste + advarsel.
+    res.status(200).json({
+      meetings: [],
+      dbUnavailable: true,
+      dbMessage: msg,
+      dbHint:
+        "Tjek at PostgreSQL kører, DATABASE_URL i .env er korrekt, og kør: pnpm --filter @workspace/db push",
+    });
   }
 });
 

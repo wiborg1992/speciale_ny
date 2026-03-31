@@ -14,7 +14,7 @@ import {
   type VizFamily,
 } from "../lib/classifier.js";
 import { getRoom, broadcastEvent } from "../lib/rooms.js";
-import { saveVisualization, getOrCreateMeeting, updateMeetingTitle } from "../lib/meeting-store.js";
+import { saveVisualization, updateMeetingTitle } from "../lib/meeting-store.js";
 import { detectRefinementIntent } from "../lib/refinement-detector.js";
 
 const router: IRouter = Router();
@@ -53,9 +53,12 @@ const VisualizeBodySchema = z.object({
   title:        z.string().optional().nullable(),
   context:      z.string().optional().nullable(),
   freshStart:   z.boolean().optional(),
+  /** grundfos | gabriel | generic (aliases: neutral, other → generic) */
+  workspaceDomain: z.string().optional().nullable(),
 });
 
-router.post("/visualize", async (req, res): Promise<void> => {
+router.post("/visualize", async (req, res, next): Promise<void> => {
+  try {
   const ip = req.ip ?? "unknown";
 
   if (!checkRateLimit(ip)) {
@@ -69,7 +72,8 @@ router.post("/visualize", async (req, res): Promise<void> => {
     return;
   }
 
-  const { transcript, previousHtml, roomId, vizType, vizModel, title, context, freshStart } = parsed.data;
+  const { transcript, previousHtml, roomId, vizType, vizModel, title, context, freshStart, workspaceDomain } =
+    parsed.data;
 
   if (transcript.length > MAX_BODY_CHARS) {
     res.status(400).json({ error: "Transcript too long." });
@@ -81,9 +85,10 @@ router.post("/visualize", async (req, res): Promise<void> => {
     return;
   }
 
-  // Merge room transcript if available
+  // Brug klients transskript når det er udfyldt (fx Paste). Traf kun room-segmenter ind når body er tom,
+  // så indsat tekst ikke overskrives af gamle/mic-segmenter i samme rum.
   let effectiveTranscript = transcript;
-  if (roomId) {
+  if (!transcript.trim() && roomId) {
     const room = getRoom(roomId);
     if (room && room.segments.length > 0) {
       effectiveTranscript = room.segments.map((s) => `[${s.speakerName}]: ${s.text}`).join("\n");
@@ -122,7 +127,7 @@ router.post("/visualize", async (req, res): Promise<void> => {
   const userPickedType = vizType && vizType !== "auto";
   const classification = userPickedType
     ? null
-    : classifyVisualizationIntent(normalized);
+    : classifyVisualizationIntent(normalized, workspaceDomain);
 
   // Resolve the effective family to inject into the prompt
   let resolvedFamily: VizFamily | null = null;
@@ -216,6 +221,7 @@ router.post("/visualize", async (req, res): Promise<void> => {
         roomId,
         resolvedFamily,
         refinementDirective,
+        workspaceDomain,
       },
       (c) => {
         res.write(`data: ${JSON.stringify({ type: "chunk", text: c })}\n\n`);
@@ -231,6 +237,7 @@ router.post("/visualize", async (req, res): Promise<void> => {
       incremental:     !freshStart && !!effectivePreviousHtml,
       classifiedFamily: resolvedFamily ?? classification?.family ?? null,
       refinement:      refinementDirective ? true : false,
+      workspaceDomain: workspaceDomain ?? null,
     };
 
     const cleanHtml = stripCodeFences(fullHtml);
@@ -268,6 +275,17 @@ router.post("/visualize", async (req, res): Promise<void> => {
   }
 
   res.end();
+  } catch (err) {
+    if (res.headersSent) {
+      try {
+        res.end();
+      } catch {
+        /* ignore */
+      }
+      return;
+    }
+    next(err);
+  }
 });
 
 // POST /api/viz/fill-tab-panels
@@ -277,6 +295,7 @@ const FillTabsSchema = z.object({
   title:      z.string().optional().nullable(),
   context:    z.string().optional().nullable(),
   tabs:       z.array(z.object({ id: z.string(), label: z.string() })),
+  workspaceDomain: z.string().optional().nullable(),
 });
 
 router.post("/viz/fill-tab-panels", async (req, res): Promise<void> => {
@@ -286,9 +305,9 @@ router.post("/viz/fill-tab-panels", async (req, res): Promise<void> => {
     return;
   }
 
-  let { transcript, roomId, title, context, tabs } = parsed.data;
+  let { transcript, roomId, title, context, tabs, workspaceDomain } = parsed.data;
 
-  if (roomId) {
+  if (!transcript.trim() && roomId) {
     const room = getRoom(roomId);
     if (room && room.segments.length > 0) {
       transcript = room.segments.map((s) => `[${s.speakerName}]: ${s.text}`).join("\n");
@@ -301,7 +320,7 @@ router.post("/viz/fill-tab-panels", async (req, res): Promise<void> => {
   }
 
   try {
-    const panels = await fillTabPanels(transcript, tabs, title, context);
+    const panels = await fillTabPanels(transcript, tabs, title, context, workspaceDomain);
     res.json({ panels });
   } catch (err) {
     req.log.error({ err }, "fill-tab-panels failed");
@@ -315,6 +334,7 @@ const ActionsSchema = z.object({
   roomId:     z.string().optional().nullable(),
   title:      z.string().optional().nullable(),
   context:    z.string().optional().nullable(),
+  workspaceDomain: z.string().optional().nullable(),
 });
 
 router.post("/actions", async (req, res): Promise<void> => {
@@ -324,9 +344,9 @@ router.post("/actions", async (req, res): Promise<void> => {
     return;
   }
 
-  let { transcript, roomId, title, context } = parsed.data;
+  let { transcript, roomId, title, context, workspaceDomain } = parsed.data;
 
-  if (roomId) {
+  if (!transcript.trim() && roomId) {
     const room = getRoom(roomId);
     if (room && room.segments.length > 0) {
       transcript = room.segments.map((s) => `[${s.speakerName}]: ${s.text}`).join("\n");
@@ -349,7 +369,8 @@ router.post("/actions", async (req, res): Promise<void> => {
       transcript,
       title,
       context,
-      (c) => res.write(`data: ${JSON.stringify({ type: "chunk", text: c })}\n\n`)
+      (c) => res.write(`data: ${JSON.stringify({ type: "chunk", text: c })}\n\n`),
+      workspaceDomain
     )) {
       // chunks written in callback above
     }

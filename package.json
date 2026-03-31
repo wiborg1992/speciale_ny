@@ -3,10 +3,16 @@
   "version": "0.0.0",
   "license": "MIT",
   "scripts": {
-    "preinstall": "sh -c 'rm -f package-lock.json yarn.lock; case \"$npm_config_user_agent\" in pnpm/*) ;; *) echo \"Use pnpm instead\" >&2; exit 1 ;; esac'",
+    "preinstall": "node -e \"const ua=process.env.npm_config_user_agent||'';if(!ua.includes('pnpm')){console.error('Use pnpm instead');process.exit(1)}\"",
     "build": "pnpm run typecheck && pnpm -r --if-present run build",
     "typecheck:libs": "tsc --build",
-    "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck"
+    "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck",
+    "db:up": "docker compose up -d",
+    "db:down": "docker compose down",
+    "db:ensure-env": "node ./scripts/ensure-database-url.mjs",
+    "db:wait": "node ./scripts/wait-postgres.mjs",
+    "db:push": "pnpm --filter @workspace/db push",
+    "db:setup": "pnpm run db:up && pnpm run db:wait && pnpm run db:ensure-env && pnpm run db:push"
   },
   "private": true,
   "devDependencies": {
