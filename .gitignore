@@ -27,7 +27,8 @@ node_modules
 !.vscode/launch.json
 !.vscode/extensions.json
 
-# Secrets / lokalt miljø (brug .env.example som skabelon)
+# Secrets / lokalt miljø — GitHub push protection blokerer rigtige nøgler i .env
+# Brug .env.example som skabelon; hold .env kun lokalt.
 .env
 .env.local
 .env.*.local
