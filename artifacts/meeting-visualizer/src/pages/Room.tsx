@@ -6,6 +6,7 @@ import {
   RefreshCcw, AlertTriangle,
   ChevronDown, ChevronUp, ClipboardList, Wand2,
   Download, Maximize2, RotateCcw, History, FileText,
+  Upload, X,
 } from "lucide-react";
 import { format } from "date-fns";
 import { v4 as uuidv4 } from "uuid";
@@ -149,6 +150,8 @@ export default function Room() {
   const [ctxProjects, setCtxProjects] = useState("");
   const [ctxAttend, setCtxAttend] = useState("");
   const [ctxExtra, setCtxExtra] = useState("");
+  const [uploadedFiles, setUploadedFiles] = useState<{ name: string; content: string }[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Version history
   const [vizHistory, setVizHistory] = useState<VizVersion[]>([]);
@@ -228,16 +231,41 @@ export default function Room() {
     });
   }, []);
 
+  const handleFileUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    files.forEach(file => {
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const content = ev.target?.result as string;
+        setUploadedFiles(prev => {
+          if (prev.some(f => f.name === file.name)) return prev;
+          return [...prev, { name: file.name, content }];
+        });
+      };
+      reader.readAsText(file);
+    });
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }, []);
+
+  const removeUploadedFile = useCallback((name: string) => {
+    setUploadedFiles(prev => prev.filter(f => f.name !== name));
+  }, []);
+
   const getMeetingContext = useCallback(() => {
     const parts: string[] = [];
     if (ctxPurpose)  parts.push("Purpose: " + ctxPurpose);
     if (ctxProjects) parts.push("Projects/systems: " + ctxProjects);
     if (ctxAttend)   parts.push("Participants: " + ctxAttend);
     if (ctxExtra)    parts.push("Context: " + ctxExtra);
+    if (uploadedFiles.length > 0) {
+      uploadedFiles.forEach(f => {
+        parts.push(`\n--- FILE: ${f.name} ---\n${f.content}\n--- END FILE ---`);
+      });
+    }
     return parts.join("\n") || null;
-  }, [ctxPurpose, ctxProjects, ctxAttend, ctxExtra]);
+  }, [ctxPurpose, ctxProjects, ctxAttend, ctxExtra, uploadedFiles]);
 
-  const hasContext = ctxPurpose || ctxProjects || ctxAttend || ctxExtra;
+  const hasContext = ctxPurpose || ctxProjects || ctxAttend || ctxExtra || uploadedFiles.length > 0;
 
   // ── Version history ─────────────────────────────────────────────────────────
   const addVizVersion = useCallback((html: string) => {
@@ -872,6 +900,16 @@ export default function Room() {
             </label>
           </div>
 
+          {/* Hidden file input */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            accept=".md,.txt,.yaml,.yml,.json,.csv,.ts,.js,.py,.xml,.toml,.ini,.conf,.log"
+            className="hidden"
+            onChange={handleFileUpload}
+          />
+
           {/* Meeting context fields (collapsible) */}
           <AnimatePresence>
             {showContext && (
@@ -881,24 +919,55 @@ export default function Room() {
                 exit={{ height: 0, opacity: 0 }}
                 className="shrink-0 overflow-hidden"
               >
-                <div className="px-4 py-3 border-b border-border bg-card/40 grid grid-cols-2 gap-2">
-                  {[
-                    { label: "Purpose", val: ctxPurpose, set: setCtxPurpose, placeholder: "e.g. Design review for pump X" },
-                    { label: "Projects / systems", val: ctxProjects, set: setCtxProjects, placeholder: "e.g. iSolutions, CR pump series" },
-                    { label: "Participants", val: ctxAttend, set: setCtxAttend, placeholder: "e.g. Lars (PM), Mia (Eng)..." },
-                    { label: "Extra context", val: ctxExtra, set: setCtxExtra, placeholder: "e.g. Q2 review, pilot project..." },
-                  ].map(({ label, val, set, placeholder }) => (
-                    <div key={label} className="flex flex-col gap-1">
-                      <label className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider">{label}</label>
-                      <input
-                        type="text"
-                        value={val}
-                        onChange={e => set(e.target.value)}
-                        placeholder={placeholder}
-                        className="h-7 bg-secondary/40 border border-border rounded px-2 text-xs font-mono text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-primary/40"
-                      />
-                    </div>
-                  ))}
+                <div className="px-4 pt-3 pb-2 border-b border-border bg-card/40">
+                  {/* Text context fields */}
+                  <div className="grid grid-cols-2 gap-2 mb-3">
+                    {[
+                      { label: "Purpose", val: ctxPurpose, set: setCtxPurpose, placeholder: "e.g. Design review for pump X" },
+                      { label: "Projects / systems", val: ctxProjects, set: setCtxProjects, placeholder: "e.g. iSolutions, CR pump series" },
+                      { label: "Participants", val: ctxAttend, set: setCtxAttend, placeholder: "e.g. Lars (PM), Mia (Eng)..." },
+                      { label: "Extra context", val: ctxExtra, set: setCtxExtra, placeholder: "e.g. Q2 review, pilot project..." },
+                    ].map(({ label, val, set, placeholder }) => (
+                      <div key={label} className="flex flex-col gap-1">
+                        <label className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider">{label}</label>
+                        <input
+                          type="text"
+                          value={val}
+                          onChange={e => set(e.target.value)}
+                          placeholder={placeholder}
+                          className="h-7 bg-secondary/40 border border-border rounded px-2 text-xs font-mono text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-primary/40"
+                        />
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* File upload area */}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="flex items-center gap-1.5 h-7 px-2.5 rounded border border-dashed border-border text-xs font-mono text-muted-foreground hover:text-white hover:border-primary/50 transition-colors"
+                    >
+                      <Upload className="w-3 h-3" />
+                      Upload context file
+                    </button>
+                    {uploadedFiles.map(f => (
+                      <span
+                        key={f.name}
+                        className="flex items-center gap-1 h-7 px-2 rounded bg-primary/10 border border-primary/30 text-xs font-mono text-primary"
+                      >
+                        <FileText className="w-3 h-3 shrink-0" />
+                        {f.name}
+                        <button
+                          type="button"
+                          onClick={() => removeUploadedFile(f.name)}
+                          className="ml-0.5 hover:text-red-400 transition-colors"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
                 </div>
               </motion.div>
             )}
