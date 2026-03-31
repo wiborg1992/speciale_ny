@@ -1134,7 +1134,7 @@ export default function Room() {
             )}
 
             {outputTab === "actions" && (
-              <div className="h-full overflow-y-auto p-4">
+              <div className="h-full p-4">
                 {isLoadingActions && !actionsHtml && (
                   <div className="flex items-center justify-center h-full">
                     <div className="text-center space-y-3 text-muted-foreground">
@@ -1155,9 +1155,12 @@ export default function Room() {
                   </div>
                 )}
                 {actionsHtml && (
-                  <div
-                    className="prose prose-sm max-w-none"
-                    dangerouslySetInnerHTML={{ __html: actionsHtml }}
+                  <IframeRenderer
+                    html={actionsHtml}
+                    isStreaming={isLoadingActions}
+                    className="h-full"
+                    roomId={roomId}
+                    title={meetingTitle || null}
                   />
                 )}
               </div>
