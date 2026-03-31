@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
 import type { VisualizeRequest } from "@workspace/api-client-react";
+import { toast } from "@/hooks/use-toast";
 
 const BASE = import.meta.env.BASE_URL;
 
@@ -73,6 +74,15 @@ export function useVisualizeStream() {
                   setStreamedHtml(completeHtml);
                 }
                 if (parsed.meta) setMeta(parsed.meta);
+              } else if (parsed.type === "skipped") {
+                const wc = typeof parsed.wordCount === "number" ? parsed.wordCount : "?";
+                const min = typeof parsed.minWords === "number" ? parsed.minWords : "";
+                toast({
+                  title: "Visualisering sprunget over",
+                  description:
+                    parsed.hint ||
+                    `Transskriptet har for få ord (${wc}${min !== "" ? `, minimum ca. ${min}` : ""}).`,
+                });
               } else if (parsed.type === "error") {
                 setError(parsed.error || "Generation failed");
               }

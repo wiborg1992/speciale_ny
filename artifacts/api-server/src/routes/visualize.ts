@@ -16,6 +16,10 @@ import {
 import { getRoom, broadcastEvent } from "../lib/rooms.js";
 import { saveVisualization, updateMeetingTitle } from "../lib/meeting-store.js";
 import { detectRefinementIntent } from "../lib/refinement-detector.js";
+import {
+  evaluateVisualizationInput,
+  MIN_WORDS_FOR_VISUALIZATION,
+} from "../lib/transcript-quality.js";
 
 const router: IRouter = Router();
 
@@ -177,11 +181,49 @@ router.post("/visualize", async (req, res, next): Promise<void> => {
     }
   }
 
+  const vizPerfStart = performance.now();
+
+  const vizQuality = evaluateVisualizationInput(normalized, {
+    bypassForRefinement: !!refinementDirective,
+    userPickedVisualizationType: !!userPickedType,
+  });
+  if (!vizQuality.ok) {
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Connection", "keep-alive");
+    res.setHeader("X-Accel-Buffering", "no");
+    res.flushHeaders();
+    res.write(
+      `data: ${JSON.stringify({
+        type: "skipped",
+        reason: vizQuality.reason,
+        wordCount: vizQuality.wordCount,
+        minWords: MIN_WORDS_FOR_VISUALIZATION,
+        hint:
+          "For lidt indhold til visualisering. Fortsæt samtalen, eller vælg en fast visualization-type (ikke Auto).",
+      })}\n\n`
+    );
+    res.end();
+    req.log?.info({
+      msg: "viz_perf",
+      vizPerf: {
+        skipped: true,
+        reason: vizQuality.reason,
+        wordCount: vizQuality.wordCount,
+        ttMs: Math.round(performance.now() - vizPerfStart),
+        roomId: roomId ?? null,
+      },
+    });
+    return;
+  }
+
+  const streamT0 = performance.now();
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");
   res.setHeader("Connection", "keep-alive");
   res.setHeader("X-Accel-Buffering", "no");
   res.flushHeaders();
+  const ttHeadersMs = Math.round(performance.now() - streamT0);
 
   if (classification) {
     res.write(
@@ -207,6 +249,7 @@ router.post("/visualize", async (req, res, next): Promise<void> => {
   }
 
   let fullHtml = "";
+  let firstChunkMs: number | null = null;
 
   try {
     for await (const chunk of streamVisualization(
@@ -224,11 +267,14 @@ router.post("/visualize", async (req, res, next): Promise<void> => {
         workspaceDomain,
       },
       (c) => {
+        if (firstChunkMs == null) firstChunkMs = Math.round(performance.now() - streamT0);
         res.write(`data: ${JSON.stringify({ type: "chunk", text: c })}\n\n`);
       }
     )) {
       fullHtml += chunk;
     }
+
+    const ttDoneMs = Math.round(performance.now() - streamT0);
 
     const meta = {
       vizType:         vizType ?? "auto",
@@ -241,8 +287,9 @@ router.post("/visualize", async (req, res, next): Promise<void> => {
     };
 
     const cleanHtml = stripCodeFences(fullHtml);
+    const qualityOk = isHtmlQualityOk(cleanHtml);
 
-    if (isHtmlQualityOk(cleanHtml)) {
+    if (qualityOk) {
       if (roomId) {
         const room = getRoom(roomId);
         if (room) {
@@ -264,6 +311,26 @@ router.post("/visualize", async (req, res, next): Promise<void> => {
     } else {
       res.write(`data: ${JSON.stringify({ type: "error", error: "Generated visualization was incomplete. Please try again." })}\n\n`);
     }
+
+    req.log?.info({
+      msg: "viz_perf",
+      vizPerf: {
+        ttHeadersMs,
+        ttfcMs: firstChunkMs,
+        ttDoneMs,
+        ttTotalPrepPlusStreamMs: Math.round(performance.now() - vizPerfStart),
+        qualityOk,
+        vizModel: vizModel ?? "haiku",
+        resolvedFamily: resolvedFamily ?? classification?.family ?? null,
+        classifiedAmbiguous: classification?.ambiguous ?? null,
+        userPickedType: !!userPickedType,
+        incremental: !freshStart && !!effectivePreviousHtml,
+        refinement: !!refinementDirective,
+        roomId: roomId ?? null,
+        workspaceDomain: workspaceDomain ?? null,
+        transcriptWords: normalized.split(/\s+/).filter(Boolean).length,
+      },
+    });
   } catch (err: any) {
     req.log.error({ err }, "Visualization generation failed");
     const status = err?.status ?? err?.statusCode;
@@ -272,6 +339,19 @@ router.post("/visualize", async (req, res, next): Promise<void> => {
       ? "AI-modellen er midlertidigt overbelastet. Prøv igen om et øjeblik."
       : "Visualization generation failed.";
     res.write(`data: ${JSON.stringify({ type: "error", error: errorMsg, retryable: isOverloaded })}\n\n`);
+
+    req.log?.info({
+      msg: "viz_perf",
+      vizPerf: {
+        error: true,
+        ttHeadersMs,
+        ttfcMs: firstChunkMs,
+        ttDoneMs: Math.round(performance.now() - streamT0),
+        vizModel: vizModel ?? "haiku",
+        roomId: roomId ?? null,
+        retryable: isOverloaded,
+      },
+    });
   }
 
   res.end();

@@ -18,6 +18,7 @@ async function buildAll() {
     entryPoints: [
       path.resolve(artifactDir, "src/index.ts"),
       path.resolve(artifactDir, "src/scripts/run-fictive-classifier-tests.ts"),
+      path.resolve(artifactDir, "src/scripts/run-evaluation-matrix.ts"),
     ],
     platform: "node",
     bundle: true,

@@ -70,8 +70,37 @@ export function useSpeech({ onSegmentFinalized, language = "da-DK" }: UseSpeechP
   const [error, setError] = useState<string | null>(null);
 
   const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const micStreamRef = useRef<MediaStream | null>(null);
   const isRecordingRef = useRef(false);
   const intentionalStopRef = useRef(false);
+
+  const releaseMicStream = useCallback(() => {
+    micStreamRef.current?.getTracks().forEach((t) => t.stop());
+    micStreamRef.current = null;
+  }, []);
+
+  /** Bed browseren om echo cancellation / noise suppression / AGC og log faktiske track-settings (MDN Media Capture constraints). */
+  const acquireMicStream = useCallback(async () => {
+    if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) return;
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          channelCount: { ideal: 1 },
+          sampleRate: { ideal: 16000 },
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        },
+      });
+      micStreamRef.current = stream;
+      const track = stream.getAudioTracks()[0];
+      if (track?.getSettings) {
+        console.info("[use-speech] Mic track settings (anvendt af browseren):", track.getSettings());
+      }
+    } catch (err) {
+      console.warn("[use-speech] getUserMedia med audio-constraints fejlede — Web Speech kører videre:", err);
+    }
+  }, []);
 
   // Stable ref for the callback — never causes hook recreation
   const onSegmentFinalizedRef = useRef(onSegmentFinalized);
@@ -185,6 +214,8 @@ export function useSpeech({ onSegmentFinalized, language = "da-DK" }: UseSpeechP
       if (commitTimerRef.current) clearTimeout(commitTimerRef.current);
       recognition.abort();
       recognitionRef.current = null;
+      micStreamRef.current?.getTracks().forEach((t) => t.stop());
+      micStreamRef.current = null;
     };
   }, [language, scheduleCommit, flushPending]);
 
@@ -200,24 +231,35 @@ export function useSpeech({ onSegmentFinalized, language = "da-DK" }: UseSpeechP
       isRecordingRef.current = false;
       setIsRecording(false);
       setInterimText("");
+      releaseMicStream();
       recognition.stop();
       // Flush any accumulated text immediately on manual stop
       flushPending();
     } else {
       setError(null);
       intentionalStopRef.current = false;
-      isRecordingRef.current = true;
       pendingTextRef.current = "";
       setIsRecording(true);
-      try {
-        recognition.start();
-      } catch {
-        setError("Kunne ikke starte optagelse. Prøv igen.");
-        setIsRecording(false);
-        isRecordingRef.current = false;
-      }
+      isRecordingRef.current = true;
+      void (async () => {
+        await acquireMicStream();
+        if (intentionalStopRef.current || !recognitionRef.current) {
+          releaseMicStream();
+          setIsRecording(false);
+          isRecordingRef.current = false;
+          return;
+        }
+        try {
+          recognitionRef.current.start();
+        } catch {
+          setError("Kunne ikke starte optagelse. Prøv igen.");
+          setIsRecording(false);
+          isRecordingRef.current = false;
+          releaseMicStream();
+        }
+      })();
     }
-  }, [flushPending]);
+  }, [flushPending, acquireMicStream, releaseMicStream]);
 
   return { isRecording, interimText, error, toggleRecording };
 }

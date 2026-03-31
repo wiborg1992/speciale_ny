@@ -7,6 +7,14 @@ export type WorkspaceDomain = "grundfos" | "gabriel" | "generic";
 
 const RULE1_ANCHOR = "━━━ RULE 1: FOLLOW THE SERVER DIRECTIVE — DO NOT OVERRIDE IT ━━━";
 
+/** Delt med Grundfos-promptens RULE 0 i visualizer.ts — Gabriel/Generic får den ind her, da deres preamble erstatter starten af Grundfos-teksten. */
+const RULE0_VISUAL_PROTOTYPE_BLOCK = `━━━ RULE 0: DEFAULT OUTPUT IS A VISUAL PROTOTYPE — NOT MEETING NOTES OR DICTATION ━━━
+This product is a **Visualizer**: stakeholders expect a **structured visual prototype** (dashboard, diagram, card grid, timeline strip, table with real columns, journey/workflow layout, HMI-style panels) — not polished **meeting minutes** or bullets that mainly **dictate** what was said.
+  FORBIDDEN as primary output: recap / referat pages whose substance is prose or lists restating speech, with typography but **no** grid of cards, **no** diagram, **no** dashboard regions, **no** meaningful table structure.
+  REQUIRED: at least one strong layout scaffold filled from the transcript (or, if thin, coherent **placeholders** inside that scaffold — still visibly a UI or diagram, not a note page).
+
+`;
+
 export function normalizeWorkspaceDomain(
   input: string | null | undefined
 ): WorkspaceDomain {
@@ -101,7 +109,8 @@ export function adaptSystemPromptForDomain(
   const i = grundfosPrompt.indexOf(RULE1_ANCHOR);
   if (i < 0) return grundfosPrompt;
 
-  const preamble = domain === "gabriel" ? GABRIEL_PREAMBLE : GENERIC_PREAMBLE;
+  const basePreamble = domain === "gabriel" ? GABRIEL_PREAMBLE : GENERIC_PREAMBLE;
+  const preamble = `${basePreamble}\n\n${RULE0_VISUAL_PROTOTYPE_BLOCK}`;
   let out = `${preamble}\n\n${grundfosPrompt.slice(i)}`;
 
   const brandTech = domain === "gabriel" ? GABRIEL_BRAND_TECH : GENERIC_BRAND_TECH;

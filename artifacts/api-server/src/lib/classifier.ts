@@ -244,6 +244,11 @@ const VIZ_FAMILY_SIGNALS: Array<{
     id:    "requirements_matrix",
     label: "Requirements / traceability",
     terms: [
+      ["firmware requirements",         20],
+      ["traceability ids",              18],
+      ["traceability id",               16],
+      ["compliance tracking",           16],
+      ["must should could",             16],
       ["traceability matrix",           18],
       ["requirements traceability",     18],
       ["kravspecifikation",             18],

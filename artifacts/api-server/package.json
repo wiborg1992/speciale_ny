@@ -8,7 +8,12 @@
     "build": "node ./build.mjs",
     "start": "node --enable-source-maps --env-file=../../.env ./dist/index.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test:fictive-classifier": "pnpm run build && node --enable-source-maps ./dist/scripts/run-fictive-classifier-tests.mjs"
+    "test:fictive-classifier": "pnpm run build && node --enable-source-maps ./dist/scripts/run-fictive-classifier-tests.mjs",
+    "benchmark:viz": "node ./benchmark-visualize.mjs",
+    "benchmark:viz:auto": "cross-env BENCHMARK_SUITE=auto node ./benchmark-visualize.mjs",
+    "benchmark:viz:both": "cross-env BENCHMARK_SUITE=both node ./benchmark-visualize.mjs",
+    "eval:matrix": "pnpm run build && node --enable-source-maps ./dist/scripts/run-evaluation-matrix.mjs",
+    "benchmark:viz:eval-e2e": "cross-env BENCHMARK_SUITE=eval-e2e node ./benchmark-visualize.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.80.0",

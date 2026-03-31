@@ -12,6 +12,7 @@ import { format } from "date-fns";
 import { v4 as uuidv4 } from "uuid";
 
 import { cn } from "@/lib/utils";
+import { passesVisualizationWordGate, MIN_WORDS_FOR_VISUALIZATION } from "@/lib/viz-gate";
 import { useLocalStorage } from "@/hooks/use-local-storage";
 import { useSpeech } from "@/hooks/use-speech";
 import { useRoomSSE } from "@/hooks/use-room-sse";
@@ -22,6 +23,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { IframeRenderer } from "@/components/IframeRenderer";
+import { toast } from "@/hooks/use-toast";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -341,6 +343,17 @@ export default function Room() {
     const transcript = getActiveTranscript();
     if (!transcript) return;
 
+    const userPickedType = vizType !== "auto";
+    if (!passesVisualizationWordGate(transcript, userPickedType)) {
+      if (!auto) {
+        toast({
+          title: "For lidt tekst til visualisering",
+          description: `Ved Auto-detect bruges mindst ${MIN_WORDS_FOR_VISUALIZATION} ord — eller vælg en fast visualization-type.`,
+        });
+      }
+      return;
+    }
+
     if (inputTab === "paste") appendPasteHistoryIfNeeded(transcript);
 
     const previous = !freshStart ? (prevHtmlRef.current || null) : null;
@@ -395,7 +408,10 @@ export default function Room() {
     const tick = setInterval(() => {
       setAutoVizCountdown(prev => {
         if (prev <= 1) {
-          if (currentWordCountRef.current > 0 && !isGeneratingRef.current) {
+          if (
+            currentWordCountRef.current >= MIN_WORDS_FOR_VISUALIZATION &&
+            !isGeneratingRef.current
+          ) {
             handleGenerateRef.current(true);
           }
           return 45;

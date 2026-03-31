@@ -91,6 +91,17 @@ const SYSTEM_PROMPT_GRUNDFOS = `You are an expert at analysing meeting transcrip
 Return ONLY valid HTML — no markdown, no explanations, no code fences, no preamble.
 Your first character MUST be '<' and your last character MUST be '>'.
 
+━━━ RULE 0: DEFAULT OUTPUT IS A VISUAL PROTOTYPE — NOT MEETING NOTES OR DICTATION ━━━
+This product is Meeting AI **Visualizer**: participants expect a **designed visual working prototype** they can read at a glance — dashboard, diagram, card grid, timeline, HMI panels, journey map, workflow, table, etc.
+  ABSOLUTELY AVOID as the main deliverable:
+  • "Meeting minutes" / referat / recap pages whose primary content is polished prose or bullet lists that merely restate what was said (dictation dressed up with typography)
+  • Long text columns with no structural UI: no cards, no grid, no SVG figure, no table, no dashboard chrome, no swim lanes — even if it looks "beautiful", that is the WRONG output for this tool
+  YOU MUST:
+  • Include at least one strong **visual structure**: CSS Grid/Flex **cards**, **SVG** flow/timeline/journey, **table** with real columns, **dashboard** regions/KPI tiles, **HMI-style** widgets, journey **swim lanes**, or similar — filled with content *inferred from* the transcript, not copy-pasted as running speech
+  • If the transcript is thin or vague: still ship a credible **prototype** with clearly labeled placeholders — it must remain visibly a UI/diagram artifact, not a note page
+  • Prefer interactive-feeling layout (tabs, sections, metric tiles) over essay layout; text belongs *inside* structured components
+  Dense editorial layouts (management summary, decision log) are allowed when the type calls for it — but they MUST still use **structured sections** (KPI row, timeline bar, decision **cards**, owner chips) — never a plain "notepad" aesthetic.
+
 ━━━ DOMAIN CONTEXT: GRUNDFOS UX & CRA (Cyber Resilience Act) ━━━
 You are operating in the context of Grundfos's UX/UI Design Platform team, which works across four divisions 
 (Water Utility, Commercial Building Services, Domestic Building Services, Industry). The team handles UX research, 
@@ -872,10 +883,11 @@ Use clean, technical documentation style. Grid-aligned. Code-adjacent feel.
 Light background with subtle grid. DO NOT use dark HMI style.`,
 
   generic: `GENERATE: The most appropriate visualization type based on the transcript content.
-Read the transcript carefully and choose the best format: HMI dashboard, user journey, workflow/flowchart, 
-pump hardware, persona/empathy map, service blueprint, comparison/evaluation matrix, design system spec, 
-timeline/roadmap, kanban, or decision log.
-Commit fully to one type — do not mix styles.`,
+Do NOT default to meeting notes, dictation-style summaries, or "what people said" bullet walls — those are incorrect for this product even if they look neat.
+You MUST output a **visual prototype** (structured UI): pick among HMI dashboard, user journey, workflow/flowchart,
+pump hardware, persona/empathy map, service blueprint, comparison/evaluation matrix, design system spec,
+timeline/roadmap, kanban, or decision log — with cards, diagrams, tables, or panels, not plain note prose.
+Read the transcript carefully and commit fully to one type — do not mix styles.`,
 };
 
 function systemPromptForDomain(domain: WorkspaceDomain): string {

@@ -1,0 +1,68 @@
+{
+  "version": 1,
+  "description": "Klassifikations- og E2E-matrix: Grundfos + Gabriel. Transskripter har mindst fem ord efter normalisering.",
+  "scenarios": [
+    {
+      "id": "hmi_scada",
+      "transcript": "[Operator]: We need the HMI overview with navigation tabs for alarms live trends and setpoint panel on the SCADA station with process synoptic and PLC linked gauges.",
+      "expectedFamily": { "grundfos": "hmi_interface", "gabriel": "hmi_interface" }
+    },
+    {
+      "id": "user_journey",
+      "transcript": "[UX]: Map the customer journey from awareness through onboarding daily use and renewal with touchpoints emotions pain points and opportunities for the new app experience.",
+      "expectedFamily": { "grundfos": "user_journey", "gabriel": "user_journey" }
+    },
+    {
+      "id": "workflow_process",
+      "transcript": "[PM]: Document the commissioning workflow with start node decision diamonds for piping compatibility mounting power connection and end state in a clear flowchart.",
+      "expectedFamily": { "grundfos": "workflow_process", "gabriel": "workflow_process" }
+    },
+    {
+      "id": "physical_product_grundfos",
+      "transcript": "[Product]: Present the Alpha GO circulator with LED ring around the face GO app panel beside it IE5 motor DN25 flanges and callouts for Bluetooth module housing.",
+      "expectedFamily": { "grundfos": "physical_product" },
+      "domains": ["grundfos"]
+    },
+    {
+      "id": "data_board_gabriel",
+      "transcript": "[Analyst]: Build an executive dashboard with KPI tiles month over month chart funnel for LinkedIn and Facebook campaigns and CSV export to Excel for leadership review.",
+      "expectedFamily": { "gabriel": "management_summary" },
+      "domains": ["gabriel"]
+    },
+    {
+      "id": "requirements_matrix",
+      "transcript": "[PO]: Capture firmware requirements with Must Should Could Won priorities Modbus BACnet features alarm latency traceability IDs and status column for compliance tracking.",
+      "expectedFamily": { "grundfos": "requirements_matrix", "gabriel": "requirements_matrix" }
+    },
+    {
+      "id": "persona_research",
+      "transcript": "[Research]: Define persona Thomas installer age forty two needs quick manuals wiring diagrams frustrations with model numbers and motivation to finish jobs fast with reviews.",
+      "expectedFamily": { "grundfos": "persona_research", "gabriel": "persona_research" }
+    },
+    {
+      "id": "service_blueprint",
+      "transcript": "[Service]: Draw the service blueprint with customer actions frontstage calls backstage warehouse ERP pick list courier API and physical evidence like quote PDF and certificate.",
+      "expectedFamily": { "grundfos": "service_blueprint", "gabriel": "service_blueprint" }
+    },
+    {
+      "id": "comparison_evaluation",
+      "transcript": "[Architect]: Compare three controller options on integration cost maintenance and deployment with weighted scoring matrix and competitive notes for the utility tender.",
+      "expectedFamily": { "grundfos": "comparison_evaluation", "gabriel": "comparison_evaluation" }
+    },
+    {
+      "id": "design_system",
+      "transcript": "[Design]: Document tokens navy hex secondary blue spacing eight pixel grid button states hover disabled loading and component anatomy in the design system specification.",
+      "expectedFamily": { "grundfos": "design_system", "gabriel": "design_system" }
+    },
+    {
+      "id": "management_summary",
+      "transcript": "[PMO]: Show roadmap milestones prototype March field test April production June regulatory risk in May steering quarterly budget approved kanban decisions for steering committee.",
+      "expectedFamily": { "grundfos": "management_summary", "gabriel": "management_summary" }
+    },
+    {
+      "id": "generic_fallback",
+      "transcript": "[Chair]: Thanks everyone for joining today we will follow up next week on parking logistics and room booking.",
+      "expectedFamily": { "grundfos": "generic", "gabriel": "generic" }
+    }
+  ]
+}
