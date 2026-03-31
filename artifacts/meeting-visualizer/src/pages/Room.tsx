@@ -53,9 +53,11 @@ const VIZ_TYPES = [
 ];
 
 const VIZ_MODELS = [
-  { value: "haiku",  label: "Haiku (fast)" },
-  { value: "sonnet", label: "Sonnet (balanced)" },
-  { value: "opus",   label: "Opus (best)" },
+  { value: "haiku",        label: "Haiku (fast)" },
+  { value: "sonnet",       label: "Sonnet (balanced)" },
+  { value: "opus",         label: "Opus (best)" },
+  { value: "gemini-flash", label: "Gemini Flash" },
+  { value: "gemini-pro",   label: "Gemini Pro" },
 ];
 
 /** Styrer system-prompt og branding (Grundfos vs Gabriel vs neutral). */

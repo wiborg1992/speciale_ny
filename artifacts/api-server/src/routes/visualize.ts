@@ -41,7 +41,7 @@ function checkRateLimit(ip: string): boolean {
   return true;
 }
 
-const VizModelEnum = z.enum(["haiku", "sonnet", "opus"]).optional().nullable();
+const VizModelEnum = z.enum(["haiku", "sonnet", "opus", "gemini-flash", "gemini-pro"]).optional().nullable();
 
 const VisualizeBodySchema = z.object({
   transcript:   z.string(),

@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import OpenAI from "openai";
+import { GoogleGenAI } from "@google/genai";
 import {
   CU_CONTROLLER_TEMPLATE,
   ALPHA_GO_TEMPLATE,
@@ -26,26 +27,43 @@ function getOpenAIClient(): OpenAI | null {
   return _openaiClient;
 }
 
-export type VizModel = "haiku" | "sonnet" | "opus";
+let _geminiClient: GoogleGenAI | null = null;
+function getGeminiClient(): GoogleGenAI | null {
+  if (_geminiClient) return _geminiClient;
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) return null;
+  _geminiClient = new GoogleGenAI({ apiKey });
+  return _geminiClient;
+}
+
+export type VizModel = "haiku" | "sonnet" | "opus" | "gemini-flash" | "gemini-pro";
 
 const MODEL_IDS: Record<VizModel, string> = {
-  haiku:  "claude-haiku-4-5",
-  sonnet: "claude-sonnet-4-6",
-  opus:   "claude-opus-4-6",
+  haiku:         "claude-haiku-4-5",
+  sonnet:        "claude-sonnet-4-6",
+  opus:          "claude-opus-4-6",
+  "gemini-flash": "gemini-2.5-flash",
+  "gemini-pro":   "gemini-2.5-pro",
 };
+
+const GEMINI_MODELS = new Set<VizModel>(["gemini-flash", "gemini-pro"]);
 
 const OPENAI_FALLBACK_MODEL = "gpt-4o";
 
 const MAX_TOKENS: Record<VizModel, number> = {
-  haiku:  8192,
-  sonnet: 8192,
-  opus:   8192,
+  haiku:         8192,
+  sonnet:        8192,
+  opus:          8192,
+  "gemini-flash": 8192,
+  "gemini-pro":   8192,
 };
 
 const MAX_TOKENS_PUMP: Record<VizModel, number> = {
-  haiku:  8192,
-  sonnet: 10000,
-  opus:   12000,
+  haiku:         8192,
+  sonnet:        10000,
+  opus:          12000,
+  "gemini-flash": 8192,
+  "gemini-pro":   12000,
 };
 
 const MAX_TRANSCRIPT_CHARS = 100_000;
@@ -1002,6 +1020,34 @@ ${snippet}${tail}`;
   }
 
   userMessage += "Generate the HTML visualization now.";
+
+  // ── Gemini direct path ──────────────────────────────────────────────────
+  if (GEMINI_MODELS.has(vizModel as VizModel)) {
+    const gemini = getGeminiClient();
+    if (!gemini) throw new Error("GEMINI_API_KEY is not configured");
+    const geminiModelId = model;
+    console.log(`[gemini] Using model ${geminiModelId}`);
+    try {
+      const stream = await gemini.models.generateContentStream({
+        model: geminiModelId,
+        contents: [{ role: "user", parts: [{ text: `${systemPrompt}\n\n${userMessage}` }] }],
+        config: { maxOutputTokens: maxTokens },
+      });
+      let fullText = "";
+      for await (const chunk of stream) {
+        const text = chunk.text;
+        if (text) {
+          fullText += text;
+          onChunk(text);
+          yield text;
+        }
+      }
+      return fullText;
+    } catch (geminiErr: any) {
+      console.error(`[gemini] Error:`, geminiErr?.message ?? geminiErr);
+      throw geminiErr;
+    }
+  }
 
   const ANTHROPIC_CHAIN: string[] = [];
   ANTHROPIC_CHAIN.push(model);
