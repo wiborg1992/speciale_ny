@@ -156,8 +156,6 @@ export function useDeepgramSpeech({
         numerals: "true",
         utterance_end_ms: "2500",
         vad_events: "true",
-        encoding: "opus",
-        sample_rate: "48000",
       });
       keywords.forEach((kw) => params.append("keywords", kw));
 
