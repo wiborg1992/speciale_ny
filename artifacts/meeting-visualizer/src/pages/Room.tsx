@@ -140,6 +140,7 @@ export default function Room() {
 
   // Output tabs
   const [outputTab, setOutputTab] = useState<OutputTab>("viz");
+  const [showDebug, setShowDebug] = useState(false);
 
   // Viz config
   const [vizType, setVizType] = useState("auto");
@@ -180,7 +181,7 @@ export default function Room() {
   // API & SSE hooks
   const { segments, participants, visualization: sseViz, connectionStatus, addLocalSegment } = useRoomSSE(roomId!);
   const { mutateAsync: postSegment } = usePostSegment();
-  const { generate, isGenerating, streamedHtml, meta: streamMeta, error: vizStreamError } = useVisualizeStream();
+  const { generate, isGenerating, streamedHtml, meta: streamMeta, error: vizStreamError, debugInfo } = useVisualizeStream();
 
   const activeHtml = isGenerating ? streamedHtml : (displayHtml || sseViz.html);
 
@@ -1339,6 +1340,21 @@ export default function Room() {
                       Refined
                     </Badge>
                   )}
+
+                  <div className="w-px h-5 bg-border" />
+
+                  <button
+                    onClick={() => setShowDebug((v) => !v)}
+                    title="Toggle debug panel"
+                    className={cn(
+                      "text-xs font-mono px-1.5 py-0.5 rounded transition-colors",
+                      showDebug
+                        ? "bg-amber-500/20 text-amber-400 border border-amber-500/40"
+                        : "text-muted-foreground/50 hover:text-muted-foreground"
+                    )}
+                  >
+                    DBG
+                  </button>
                 </>
               )}
 
@@ -1432,6 +1448,91 @@ export default function Room() {
                   <span className="max-w-[80px] truncate opacity-70">{v.name}</span>
                 </button>
               ))}
+            </div>
+          )}
+
+          {/* Debug panel */}
+          {showDebug && outputTab === "viz" && (
+            <div className="shrink-0 max-h-[40%] overflow-y-auto border-b border-amber-500/30 bg-amber-950/20 font-mono text-[10px] leading-relaxed">
+              <div className="px-4 py-2 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-amber-400 font-semibold uppercase tracking-wider text-[11px]">Debug Inspector</span>
+                  {debugInfo?.performanceMs && (
+                    <span className="text-muted-foreground">{(debugInfo.performanceMs / 1000).toFixed(1)}s total</span>
+                  )}
+                </div>
+
+                {!debugInfo ? (
+                  <p className="text-muted-foreground py-2">No debug data yet. Generate a visualization to see details.</p>
+                ) : (
+                  <>
+                    {/* Classification section */}
+                    <details open className="group">
+                      <summary className="cursor-pointer text-amber-400/80 hover:text-amber-400 [&::-webkit-details-marker]:hidden flex items-center gap-1">
+                        <span className="opacity-50 group-open:rotate-90 transition-transform">▸</span>
+                        Classification
+                      </summary>
+                      <div className="ml-3 mt-1 space-y-0.5 text-foreground/70">
+                        {debugInfo.classification ? (
+                          <>
+                            <div><span className="text-muted-foreground">Result:</span> <span className="text-green-400 font-semibold">{debugInfo.classification.family}</span> ({debugInfo.classification.topic})</div>
+                            <div><span className="text-muted-foreground">Lead:</span> {debugInfo.classification.lead} · <span className="text-muted-foreground">Ambiguous:</span> {debugInfo.classification.ambiguous ? "yes" : "no"}</div>
+                            <div><span className="text-muted-foreground">Input mode:</span> {debugInfo.classification.inputMode} · <span className="text-muted-foreground">Words:</span> {debugInfo.classification.inputWords}/{debugInfo.classification.totalWords}</div>
+                            <div className="text-muted-foreground">Scores: {debugInfo.classification.allScores?.map((s: any) => `${s.family}:${s.score}`).join(" · ")}</div>
+                            <details className="mt-1">
+                              <summary className="cursor-pointer text-muted-foreground/60 hover:text-muted-foreground [&::-webkit-details-marker]:hidden flex items-center gap-1">
+                                <span className="opacity-50">▸</span> Classification input text
+                              </summary>
+                              <pre className="mt-1 p-2 bg-black/30 rounded border border-border/30 whitespace-pre-wrap break-words max-h-24 overflow-y-auto text-foreground/60">{debugInfo.classification.inputText}</pre>
+                            </details>
+                          </>
+                        ) : (
+                          <div><span className="text-muted-foreground">Skipped</span> (user picked type: {debugInfo.vizType})</div>
+                        )}
+                      </div>
+                    </details>
+
+                    {/* Generation config */}
+                    <details open className="group">
+                      <summary className="cursor-pointer text-amber-400/80 hover:text-amber-400 [&::-webkit-details-marker]:hidden flex items-center gap-1">
+                        <span className="opacity-50 group-open:rotate-90 transition-transform">▸</span>
+                        Generation Config
+                      </summary>
+                      <div className="ml-3 mt-1 space-y-0.5 text-foreground/70">
+                        <div><span className="text-muted-foreground">Family:</span> <span className="text-blue-400">{debugInfo.resolvedFamily ?? "none"}</span> · <span className="text-muted-foreground">Model:</span> {debugInfo.vizModel} · <span className="text-muted-foreground">Type:</span> {debugInfo.vizType}</div>
+                        <div><span className="text-muted-foreground">Incremental:</span> {debugInfo.isIncremental ? "yes" : "no"} · <span className="text-muted-foreground">Refinement:</span> {debugInfo.isRefinement ? "yes" : "no"} · <span className="text-muted-foreground">Has prev HTML:</span> {debugInfo.hasPreviousHtml ? "yes" : "no"}</div>
+                        <div><span className="text-muted-foreground">Domain:</span> {debugInfo.workspaceDomain ?? "none"} · <span className="text-muted-foreground">Words:</span> {debugInfo.transcriptTotalWords} · <span className="text-muted-foreground">Room:</span> {debugInfo.roomId}</div>
+                        {debugInfo.focusSegment && <div><span className="text-muted-foreground">Focus:</span> {debugInfo.focusSegment}</div>}
+                        {debugInfo.refinementDirective && <div><span className="text-muted-foreground">Directive:</span> {debugInfo.refinementDirective}</div>}
+                      </div>
+                    </details>
+
+                    {/* Prompt */}
+                    {debugInfo.prompt && (
+                      <details className="group">
+                        <summary className="cursor-pointer text-amber-400/80 hover:text-amber-400 [&::-webkit-details-marker]:hidden flex items-center gap-1">
+                          <span className="opacity-50 group-open:rotate-90 transition-transform">▸</span>
+                          Full Prompt ({debugInfo.prompt.model} · {debugInfo.prompt.maxTokens} max tokens)
+                        </summary>
+                        <div className="ml-3 mt-1 space-y-2">
+                          <details>
+                            <summary className="cursor-pointer text-muted-foreground/60 hover:text-muted-foreground [&::-webkit-details-marker]:hidden flex items-center gap-1">
+                              <span className="opacity-50">▸</span> System prompt ({debugInfo.prompt.systemPrompt.length} chars)
+                            </summary>
+                            <pre className="mt-1 p-2 bg-black/30 rounded border border-border/30 whitespace-pre-wrap break-words max-h-48 overflow-y-auto text-foreground/60">{debugInfo.prompt.systemPrompt}</pre>
+                          </details>
+                          <details>
+                            <summary className="cursor-pointer text-muted-foreground/60 hover:text-muted-foreground [&::-webkit-details-marker]:hidden flex items-center gap-1">
+                              <span className="opacity-50">▸</span> User message ({debugInfo.prompt.userMessage.length} chars)
+                            </summary>
+                            <pre className="mt-1 p-2 bg-black/30 rounded border border-border/30 whitespace-pre-wrap break-words max-h-48 overflow-y-auto text-foreground/60">{debugInfo.prompt.userMessage}</pre>
+                          </details>
+                        </div>
+                      </details>
+                    )}
+                  </>
+                )}
+              </div>
             </div>
           )}
 

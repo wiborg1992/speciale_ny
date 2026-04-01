@@ -924,7 +924,8 @@ Centre a detailed illustration or exploded diagram with spec callouts. Avoid def
 
 export async function* streamVisualization(
   params: VisualizerParams,
-  onChunk: (chunk: string) => void
+  onChunk: (chunk: string) => void,
+  onPromptReady?: (info: { systemPrompt: string; userMessage: string; model: string; maxTokens: number }) => void,
 ): AsyncGenerator<string> {
   const {
     transcript,
@@ -1050,6 +1051,10 @@ ${snippet}${tail}`;
   }
 
   userMessage += "Generate the HTML visualization now.";
+
+  if (onPromptReady) {
+    onPromptReady({ systemPrompt, userMessage, model, maxTokens });
+  }
 
   // ── Gemini direct path ──────────────────────────────────────────────────
   if (GEMINI_MODELS.has(vizModel as VizModel)) {

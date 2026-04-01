@@ -280,6 +280,41 @@ router.post("/visualize", async (req, res, next): Promise<void> => {
     );
   }
 
+  // ─── Debug payload: send full prompt construction details ───────────────
+  {
+    const totalWords = normalized.split(/\s+/).filter(Boolean).length;
+    const classifyWords = classificationInput.split(/\s+/).filter(Boolean).length;
+    res.write(
+      `data: ${JSON.stringify({
+        type: "debug",
+        timestamp: new Date().toISOString(),
+        classification: classification ? {
+          inputMode: focusSegment ? "focusSegment" : "tail",
+          inputWords: classifyWords,
+          totalWords,
+          inputText: classificationInput.slice(0, 500),
+          family: classification.family,
+          topic: classification.topic,
+          lead: classification.lead,
+          ambiguous: classification.ambiguous,
+          allScores: classification.scores.slice(0, 8),
+        } : null,
+        userPickedType: !!userPickedType,
+        vizType: vizType ?? "auto",
+        resolvedFamily: resolvedFamily ?? null,
+        vizModel: vizModel ?? "haiku",
+        isIncremental: !freshStart && !!effectivePreviousHtml,
+        isRefinement: !!refinementDirective,
+        refinementDirective: refinementDirective ?? null,
+        hasPreviousHtml: !!effectivePreviousHtml,
+        focusSegment: focusSegment ?? null,
+        workspaceDomain: workspaceDomain ?? null,
+        transcriptTotalWords: totalWords,
+        roomId: roomId ?? null,
+      })}\n\n`
+    );
+  }
+
   let fullHtml = "";
   let firstChunkMs: number | null = null;
 
@@ -302,6 +337,17 @@ router.post("/visualize", async (req, res, next): Promise<void> => {
       (c) => {
         if (firstChunkMs == null) firstChunkMs = Math.round(performance.now() - streamT0);
         res.write(`data: ${JSON.stringify({ type: "chunk", text: c })}\n\n`);
+      },
+      (promptInfo) => {
+        res.write(
+          `data: ${JSON.stringify({
+            type: "debug_prompt",
+            systemPrompt: promptInfo.systemPrompt,
+            userMessage: promptInfo.userMessage,
+            model: promptInfo.model,
+            maxTokens: promptInfo.maxTokens,
+          })}\n\n`
+        );
       }
     )) {
       fullHtml += chunk;
