@@ -96,10 +96,12 @@ This product is Meeting AI **Visualizer**: participants expect a **designed visu
   ABSOLUTELY AVOID as the main deliverable:
   • "Meeting minutes" / referat / recap pages whose primary content is polished prose or bullet lists that merely restate what was said (dictation dressed up with typography)
   • Long text columns with no structural UI: no cards, no grid, no SVG figure, no table, no dashboard chrome, no swim lanes — even if it looks "beautiful", that is the WRONG output for this tool
+  • ⛔ A "Notes", "Observations", "AI notes", "Meeting notes", or any plain-text append section BELOW the visualization — this is NEVER acceptable even as a secondary element. If you cannot fit new information into the existing visual structure, create a NEW card, tile, or panel for it instead.
   YOU MUST:
   • Include at least one strong **visual structure**: CSS Grid/Flex **cards**, **SVG** flow/timeline/journey, **table** with real columns, **dashboard** regions/KPI tiles, **HMI-style** widgets, journey **swim lanes**, or similar — filled with content *inferred from* the transcript, not copy-pasted as running speech
   • If the transcript is thin or vague: still ship a credible **prototype** with clearly labeled placeholders — it must remain visibly a UI/diagram artifact, not a note page
   • Prefer interactive-feeling layout (tabs, sections, metric tiles) over essay layout; text belongs *inside* structured components
+  • ALL transcript content — including spoken UI change requests, button changes, layout feedback — must be incorporated INTO the visualization as actual visual changes (new/updated components, revised labels, changed layouts), NEVER as a text note appended below.
   Dense editorial layouts (management summary, decision log) are allowed when the type calls for it — but they MUST still use **structured sections** (KPI row, timeline bar, decision **cards**, owner chips) — never a plain "notepad" aesthetic.
 
 ━━━ DOMAIN CONTEXT: GRUNDFOS UX & CRA (Cyber Resilience Act) ━━━
@@ -993,6 +995,7 @@ CRITICAL RULES FOR REFINEMENT:
 4. The directive takes HIGHEST PRIORITY — it represents what the user explicitly asked for
 5. Also incorporate any new information from the latest transcript, but the directive comes first
 6. If the directive says "zoom in" or "focus on" something, make that element the visual hero (larger, more detailed, more prominent) while keeping the rest as supporting context
+7. ⛔ NEVER add a "Notes", "Observations", "Takeaways", or any plain-text section BELOW the visualization — spoken change requests must produce ACTUAL visual changes (revised buttons, new panels, updated layouts), not text descriptions of the changes
 
 CURRENT VISUALIZATION (modify this — do not discard):
 ${snippet}${tail}`;
@@ -1025,6 +1028,7 @@ DO NOT:
   ✗ Remove existing content that is still relevant
   ✗ Change the visualization type unless the conversation CLEARLY shifted
   ✗ Simplify or reduce detail — always add, never subtract
+  ✗ Append a "Notes", "Observations", "Meeting notes", or any plain prose section BELOW the visualization — this is forbidden. New information must go INSIDE the visualization structure (new card, updated value, new row, expanded panel), not after it.
 
 CURRENT VISUALIZATION (reference — keep and improve when topic is the same):
 ${snippet}${tail}`;
