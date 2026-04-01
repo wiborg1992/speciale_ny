@@ -344,23 +344,90 @@ export default function Room() {
   const deepgramKeywords = useMemo(() => {
     const vizKeywords = [
       "user journey:5", "journey mapping:5", "journey map:5",
-      "customer journey:4", "experience map:4",
-      "touchpoint:4", "touchpoints:4", "pain point:4",
-      "swimlane:3", "swim lane:3",
-      "workflow:4", "flowchart:4", "process flow:3",
-      "HMI:5", "SCADA:4", "dashboard:4", "interface:3",
-      "persona:4", "empathy map:4",
-      "service blueprint:4", "blueprint:3",
-      "requirements:3", "traceability:3",
-      "roadmap:4", "timeline:4", "Gantt:3",
-      "comparison:3", "evaluation:3", "SWOT:4",
-      "design system:4",
-      "brugerrejse:5", "kunderejse:4",
+      "user journey mapping:5", "customer journey:5", "customer journey map:5",
+      "experience map:4", "experience mapping:4",
+      "touchpoint:4", "touchpoints:4", "touch point:4", "touch points:4",
+      "pain point:4", "pain points:4", "painpoint:4",
+      "moments of truth:4",
+      "swimlane:4", "swim lane:4", "swim lanes:4",
+      "onboarding:3", "onboarding flow:4",
+      "emotion curve:4", "emotion:3",
+      "storyboard:3", "user flow:4",
+
+      "workflow:5", "flowchart:5", "flow chart:5",
+      "process flow:4", "process diagram:4", "process map:4",
+      "decision diamond:3", "decision tree:4",
+      "BPMN:4", "value stream:4", "value stream mapping:5",
+      "approval flow:3", "approval workflow:4",
+      "handover:3", "RACI:4",
+
+      "HMI:5", "SCADA:5", "dashboard:5",
+      "interface:4", "user interface:4",
+      "gauge:3", "gauges:3", "control panel:4",
+      "operator screen:4", "navigation panel:4",
+      "tab interface:4", "dark theme:3",
+      "alarm:3", "setpoint:3", "set point:3",
+
+      "persona:5", "personas:4", "empathy map:5",
+      "empathy:3", "archetype:3",
+      "research findings:4", "research insights:4",
+      "user needs:4", "user research:4",
+      "jobs to be done:4", "JTBD:4",
+
+      "service blueprint:5", "blueprint:4",
+      "information architecture:5", "sitemap:4", "site map:4",
+      "ecosystem map:4", "ecosystem:3",
+      "stakeholder map:4", "stakeholder:3",
+
+      "requirements:4", "requirements matrix:5",
+      "traceability:4", "traceability matrix:5",
+      "specification:3", "MoSCoW:5",
+      "must have:3", "should have:3", "could have:3",
+
+      "roadmap:5", "timeline:5", "Gantt:5",
+      "milestone:4", "milestones:4",
+      "kanban:4", "decision log:4",
+      "management summary:4",
+
+      "comparison:4", "comparison matrix:5",
+      "SWOT:5", "SWOT analysis:5",
+      "evaluation:4", "evaluation matrix:5",
+      "scorecard:4", "prioritization:4",
+      "competitive analysis:4",
+
+      "design system:5", "component spec:4",
+      "style guide:4", "design tokens:4", "tokens:3",
+
+      "visualization:4", "visualize:4", "visualise:4",
+      "diagram:3", "chart:3", "matrix:3",
+      "overview:3", "summary:3",
+
+      "brugerrejse:5", "kunderejse:5",
+      "berøringspunkt:4", "smertepunkt:4",
+      "arbejdsgang:4", "flowdiagram:5",
+      "procesdiagram:4", "kravspecifikation:5",
+      "kravmatrix:5", "tidslinje:4",
+      "sammenligning:4", "designsystem:4",
     ];
     const domainKeywords = workspaceDomain === "grundfos"
-      ? ["pumpe:5", "pumper:5", "Grundfos:5", "iSolutions:4", "tryktab:3", "vandmåler:3", "CRA:4"]
+      ? [
+          "pumpe:5", "pumper:5", "Grundfos:5", "iSolutions:5",
+          "tryktab:3", "vandmåler:3", "CRA:5",
+          "Cyber Resilience Act:5", "NIS2:4",
+          "Alpha GO:5", "CU 200:5", "CU 352:4",
+          "commissioning:4", "installer:4",
+          "firmware:3", "access control:4",
+          "compliance:4", "conformity:3",
+          "IEC 62443:4", "ATEX:3",
+          "motor:3", "impeller:3", "flange:3",
+          "frequency converter:4",
+        ]
       : workspaceDomain === "gabriel"
-      ? ["Gabriel:5", "tekstil:4", "stoffer:4", "kollektion:3"]
+      ? [
+          "Gabriel:5", "tekstil:5", "stoffer:4",
+          "kollektion:4", "møbel:3", "polstring:3",
+          "bæredygtighed:4", "certificering:3",
+        ]
       : [];
     const ctxWords = [ctxPurpose, ctxProjects, ctxExtra]
       .join(" ")

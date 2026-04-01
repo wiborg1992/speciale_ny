@@ -130,11 +130,11 @@ export function useDeepgramSpeech({
       if (!tokenRes.ok) throw new Error("Could not fetch Deepgram token from server");
       const { key } = await tokenRes.json();
 
-      // 2. Request microphone
+      // 2. Request microphone — high-quality capture for better recognition
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           channelCount: 1,
-          sampleRate: { ideal: 16000 },
+          sampleRate: { ideal: 48000, min: 16000 },
           echoCancellation: true,
           noiseSuppression: true,
           autoGainControl: true,
@@ -152,8 +152,12 @@ export function useDeepgramSpeech({
         diarize: "true",
         interim_results: "true",
         smart_format: "true",
+        punctuate: "true",
+        numerals: "true",
         utterance_end_ms: "2500",
         vad_events: "true",
+        encoding: "opus",
+        sample_rate: "48000",
       });
       keywords.forEach((kw) => params.append("keywords", kw));
 
@@ -171,7 +175,10 @@ export function useDeepgramSpeech({
           ? "audio/webm;codecs=opus"
           : "audio/webm";
 
-        const recorder = new MediaRecorder(stream, { mimeType });
+        const recorder = new MediaRecorder(stream, {
+          mimeType,
+          audioBitsPerSecond: 64000,
+        });
         mediaRecorderRef.current = recorder;
 
         recorder.ondataavailable = (e) => {
@@ -179,7 +186,7 @@ export function useDeepgramSpeech({
             ws.send(e.data);
           }
         };
-        recorder.start(250);
+        recorder.start(150);
       };
 
       ws.onmessage = (event) => {
