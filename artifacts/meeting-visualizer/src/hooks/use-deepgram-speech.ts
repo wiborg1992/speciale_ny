@@ -152,7 +152,6 @@ export function useDeepgramSpeech({
         diarize: "true",
         interim_results: "true",
         smart_format: "true",
-        punctuate: "true",
         numerals: "true",
         utterance_end_ms: "2500",
         vad_events: "true",
@@ -160,10 +159,9 @@ export function useDeepgramSpeech({
       keywords.forEach((kw) => params.append("keywords", kw));
 
       // 4. Open WebSocket with token auth via subprotocol
-      const ws = new WebSocket(
-        `wss://api.deepgram.com/v1/listen?${params.toString()}`,
-        ["token", key]
-      );
+      const wsUrl = `wss://api.deepgram.com/v1/listen?${params.toString()}`;
+      console.info(`[deepgram] Connecting: model=${model} lang=${lang} keywords=${keywords.length} url_len=${wsUrl.length}`);
+      const ws = new WebSocket(wsUrl, ["token", key]);
       wsRef.current = ws;
 
       ws.onopen = () => {
@@ -173,10 +171,7 @@ export function useDeepgramSpeech({
           ? "audio/webm;codecs=opus"
           : "audio/webm";
 
-        const recorder = new MediaRecorder(stream, {
-          mimeType,
-          audioBitsPerSecond: 64000,
-        });
+        const recorder = new MediaRecorder(stream, { mimeType });
         mediaRecorderRef.current = recorder;
 
         recorder.ondataavailable = (e) => {
@@ -184,7 +179,7 @@ export function useDeepgramSpeech({
             ws.send(e.data);
           }
         };
-        recorder.start(150);
+        recorder.start(250);
       };
 
       ws.onmessage = (event) => {
