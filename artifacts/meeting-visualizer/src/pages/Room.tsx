@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils";
 import { passesVisualizationWordGate, MIN_WORDS_FOR_VISUALIZATION } from "@/lib/viz-gate";
 import { useLocalStorage } from "@/hooks/use-local-storage";
 import { useSpeech } from "@/hooks/use-speech";
+import { useDeepgramSpeech } from "@/hooks/use-deepgram-speech";
 import { useRoomSSE } from "@/hooks/use-room-sse";
 import { useVisualizeStream } from "@/hooks/use-visualize-stream";
 import { usePostSegment } from "@workspace/api-client-react";
@@ -154,6 +155,14 @@ export default function Room() {
   const [ctxExtra, setCtxExtra] = useState("");
   const [uploadedFiles, setUploadedFiles] = useState<{ name: string; content: string }[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Transcription mode: "browser" = Web Speech API, "deepgram" = Deepgram (diarization)
+  const [transcriptionMode, setTranscriptionMode] = useLocalStorage<"browser" | "deepgram">(
+    "meetingVisualizer_transcriptionMode",
+    "browser"
+  );
+  // Maps Deepgram speaker ID (0,1,2…) → display name
+  const [deepgramSpeakerNames, setDeepgramSpeakerNames] = useState<Record<number, string>>({});
 
   // Version history
   const [vizHistory, setVizHistory] = useState<VizVersion[]>([]);
@@ -311,11 +320,13 @@ export default function Room() {
   }, [vizHistory]);
 
   // ── Speech ───────────────────────────────────────────────────────────────────
-  const handleFinalSegment = useCallback(async (text: string) => {
+  // detectedSpeaker is provided by Deepgram mode; falls back to the manual speakerName
+  const handleFinalSegment = useCallback(async (text: string, detectedSpeaker?: string) => {
     if (!roomId) return;
+    const effectiveSpeaker = detectedSpeaker ?? speakerName;
     const newSegment = {
       id: uuidv4(),
-      speakerName,
+      speakerName: effectiveSpeaker,
       text,
       timestamp: Date.now(),
       isFinal: true
@@ -323,17 +334,46 @@ export default function Room() {
     addLocalSegment(newSegment);
     try {
       await postSegment({
-        data: { roomId, speakerName, text, timestamp: newSegment.timestamp, isFinal: true, id: newSegment.id } as any
+        data: { roomId, speakerName: effectiveSpeaker, text, timestamp: newSegment.timestamp, isFinal: true, id: newSegment.id } as any
       });
     } catch (err) {
       console.error("Failed to post segment", err);
     }
   }, [roomId, speakerName, addLocalSegment, postSegment]);
 
-  const { isRecording, interimText, toggleRecording, error: speechError } = useSpeech({
+  // Deepgram keywords: boost domain-specific terms based on context
+  const deepgramKeywords = useMemo(() => {
+    const base = workspaceDomain === "grundfos"
+      ? ["pumpe:5", "pumper:5", "Grundfos:5", "iSolutions:4", "tryktab:3", "vandmåler:3", "CRA:4"]
+      : workspaceDomain === "gabriel"
+      ? ["Gabriel:5", "tekstil:4", "stoffer:4", "kollektion:3"]
+      : [];
+    // Also pull any capitalized words from context fields as hints
+    const ctxWords = [ctxPurpose, ctxProjects, ctxExtra]
+      .join(" ")
+      .match(/\b[A-ZÆØÅ][a-zæøå]{2,}\b/g) ?? [];
+    const ctxKeywords = [...new Set(ctxWords)].slice(0, 10).map(w => `${w}:2`);
+    return [...base, ...ctxKeywords];
+  }, [workspaceDomain, ctxPurpose, ctxProjects, ctxExtra]);
+
+  const browserSpeech = useSpeech({
     onSegmentFinalized: handleFinalSegment,
-    language
+    language,
   });
+
+  const deepgramSpeech = useDeepgramSpeech({
+    onSegmentFinalized: handleFinalSegment,
+    language,
+    keywords: deepgramKeywords,
+    speakerNames: deepgramSpeakerNames,
+  });
+
+  const { isRecording, interimText, toggleRecording, error: speechError } =
+    transcriptionMode === "deepgram" ? deepgramSpeech : browserSpeech;
+
+  const detectedSpeakers: number[] = transcriptionMode === "deepgram"
+    ? deepgramSpeech.detectedSpeakers
+    : [];
 
   // ── Visualization ────────────────────────────────────────────────────────────
   const prevHtmlRef = useRef<string>("");
@@ -635,6 +675,57 @@ export default function Room() {
           {/* Mic Tab */}
           {inputTab === "mic" && (
             <div className="flex-1 flex flex-col min-h-0">
+
+              {/* Transcription mode toggle */}
+              <div className="shrink-0 px-3 py-2 border-b border-border bg-card/20 flex items-center justify-between gap-2">
+                <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider">Transskription</span>
+                <div className="flex rounded-md overflow-hidden border border-border text-[10px] font-mono">
+                  {(["browser", "deepgram"] as const).map(mode => (
+                    <button
+                      key={mode}
+                      type="button"
+                      onClick={() => setTranscriptionMode(mode)}
+                      disabled={isRecording}
+                      className={cn(
+                        "px-2.5 py-1 transition-colors",
+                        transcriptionMode === mode
+                          ? "bg-primary text-white"
+                          : "text-muted-foreground hover:text-white hover:bg-secondary/60",
+                        "disabled:opacity-40 disabled:cursor-not-allowed"
+                      )}
+                    >
+                      {mode === "browser" ? "Browser" : "Deepgram ✦"}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Deepgram speaker name mapping */}
+              {transcriptionMode === "deepgram" && (
+                <div className="shrink-0 px-3 py-2 border-b border-border bg-card/30 space-y-1.5">
+                  <p className="text-[9px] font-mono uppercase tracking-wider text-muted-foreground">
+                    {detectedSpeakers.length === 0
+                      ? "Start optagelse — talere opdages automatisk"
+                      : "Tilknyt navne til opdagede talere"}
+                  </p>
+                  {detectedSpeakers.map((id) => (
+                    <div key={id} className="flex items-center gap-2">
+                      <span className="text-[10px] font-mono text-primary w-14 shrink-0">Taler {id + 1}</span>
+                      <input
+                        type="text"
+                        value={deepgramSpeakerNames[id] ?? ""}
+                        onChange={(e) =>
+                          setDeepgramSpeakerNames((prev) => ({ ...prev, [id]: e.target.value }))
+                        }
+                        placeholder={`Taler ${id + 1}`}
+                        className="flex-1 h-6 bg-secondary/40 border border-border rounded px-2 text-[11px] font-mono text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary/40"
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {transcriptionMode === "browser" && (
               <div className="shrink-0 px-3 py-2 border-b border-border bg-card/40 space-y-2">
                 <div className="flex flex-wrap gap-1 items-center">
                   <span className="text-[9px] font-mono uppercase tracking-wider text-muted-foreground mr-0.5">
@@ -672,6 +763,7 @@ export default function Room() {
                   />
                 </details>
               </div>
+              )}
               <div className="flex-1 overflow-y-auto p-3 space-y-3 min-h-0" ref={transcriptRef}>
               <AnimatePresence initial={false}>
                 {segments.map((seg, i) => {
