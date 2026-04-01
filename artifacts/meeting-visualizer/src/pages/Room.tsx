@@ -542,24 +542,42 @@ export default function Room() {
   const isGeneratingRef = useRef(isGenerating);
   useEffect(() => { isGeneratingRef.current = isGenerating; }, [isGenerating]);
 
+  // Track word count at last generation to avoid redundant auto-viz triggers
+  const lastVizWordCountRef = useRef(0);
+  const autoVizCountdownRef = useRef(45);
+
+  // Reset countdown whenever a generation completes (manual or auto)
+  useEffect(() => {
+    if (!isGenerating) {
+      lastVizWordCountRef.current = currentWordCount;
+      autoVizCountdownRef.current = 45;
+      setAutoVizCountdown(45);
+    }
+  }, [isGenerating, currentWordCount]);
+
   // Auto-viz: 45-second countdown
   useEffect(() => {
     setAutoVizCountdown(45);
+    autoVizCountdownRef.current = 45;
     if (!autoVizEnabled) return;
 
     const tick = setInterval(() => {
-      setAutoVizCountdown(prev => {
-        if (prev <= 1) {
-          if (
-            currentWordCountRef.current >= MIN_WORDS_FOR_VISUALIZATION &&
-            !isGeneratingRef.current
-          ) {
-            handleGenerateRef.current(true);
-          }
-          return 45;
+      autoVizCountdownRef.current -= 1;
+      const next = autoVizCountdownRef.current;
+      setAutoVizCountdown(next);
+
+      if (next <= 0) {
+        const hasNewContent = currentWordCountRef.current > lastVizWordCountRef.current;
+        if (
+          hasNewContent &&
+          currentWordCountRef.current >= MIN_WORDS_FOR_VISUALIZATION &&
+          !isGeneratingRef.current
+        ) {
+          handleGenerateRef.current(true);
         }
-        return prev - 1;
-      });
+        autoVizCountdownRef.current = 45;
+        setAutoVizCountdown(45);
+      }
     }, 1000);
 
     return () => clearInterval(tick);
