@@ -252,6 +252,11 @@ router.post("/visualize", async (req, res, next): Promise<void> => {
   res.flushHeaders();
   const ttHeadersMs = Math.round(performance.now() - streamT0);
 
+  // Track client disconnect so we skip broadcast for orphaned requests
+  let clientDisconnected = false;
+  req.on("close", () => { clientDisconnected = true; });
+  const vizStartedAt = Date.now();
+
   if (classification) {
     res.write(
       `data: ${JSON.stringify({
@@ -317,7 +322,11 @@ router.post("/visualize", async (req, res, next): Promise<void> => {
     const cleanHtml = stripCodeFences(fullHtml);
     const qualityOk = isHtmlQualityOk(cleanHtml);
 
-    if (qualityOk) {
+    if (clientDisconnected) {
+      console.log(
+        `[viz-orphan] Client disconnected during generation — skipping broadcast/save (room=${roomId}, family=${resolvedFamily ?? classification?.family}, took=${Math.round(performance.now() - streamT0)}ms)`
+      );
+    } else if (qualityOk) {
       if (roomId) {
         const room = getRoom(roomId);
         if (room) {
@@ -357,6 +366,7 @@ router.post("/visualize", async (req, res, next): Promise<void> => {
         roomId: roomId ?? null,
         workspaceDomain: workspaceDomain ?? null,
         transcriptWords: normalized.split(/\s+/).filter(Boolean).length,
+        orphaned: clientDisconnected,
       },
     });
   } catch (err: any) {
