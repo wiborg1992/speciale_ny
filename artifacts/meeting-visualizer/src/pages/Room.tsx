@@ -68,7 +68,7 @@ const VIZ_MODELS = [
 const WORKSPACE_DOMAINS = [
   { value: "grundfos", label: "Grundfos" },
   { value: "gabriel",  label: "Gabriel (data)" },
-  { value: "generic",  label: "Generisk" },
+  { value: "generic",  label: "Generic" },
 ] as const;
 
 /** Kommasepareret — gemmes i localStorage; bruges som hurtigvalg for [Navn]: i transskriptet. */
@@ -387,7 +387,7 @@ export default function Room() {
     if (!passesVisualizationWordGate(transcript, userPickedType)) {
       if (!auto) {
         toast({
-          title: "For lidt tekst til visualisering",
+          title: "Not enough text to visualize",
           description: `Ved Auto-detect bruges mindst ${MIN_WORDS_FOR_VISUALIZATION} ord — eller vælg en fast visualization-type.`,
         });
       }
@@ -582,7 +582,7 @@ export default function Room() {
               <button
                 onClick={() => { setEditNameValue(speakerName); setIsEditingName(true); }}
                 className="flex items-center gap-1 text-muted-foreground hover:text-white transition-colors"
-                title="Aktiv taler — denne bruger får mærkat [Navn]: i transskriptet"
+                title="Active speaker — this user is labelled [Name]: in the transcript"
               >
                 <span className="text-white">{speakerName}</span>
                 <Pencil className="w-2.5 h-2.5 opacity-50" />
@@ -678,7 +678,7 @@ export default function Room() {
 
               {/* Transcription mode toggle */}
               <div className="shrink-0 px-3 py-2 border-b border-border bg-card/20 flex items-center justify-between gap-2">
-                <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider">Transskription</span>
+                <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider">Transcription</span>
                 <div className="flex rounded-md overflow-hidden border border-border text-[10px] font-mono">
                   {(["browser", "deepgram"] as const).map(mode => (
                     <button
@@ -705,19 +705,19 @@ export default function Room() {
                 <div className="shrink-0 px-3 py-2 border-b border-border bg-card/30 space-y-1.5">
                   <p className="text-[9px] font-mono uppercase tracking-wider text-muted-foreground">
                     {detectedSpeakers.length === 0
-                      ? "Start optagelse — talere opdages automatisk"
-                      : "Tilknyt navne til opdagede talere"}
+                      ? "Start recording — speakers detected automatically"
+                      : "Assign names to detected speakers"}
                   </p>
                   {detectedSpeakers.map((id) => (
                     <div key={id} className="flex items-center gap-2">
-                      <span className="text-[10px] font-mono text-primary w-14 shrink-0">Taler {id + 1}</span>
+                      <span className="text-[10px] font-mono text-primary w-16 shrink-0">Speaker {id + 1}</span>
                       <input
                         type="text"
                         value={deepgramSpeakerNames[id] ?? ""}
                         onChange={(e) =>
                           setDeepgramSpeakerNames((prev) => ({ ...prev, [id]: e.target.value }))
                         }
-                        placeholder={`Taler ${id + 1}`}
+                        placeholder={`Speaker ${id + 1}`}
                         className="flex-1 h-6 bg-secondary/40 border border-border rounded px-2 text-[11px] font-mono text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary/40"
                       />
                     </div>
@@ -729,14 +729,14 @@ export default function Room() {
               <div className="shrink-0 px-3 py-2 border-b border-border bg-card/40 space-y-2">
                 <div className="flex flex-wrap gap-1 items-center">
                   <span className="text-[9px] font-mono uppercase tracking-wider text-muted-foreground mr-0.5">
-                    Hurtigvalg
+                    Quick select
                   </span>
                   {workshopQuickNames.map((name) => (
                     <button
                       key={name}
                       type="button"
                       onClick={() => setSpeakerName(name)}
-                      title={`Sæt aktiv taler til ${name}`}
+                      title={`Set active speaker to ${name}`}
                       className={cn(
                         "px-2 py-0.5 rounded-md text-[10px] font-mono border transition-colors",
                         speakerName === name
@@ -751,7 +751,7 @@ export default function Room() {
                 <details className="group text-[10px]">
                   <summary className="cursor-pointer text-muted-foreground hover:text-foreground list-none flex items-center gap-1 [&::-webkit-details-marker]:hidden">
                     <span className="opacity-60 group-open:rotate-90 transition-transform inline-block">▸</span>
-                    Tilpas navneliste (kommasepareret)
+                    Customise name list (comma-separated)
                   </summary>
                   <input
                     type="text"
@@ -820,6 +820,61 @@ export default function Room() {
                 </div>
               )}
               </div>
+
+              {/* Visualize + Viz history — mirrors paste tab */}
+              <div className="shrink-0 px-3 pt-2 pb-2 border-t border-border flex flex-col gap-2">
+                {vizStreamError && (
+                  <div className="p-2 rounded-md bg-destructive/10 border border-destructive/40 text-[11px] text-destructive-foreground flex gap-2 items-start">
+                    <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                    <span>{vizStreamError}</span>
+                  </div>
+                )}
+                <Button
+                  type="button"
+                  variant="default"
+                  className="w-full h-9 text-xs font-mono"
+                  onClick={() => { handleGenerate(false); setOutputTab("viz"); }}
+                  disabled={isGenerating || currentWordCount === 0}
+                >
+                  {isGenerating ? (
+                    <><RefreshCcw className="w-3.5 h-3.5 mr-1.5 animate-spin" />Generating…</>
+                  ) : (
+                    <><Wand2 className="w-3.5 h-3.5 mr-1.5" />Visualize from transcript</>
+                  )}
+                </Button>
+                <details className="group rounded-md border border-border bg-card/40">
+                  <summary className="cursor-pointer list-none px-2 py-1.5 flex items-center gap-2 text-[10px] font-mono uppercase tracking-wider text-muted-foreground hover:text-foreground [&::-webkit-details-marker]:hidden">
+                    <History className="w-3.5 h-3.5 opacity-70" />
+                    <span>Viz history</span>
+                    <span className="text-muted-foreground/60">({vizHistory.length})</span>
+                    <span className="opacity-50 group-open:rotate-90 transition-transform ml-auto">▸</span>
+                  </summary>
+                  <div className="max-h-40 overflow-y-auto border-t border-border px-2 py-1.5 space-y-1">
+                    {vizHistory.length === 0 ? (
+                      <p className="text-[10px] text-muted-foreground py-2">No visualizations yet. Added when you Visualize.</p>
+                    ) : (
+                      [...vizHistory].reverse().map((v) => (
+                        <div key={v.version} className="flex items-center gap-2 rounded border border-border/60 bg-secondary/20 p-1.5">
+                          <div className="flex-1 min-w-0">
+                            <div className="text-[9px] font-mono text-muted-foreground">
+                              v{v.version} · {format(new Date(v.timestamp), "HH:mm:ss")}
+                            </div>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="h-7 shrink-0 text-[10px] px-2"
+                            onClick={() => { loadVizVersion(v.version); setOutputTab("viz"); }}
+                          >
+                            Load
+                          </Button>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </details>
+              </div>
             </div>
           )}
 
@@ -828,17 +883,16 @@ export default function Room() {
             <div className="flex-1 flex flex-col min-h-0">
               <div className="shrink-0 p-3 pb-2">
                 <p className="text-[11px] text-muted-foreground leading-relaxed">
-                  Indsæt eksport fra Teams, Zoom m.fl. Brug linjer som{" "}
-                  <code className="text-[10px] bg-secondary/50 px-1 rounded">[Jesper]:</code> eller{" "}
-                  <code className="text-[10px] bg-secondary/50 px-1 rounded">Navn: …</code> pr. taler — så matcher det
-                  mic-formatet og AI-pipelines.
+                  Paste export from Teams, Zoom etc. Use lines like{" "}
+                  <code className="text-[10px] bg-secondary/50 px-1 rounded">[Jesper]:</code> or{" "}
+                  <code className="text-[10px] bg-secondary/50 px-1 rounded">Name: …</code> per speaker — matches mic format and AI pipeline.
                 </p>
               </div>
               <div className="flex-1 min-h-0 px-3 flex flex-col gap-0">
                 <textarea
                   value={pasteText}
                   onChange={e => setPasteText(e.target.value)}
-                  placeholder="[Jesper]: Lad os kigge på Excel-arket...&#10;[Klaus]: KPI for sidste kvartal..."
+                  placeholder="[Jesper]: Let's look at the Excel sheet...&#10;[Klaus]: KPIs for last quarter..."
                   className="flex-1 min-h-[140px] bg-secondary/30 border border-border rounded-lg p-3 text-sm font-mono text-foreground placeholder:text-muted-foreground/40 resize-none focus:outline-none focus:ring-1 focus:ring-primary/50"
                 />
                 {vizStreamError && (
@@ -859,21 +913,21 @@ export default function Room() {
                     disabled={isGenerating || !pasteText.trim()}
                   >
                     {isGenerating ? (
-                      <><RefreshCcw className="w-3.5 h-3.5 mr-1.5 animate-spin" />Genererer…</>
+                      <><RefreshCcw className="w-3.5 h-3.5 mr-1.5 animate-spin" />Generating…</>
                     ) : (
-                      <><Wand2 className="w-3.5 h-3.5 mr-1.5" />Visualize fra indsæt tekst</>
+                      <><Wand2 className="w-3.5 h-3.5 mr-1.5" />Visualize from pasted text</>
                     )}
                   </Button>
                   <details className="group rounded-md border border-border bg-card/40">
                     <summary className="cursor-pointer list-none px-2 py-1.5 flex items-center gap-2 text-[10px] font-mono uppercase tracking-wider text-muted-foreground hover:text-foreground [&::-webkit-details-marker]:hidden">
                       <History className="w-3.5 h-3.5 opacity-70" />
-                      <span>Transskript-historik</span>
+                      <span>Transcript history</span>
                       <span className="text-muted-foreground/60">({pasteHistory.length})</span>
                       <span className="opacity-50 group-open:rotate-90 transition-transform ml-auto">▸</span>
                     </summary>
                     <div className="max-h-40 overflow-y-auto border-t border-border px-2 py-1.5 space-y-1">
                       {pasteHistory.length === 0 ? (
-                        <p className="text-[10px] text-muted-foreground py-2">Ingen gemte udgaver endnu. De tilføjes ved Visualize.</p>
+                        <p className="text-[10px] text-muted-foreground py-2">No saved versions yet. Added when you Visualize.</p>
                       ) : (
                         [...pasteHistory].reverse().map((h) => {
                           const preview = h.text.replace(/\s+/g, " ").trim().slice(0, 72);
@@ -897,7 +951,7 @@ export default function Room() {
                                 className="h-7 shrink-0 text-[10px] px-2"
                                 onClick={() => setPasteText(h.text)}
                               >
-                                Gendan
+                                Restore
                               </Button>
                             </div>
                           );
@@ -907,14 +961,14 @@ export default function Room() {
                   </details>
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] font-mono text-muted-foreground">
-                      {pasteText.trim() ? pasteText.trim().split(/\s+/).length + " ord" : "0 ord"}
+                      {pasteText.trim() ? pasteText.trim().split(/\s+/).length + " words" : "0 words"}
                     </span>
                     <button
                       type="button"
                       onClick={() => setPasteText("")}
                       className="text-[10px] font-mono text-muted-foreground hover:text-destructive transition-colors"
                     >
-                      Ryd tekst
+                      Clear
                     </button>
                   </div>
                 </div>
@@ -954,7 +1008,7 @@ export default function Room() {
             <select
               value={workspaceDomain}
               onChange={e => setWorkspaceDomain(e.target.value)}
-              title="Arbejdsområde — Gabriel: Excel/mødedata & visualisering (Gabriel-minded stil)"
+              title="Workspace — Gabriel: Excel/meeting data &amp; visualization (Gabriel-minded style)"
               className="h-8 bg-secondary/50 border border-border rounded px-2 text-xs font-mono text-foreground focus:outline-none cursor-pointer max-w-[140px]"
             >
               {WORKSPACE_DOMAINS.map(d => (
