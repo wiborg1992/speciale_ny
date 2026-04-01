@@ -199,13 +199,12 @@ export function useDeepgramSpeech({
             if (data.is_final) {
               pendingBufferRef.current.push({ transcript, speaker: dominantSpeaker });
 
-              if (data.speech_final) {
-                flushBuffer();
-              } else {
-                // Fallback timer in case no speech_final arrives
-                if (commitTimerRef.current) clearTimeout(commitTimerRef.current);
-                commitTimerRef.current = setTimeout(flushBuffer, 3000);
-              }
+              // Primary commit trigger is UtteranceEnd (fires after utterance_end_ms=2500ms silence).
+              // speech_final fires too eagerly (single words/phrases), so we only use it to
+              // reset the fallback timer — never to flush immediately.
+              if (commitTimerRef.current) clearTimeout(commitTimerRef.current);
+              commitTimerRef.current = setTimeout(flushBuffer, 5000);
+
               setInterimText("");
             } else {
               // Show live interim preview
