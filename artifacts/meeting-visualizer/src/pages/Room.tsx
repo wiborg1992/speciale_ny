@@ -844,33 +844,50 @@ export default function Room() {
                 </Button>
                 <details className="group rounded-md border border-border bg-card/40">
                   <summary className="cursor-pointer list-none px-2 py-1.5 flex items-center gap-2 text-[10px] font-mono uppercase tracking-wider text-muted-foreground hover:text-foreground [&::-webkit-details-marker]:hidden">
-                    <History className="w-3.5 h-3.5 opacity-70" />
-                    <span>Viz history</span>
-                    <span className="text-muted-foreground/60">({vizHistory.length})</span>
+                    <FileText className="w-3.5 h-3.5 opacity-70" />
+                    <span>Transcript log</span>
+                    <span className="text-muted-foreground/60">({segments.length})</span>
                     <span className="opacity-50 group-open:rotate-90 transition-transform ml-auto">▸</span>
                   </summary>
-                  <div className="max-h-40 overflow-y-auto border-t border-border px-2 py-1.5 space-y-1">
-                    {vizHistory.length === 0 ? (
-                      <p className="text-[10px] text-muted-foreground py-2">No visualizations yet. Added when you Visualize.</p>
-                    ) : (
-                      [...vizHistory].reverse().map((v) => (
-                        <div key={v.version} className="flex items-center gap-2 rounded border border-border/60 bg-secondary/20 p-1.5">
-                          <div className="flex-1 min-w-0">
-                            <div className="text-[9px] font-mono text-muted-foreground">
-                              v{v.version} · {format(new Date(v.timestamp), "HH:mm:ss")}
-                            </div>
+                  <div className="border-t border-border">
+                    <div className="max-h-48 overflow-y-auto px-2 py-1.5 space-y-0.5">
+                      {segments.length === 0 ? (
+                        <p className="text-[10px] text-muted-foreground py-2">No segments yet. Start recording.</p>
+                      ) : (
+                        segments.map((seg) => (
+                          <div key={seg.id} className="flex gap-1.5 text-[10px] font-mono leading-relaxed">
+                            <span className="text-muted-foreground/60 shrink-0 w-[52px]">
+                              {format(new Date(seg.timestamp), "HH:mm:ss")}
+                            </span>
+                            <span className="text-primary/80 shrink-0 max-w-[60px] truncate">{seg.speakerName}:</span>
+                            <span className="text-foreground/80 break-words min-w-0">{seg.text}</span>
                           </div>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            className="h-7 shrink-0 text-[10px] px-2"
-                            onClick={() => { loadVizVersion(v.version); setOutputTab("viz"); }}
-                          >
-                            Load
-                          </Button>
-                        </div>
-                      ))
+                        ))
+                      )}
+                    </div>
+                    {segments.length > 0 && (
+                      <div className="border-t border-border px-2 py-1.5">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="w-full h-7 text-[10px] font-mono gap-1.5"
+                          onClick={() => {
+                            const lines = segments.map(s =>
+                              `[${format(new Date(s.timestamp), "HH:mm:ss")}] ${s.speakerName}: ${s.text}`
+                            );
+                            const header = `Meeting Transcript${meetingTitle ? ` — ${meetingTitle}` : ""}\n${format(new Date(), "yyyy-MM-dd HH:mm")}\n${"─".repeat(50)}\n\n`;
+                            const blob = new Blob([header + lines.join("\n")], { type: "text/plain" });
+                            const a = document.createElement("a");
+                            a.href = URL.createObjectURL(blob);
+                            a.download = `transcript_${format(new Date(), "yyyy-MM-dd_HHmm")}.txt`;
+                            a.click();
+                            URL.revokeObjectURL(a.href);
+                          }}
+                        >
+                          <Download className="w-3 h-3" />Export TXT
+                        </Button>
+                      </div>
                     )}
                   </div>
                 </details>
