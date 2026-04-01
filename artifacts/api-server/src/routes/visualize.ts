@@ -130,10 +130,35 @@ router.post("/visualize", async (req, res, next): Promise<void> => {
   // ─── Server-side classification ───────────────────────────────────────────
   // Runs BEFORE calling Claude so we can pass an explicit type hint.
   // If the user explicitly chose a type, skip auto-classification.
+  //
+  // CRITICAL: Classify on the RECENT tail of the transcript, NOT the full history.
+  // In a 700-word conversation about pumps/requirements, a recent command like
+  // "let's do a user journey mapping" gets drowned out by older keywords.
+  // The classifier must reflect the user's LATEST intent, not accumulated topics.
+  const CLASSIFY_TAIL_WORDS = 150;
   const userPickedType = vizType && vizType !== "auto";
+
+  let classificationInput: string;
+  if (focusSegment) {
+    classificationInput = focusSegment;
+  } else {
+    const words = normalized.split(/\s+/);
+    classificationInput = words.length > CLASSIFY_TAIL_WORDS
+      ? words.slice(-CLASSIFY_TAIL_WORDS).join(" ")
+      : normalized;
+  }
+
   const classification = userPickedType
     ? null
-    : classifyVisualizationIntent(normalized, workspaceDomain);
+    : classifyVisualizationIntent(classificationInput, workspaceDomain);
+
+  if (classification) {
+    const totalWords = normalized.split(/\s+/).filter(Boolean).length;
+    const classifyWords = classificationInput.split(/\s+/).filter(Boolean).length;
+    console.log(
+      `[classify] Input: ${classifyWords}/${totalWords} words (${focusSegment ? "focusSegment" : "tail"}) → ${classification.family} (lead=${classification.lead}, ambiguous=${classification.ambiguous})`
+    );
+  }
 
   // Resolve the effective family to inject into the prompt
   let resolvedFamily: VizFamily | null = null;
