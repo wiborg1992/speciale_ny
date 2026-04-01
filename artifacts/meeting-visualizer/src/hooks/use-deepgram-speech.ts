@@ -138,8 +138,10 @@ export function useDeepgramSpeech({
 
       // 3. Build Deepgram WebSocket URL
       const lang = language.split("-")[0]; // "da-DK" → "da"
+      // nova-3 only supports English; for Danish (and other non-EN) use nova-2
+      const model = lang === "en" ? "nova-3" : "nova-2";
       const params = new URLSearchParams({
-        model: "nova-3",
+        model,
         language: lang,
         diarize: "true",
         interim_results: "true",
@@ -219,14 +221,24 @@ export function useDeepgramSpeech({
         }
       };
 
-      ws.onerror = () => {
-        setError("Deepgram forbindelsesfejl. Tjek API-nøglen og internetforbindelsen.");
-        stopRecording();
+      ws.onerror = (ev) => {
+        console.error("[deepgram] WebSocket onerror:", ev);
+        // onerror always fires before onclose — let onclose set the message
       };
 
       ws.onclose = (ev) => {
-        if (ev.code !== 1000 && isRecordingRef.current) {
-          setError(`Deepgram afbrød forbindelsen (${ev.code}).`);
+        console.warn("[deepgram] WebSocket closed — code:", ev.code, "reason:", ev.reason);
+        if (ev.code === 1000) return; // clean close by us
+        let msg = `Deepgram afbrød forbindelsen (kode ${ev.code})`;
+        if (ev.code === 1008 || ev.reason?.toLowerCase().includes("auth") || ev.reason?.toLowerCase().includes("invalid")) {
+          msg = "Deepgram: ugyldig API-nøgle. Opdatér nøglen i Replit Secrets og genstart API-serveren.";
+        } else if (ev.code === 1006) {
+          msg = "Deepgram: netværksfejl — kunne ikke oprette forbindelse. Tjek internetforbindelsen.";
+        } else if (ev.reason) {
+          msg = `Deepgram: ${ev.reason} (kode ${ev.code})`;
+        }
+        if (isRecordingRef.current) {
+          setError(msg);
           stopRecording();
         }
       };
