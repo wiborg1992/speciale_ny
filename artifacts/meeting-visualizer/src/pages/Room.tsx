@@ -341,19 +341,32 @@ export default function Room() {
     }
   }, [roomId, speakerName, addLocalSegment, postSegment]);
 
-  // Deepgram keywords: boost domain-specific terms based on context
   const deepgramKeywords = useMemo(() => {
-    const base = workspaceDomain === "grundfos"
+    const vizKeywords = [
+      "user journey:5", "journey mapping:5", "journey map:5",
+      "customer journey:4", "experience map:4",
+      "touchpoint:4", "touchpoints:4", "pain point:4",
+      "swimlane:3", "swim lane:3",
+      "workflow:4", "flowchart:4", "process flow:3",
+      "HMI:5", "SCADA:4", "dashboard:4", "interface:3",
+      "persona:4", "empathy map:4",
+      "service blueprint:4", "blueprint:3",
+      "requirements:3", "traceability:3",
+      "roadmap:4", "timeline:4", "Gantt:3",
+      "comparison:3", "evaluation:3", "SWOT:4",
+      "design system:4",
+      "brugerrejse:5", "kunderejse:4",
+    ];
+    const domainKeywords = workspaceDomain === "grundfos"
       ? ["pumpe:5", "pumper:5", "Grundfos:5", "iSolutions:4", "tryktab:3", "vandmåler:3", "CRA:4"]
       : workspaceDomain === "gabriel"
       ? ["Gabriel:5", "tekstil:4", "stoffer:4", "kollektion:3"]
       : [];
-    // Also pull any capitalized words from context fields as hints
     const ctxWords = [ctxPurpose, ctxProjects, ctxExtra]
       .join(" ")
       .match(/\b[A-ZÆØÅ][a-zæøå]{2,}\b/g) ?? [];
     const ctxKeywords = [...new Set(ctxWords)].slice(0, 10).map(w => `${w}:2`);
-    return [...base, ...ctxKeywords];
+    return [...vizKeywords, ...domainKeywords, ...ctxKeywords];
   }, [workspaceDomain, ctxPurpose, ctxProjects, ctxExtra]);
 
   const browserSpeech = useSpeech({

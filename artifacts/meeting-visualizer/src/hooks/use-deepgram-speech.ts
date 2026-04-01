@@ -71,7 +71,7 @@ export function useDeepgramSpeech({
   const MAX_BUFFER_MS = 45_000;
 
   const getSpeakerLabel = useCallback((speakerId: number): string => {
-    return speakerNamesRef.current[speakerId] ?? `Taler ${speakerId + 1}`;
+    return speakerNamesRef.current[speakerId] ?? `Speaker ${speakerId + 1}`;
   }, []);
 
   const flushBuffer = useCallback(() => {
@@ -127,7 +127,7 @@ export function useDeepgramSpeech({
 
       // 1. Fetch Deepgram API key from our own backend
       const tokenRes = await fetch("/api/deepgram-token");
-      if (!tokenRes.ok) throw new Error("Kunne ikke hente Deepgram token fra serveren");
+      if (!tokenRes.ok) throw new Error("Could not fetch Deepgram token from server");
       const { key } = await tokenRes.json();
 
       // 2. Request microphone
@@ -242,13 +242,13 @@ export function useDeepgramSpeech({
       ws.onclose = (ev) => {
         console.warn("[deepgram] WebSocket closed — code:", ev.code, "reason:", ev.reason);
         if (ev.code === 1000) return; // clean close by us
-        let msg = `Deepgram afbrød forbindelsen (kode ${ev.code})`;
+        let msg = `Deepgram disconnected (code ${ev.code})`;
         if (ev.code === 1008 || ev.reason?.toLowerCase().includes("auth") || ev.reason?.toLowerCase().includes("invalid")) {
-          msg = "Deepgram: ugyldig API-nøgle. Opdatér nøglen i Replit Secrets og genstart API-serveren.";
+          msg = "Deepgram: invalid API key. Update the key in Replit Secrets and restart the API server.";
         } else if (ev.code === 1006) {
-          msg = "Deepgram: netværksfejl — kunne ikke oprette forbindelse. Tjek internetforbindelsen.";
+          msg = "Deepgram: network error — could not connect. Check internet connection.";
         } else if (ev.reason) {
-          msg = `Deepgram: ${ev.reason} (kode ${ev.code})`;
+          msg = `Deepgram: ${ev.reason} (code ${ev.code})`;
         }
         if (isRecordingRef.current) {
           setError(msg);
@@ -260,7 +260,7 @@ export function useDeepgramSpeech({
       setIsRecording(true);
     } catch (err: any) {
       console.error("[deepgram] Start error:", err);
-      setError(err?.message ?? "Kunne ikke starte Deepgram-optagelse");
+      setError(err?.message ?? "Could not start Deepgram recording");
       streamRef.current?.getTracks().forEach((t) => t.stop());
       streamRef.current = null;
       setIsRecording(false);
