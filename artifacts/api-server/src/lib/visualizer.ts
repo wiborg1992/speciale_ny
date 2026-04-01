@@ -785,6 +785,8 @@ export interface VisualizerParams {
   refinementDirective?: string | null;
   /** grundfos | gabriel | generic — drives system prompt and branding */
   workspaceDomain?: string | null;
+  /** "Speaker: text" of the specific segment the user clicked to trigger this generation */
+  focusSegment?: string | null;
 }
 
 /** Maps server-side family IDs to clear, unambiguous instructions for the AI */
@@ -935,6 +937,7 @@ export async function* streamVisualization(
     resolvedFamily,
     refinementDirective,
     workspaceDomain,
+    focusSegment,
   } = params;
 
   const domain = normalizeWorkspaceDomain(workspaceDomain);
@@ -1033,6 +1036,17 @@ DO NOT:
 CURRENT VISUALIZATION (reference — keep and improve when topic is the same):
 ${snippet}${tail}`;
     }
+  }
+
+  if (focusSegment) {
+    userMessage +=
+      `\n\n⚡ USER FOCUS TRIGGER — MANUAL SEGMENT SELECTION:\n` +
+      `The user clicked a specific transcript segment to trigger this generation.\n` +
+      `This is the statement they selected as the primary signal:\n\n` +
+      `  "${focusSegment}"\n\n` +
+      (isIncremental
+        ? `INCREMENTAL MODE: Incorporate this statement as the key new information to add or emphasize in the existing visualization. Prioritize surfacing ideas, data, or themes from this statement.\n`
+        : `FRESH MODE: This statement is your primary anchor. Build the visualization around the ideas, data, or themes expressed in it, using the full transcript as supporting context.\n`);
   }
 
   userMessage += "Generate the HTML visualization now.";

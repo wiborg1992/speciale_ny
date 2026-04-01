@@ -37,6 +37,12 @@ export interface VisualizeRequest {
    * @nullable
    */
   workspaceDomain?: string | null;
+  /**
+   * A specific transcript segment that the user manually selected as the focus trigger.
+   * Format: "SpeakerName: segment text". Tells the model which statement drove this generation.
+   * @nullable
+   */
+  focusSegment?: string | null;
 }
 
 export interface DeepgramTokenResponse {

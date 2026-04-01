@@ -425,6 +425,27 @@ export default function Room() {
     appendPasteHistoryIfNeeded,
   ]);
 
+  // Per-segment manual trigger: user picks a segment + mode (refine or fresh)
+  const handleGenerateFromSegment = useCallback((seg: { speakerName: string; text: string }, isFresh: boolean) => {
+    const transcript = getActiveTranscript();
+    if (!transcript) return;
+    const previous = !isFresh ? (prevHtmlRef.current || null) : null;
+    generate({
+      transcript,
+      previousHtml: previous,
+      roomId,
+      speakerName: seg.speakerName,
+      vizType: vizType !== "auto" ? vizType : null,
+      vizModel,
+      title: meetingTitle || null,
+      context: getMeetingContext(),
+      freshStart: isFresh,
+      workspaceDomain,
+      focusSegment: `${seg.speakerName}: ${seg.text}`,
+    });
+    setOutputTab("viz");
+  }, [getActiveTranscript, roomId, vizType, vizModel, meetingTitle, getMeetingContext, generate, workspaceDomain]);
+
   // Auto-scroll transcript
   useEffect(() => {
     if (transcriptRef.current) {
@@ -855,12 +876,28 @@ export default function Room() {
                         <p className="text-[10px] text-muted-foreground py-2">No segments yet. Start recording.</p>
                       ) : (
                         segments.map((seg) => (
-                          <div key={seg.id} className="flex gap-1.5 text-[10px] font-mono leading-relaxed">
-                            <span className="text-muted-foreground/60 shrink-0 w-[52px]">
+                          <div key={seg.id} className="group flex gap-1.5 text-[10px] font-mono leading-relaxed rounded hover:bg-secondary/30 -mx-1 px-1 py-0.5">
+                            <span className="text-muted-foreground/60 shrink-0 w-[52px] mt-px">
                               {format(new Date(seg.timestamp), "HH:mm:ss")}
                             </span>
                             <span className="text-primary/80 shrink-0 max-w-[60px] truncate">{seg.speakerName}:</span>
-                            <span className="text-foreground/80 break-words min-w-0">{seg.text}</span>
+                            <span className="text-foreground/80 break-words min-w-0 flex-1">{seg.text}</span>
+                            <span className="shrink-0 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity mt-px">
+                              <button
+                                type="button"
+                                title="Refine existing visualization from this statement"
+                                disabled={isGenerating}
+                                onClick={() => handleGenerateFromSegment(seg, false)}
+                                className="h-5 px-1.5 rounded text-[9px] font-mono bg-secondary/60 hover:bg-primary/20 hover:text-primary border border-border/60 hover:border-primary/40 disabled:opacity-40 transition-colors cursor-pointer"
+                              >↻ refine</button>
+                              <button
+                                type="button"
+                                title="Generate a fresh new visualization from this statement"
+                                disabled={isGenerating}
+                                onClick={() => handleGenerateFromSegment(seg, true)}
+                                className="h-5 px-1.5 rounded text-[9px] font-mono bg-secondary/60 hover:bg-amber-500/20 hover:text-amber-500 border border-border/60 hover:border-amber-500/40 disabled:opacity-40 transition-colors cursor-pointer"
+                              >✦ new</button>
+                            </span>
                           </div>
                         ))
                       )}

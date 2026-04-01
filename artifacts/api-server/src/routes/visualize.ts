@@ -59,6 +59,8 @@ const VisualizeBodySchema = z.object({
   freshStart:   z.boolean().optional(),
   /** grundfos | gabriel | generic (aliases: neutral, other → generic) */
   workspaceDomain: z.string().optional().nullable(),
+  /** "Speaker: text" of the specific segment the user clicked to trigger this generation */
+  focusSegment: z.string().optional().nullable(),
 });
 
 router.post("/visualize", async (req, res, next): Promise<void> => {
@@ -76,7 +78,7 @@ router.post("/visualize", async (req, res, next): Promise<void> => {
     return;
   }
 
-  const { transcript, previousHtml, roomId, vizType, vizModel, title, context, freshStart, workspaceDomain } =
+  const { transcript, previousHtml, roomId, vizType, vizModel, title, context, freshStart, workspaceDomain, focusSegment } =
     parsed.data;
 
   if (transcript.length > MAX_BODY_CHARS) {
@@ -265,6 +267,7 @@ router.post("/visualize", async (req, res, next): Promise<void> => {
         resolvedFamily,
         refinementDirective,
         workspaceDomain,
+        focusSegment,
       },
       (c) => {
         if (firstChunkMs == null) firstChunkMs = Math.round(performance.now() - streamT0);
