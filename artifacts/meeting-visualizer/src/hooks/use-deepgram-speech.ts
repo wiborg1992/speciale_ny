@@ -63,16 +63,20 @@ export function useDeepgramSpeech({
 
   const pendingBufferRef = useRef<{ transcript: string; speaker: number }[]>([]);
   const commitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const maxAgeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // How long to wait after the LAST is_final chunk before committing (silence window)
+  const SILENCE_MS = 6000;
+  // Hard ceiling: commit after this long regardless of ongoing speech
+  const MAX_BUFFER_MS = 45_000;
 
   const getSpeakerLabel = useCallback((speakerId: number): string => {
     return speakerNamesRef.current[speakerId] ?? `Taler ${speakerId + 1}`;
   }, []);
 
   const flushBuffer = useCallback(() => {
-    if (commitTimerRef.current) {
-      clearTimeout(commitTimerRef.current);
-      commitTimerRef.current = null;
-    }
+    if (commitTimerRef.current) { clearTimeout(commitTimerRef.current); commitTimerRef.current = null; }
+    if (maxAgeTimerRef.current) { clearTimeout(maxAgeTimerRef.current); maxAgeTimerRef.current = null; }
     const items = [...pendingBufferRef.current];
     pendingBufferRef.current = [];
     if (items.length === 0) return;
@@ -100,6 +104,8 @@ export function useDeepgramSpeech({
 
   const stopRecording = useCallback(() => {
     isRecordingRef.current = false;
+    if (commitTimerRef.current) { clearTimeout(commitTimerRef.current); commitTimerRef.current = null; }
+    if (maxAgeTimerRef.current) { clearTimeout(maxAgeTimerRef.current); maxAgeTimerRef.current = null; }
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
       mediaRecorderRef.current.stop();
     }
@@ -199,11 +205,18 @@ export function useDeepgramSpeech({
             if (data.is_final) {
               pendingBufferRef.current.push({ transcript, speaker: dominantSpeaker });
 
-              // Primary commit trigger is UtteranceEnd (fires after utterance_end_ms=2500ms silence).
-              // speech_final fires too eagerly (single words/phrases), so we only use it to
-              // reset the fallback timer — never to flush immediately.
+              // Silence-debounce: reset on every new is_final chunk.
+              // Only fires if speech truly stops for SILENCE_MS (6 s).
+              // UtteranceEnd is NOT used as a flush trigger — it fires too eagerly
+              // for workshop conversations where short think-pauses are common.
               if (commitTimerRef.current) clearTimeout(commitTimerRef.current);
-              commitTimerRef.current = setTimeout(flushBuffer, 5000);
+              commitTimerRef.current = setTimeout(flushBuffer, SILENCE_MS);
+
+              // Hard ceiling: start a one-shot 45 s max-age timer when buffer
+              // first fills so a very long monologue still gets committed.
+              if (!maxAgeTimerRef.current) {
+                maxAgeTimerRef.current = setTimeout(flushBuffer, MAX_BUFFER_MS);
+              }
 
               setInterimText("");
             } else {
@@ -213,7 +226,8 @@ export function useDeepgramSpeech({
               setInterimText(`[${speakerLabel}] ${[pending, transcript].filter(Boolean).join(" ")}`);
             }
           } else if (data.type === "UtteranceEnd") {
-            flushBuffer();
+            // Intentionally ignored as a flush trigger — used only for debugging
+            console.debug("[deepgram] UtteranceEnd received (not flushing)");
           }
         } catch {
           // ignore malformed messages
