@@ -13,7 +13,7 @@ import {
   VIZ_FAMILY_LABEL,
   type VizFamily,
 } from "../lib/classifier.js";
-import { getRoom, broadcastEvent } from "../lib/rooms.js";
+import { getRoom, broadcastEvent, getRecentSegments } from "../lib/rooms.js";
 import { saveVisualization, updateMeetingTitle } from "../lib/meeting-store.js";
 import { detectRefinementIntent } from "../lib/refinement-detector.js";
 import {
@@ -25,8 +25,8 @@ const router: IRouter = Router();
 
 const rateLimitMap = new Map<string, number[]>();
 const RATE_LIMIT_WINDOW = 60_000;
-const RATE_LIMIT_MAX    = 28;   // matches reference server
-const MAX_BODY_CHARS    = 100_000;
+const RATE_LIMIT_MAX = 28; // matches reference server
+const MAX_BODY_CHARS = 100_000;
 
 function stripCodeFences(text: string): string {
   let t = text.trim();
@@ -45,18 +45,21 @@ function checkRateLimit(ip: string): boolean {
   return true;
 }
 
-const VizModelEnum = z.enum(["haiku", "sonnet", "opus", "gemini-flash", "gemini-pro"]).optional().nullable();
+const VizModelEnum = z
+  .enum(["haiku", "sonnet", "opus", "gemini-flash", "gemini-pro"])
+  .optional()
+  .nullable();
 
 const VisualizeBodySchema = z.object({
-  transcript:   z.string(),
+  transcript: z.string(),
   previousHtml: z.string().optional().nullable(),
-  roomId:       z.string().optional().nullable(),
-  speakerName:  z.string().optional().nullable(),
-  vizType:      z.string().optional().nullable(),
-  vizModel:     VizModelEnum,
-  title:        z.string().optional().nullable(),
-  context:      z.string().optional().nullable(),
-  freshStart:   z.boolean().optional(),
+  roomId: z.string().optional().nullable(),
+  speakerName: z.string().optional().nullable(),
+  vizType: z.string().optional().nullable(),
+  vizModel: VizModelEnum,
+  title: z.string().optional().nullable(),
+  context: z.string().optional().nullable(),
+  freshStart: z.boolean().optional(),
   /** grundfos | gabriel | generic (aliases: neutral, other → generic) */
   workspaceDomain: z.string().optional().nullable(),
   /** "Speaker: text" of the specific segment the user clicked to trigger this generation */
@@ -65,380 +68,504 @@ const VisualizeBodySchema = z.object({
 
 router.post("/visualize", async (req, res, next): Promise<void> => {
   try {
-  const ip = req.ip ?? "unknown";
+    const ip = req.ip ?? "unknown";
 
-  if (!checkRateLimit(ip)) {
-    res.status(429).json({ error: "Rate limit exceeded. Please wait before generating again." });
-    return;
-  }
-
-  const parsed = VisualizeBodySchema.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
-    return;
-  }
-
-  const { transcript, previousHtml, roomId, vizType, vizModel, title, context, freshStart, workspaceDomain, focusSegment } =
-    parsed.data;
-
-  if (transcript.length > MAX_BODY_CHARS) {
-    res.status(400).json({ error: "Transcript too long." });
-    return;
-  }
-
-  if (!transcript.trim()) {
-    res.status(400).json({ error: "Transcript is empty." });
-    return;
-  }
-
-  // Brug klients transskript når det er udfyldt (fx Paste). Traf kun room-segmenter ind når body er tom,
-  // så indsat tekst ikke overskrives af gamle/mic-segmenter i samme rum.
-  let effectiveTranscript = transcript;
-  if (!transcript.trim() && roomId) {
-    const room = getRoom(roomId);
-    if (room && room.segments.length > 0) {
-      effectiveTranscript = room.segments.map((s) => `[${s.speakerName}]: ${s.text}`).join("\n");
+    if (!checkRateLimit(ip)) {
+      res.status(429).json({
+        error: "Rate limit exceeded. Please wait before generating again.",
+      });
+      return;
     }
-  }
 
-  const normalized = normalizeTranscript(effectiveTranscript);
+    const parsed = VisualizeBodySchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.message });
+      return;
+    }
 
-  // ─── Refinement detection ─────────────────────────────────────────────────
-  // Check if recent speech contains modification directives like "zoom ind på",
-  // "tilføj en kolonne", "behold formatet men..." — if so, force incremental mode
-  // with the previous visualization even if the frontend didn't explicitly send it.
-  let effectivePreviousHtml = previousHtml;
-  let refinementDirective: string | null = null;
+    const {
+      transcript,
+      previousHtml,
+      roomId,
+      vizType,
+      vizModel,
+      title,
+      context,
+      freshStart,
+      workspaceDomain,
+      focusSegment,
+    } = parsed.data;
 
-  if (roomId && !freshStart) {
-    const room = getRoom(roomId);
-    const hasPreviousViz = !!(effectivePreviousHtml || room?.lastVisualization);
-    const refinement = detectRefinementIntent(normalized, hasPreviousViz);
+    if (transcript.length > MAX_BODY_CHARS) {
+      res.status(400).json({ error: "Transcript too long." });
+      return;
+    }
 
-    if (refinement.detected && refinement.directive) {
-      refinementDirective = refinement.directive;
-      if (!effectivePreviousHtml && room?.lastVisualization) {
-        effectivePreviousHtml = room.lastVisualization;
+    if (!transcript.trim()) {
+      res.status(400).json({ error: "Transcript is empty." });
+      return;
+    }
+
+    // Brug klients transskript når det er udfyldt (fx Paste). Traf kun room-segmenter ind når body er tom,
+    // så indsat tekst ikke overskrives af gamle/mic-segmenter i samme rum.
+    let effectiveTranscript = transcript;
+    if (!transcript.trim() && roomId) {
+      const room = getRoom(roomId);
+      if (room && room.segments.length > 0) {
+        effectiveTranscript = room.segments
+          .map((s) => `[${s.speakerName}]: ${s.text}`)
+          .join("\n");
       }
+    }
+
+    const normalized = normalizeTranscript(effectiveTranscript);
+
+    // ─── Refinement detection ─────────────────────────────────────────────────
+    // Check if recent speech contains modification directives like "zoom ind på",
+    // "tilføj en kolonne", "behold formatet men..." — if so, force incremental mode
+    // with the previous visualization even if the frontend didn't explicitly send it.
+    let effectivePreviousHtml = previousHtml;
+    let refinementDirective: string | null = null;
+
+    if (roomId && !freshStart) {
+      const room = getRoom(roomId);
+      const hasPreviousViz = !!(
+        effectivePreviousHtml || room?.lastVisualization
+      );
+      const refinement = detectRefinementIntent(normalized, hasPreviousViz);
+
+      if (refinement.detected && refinement.directive) {
+        refinementDirective = refinement.directive;
+        if (!effectivePreviousHtml && room?.lastVisualization) {
+          effectivePreviousHtml = room.lastVisualization;
+        }
+        console.log(
+          `[refinement] Detected in room ${roomId} (${refinement.confidence}):`,
+          refinement.phrases.join(" | "),
+        );
+      }
+    }
+
+    // ─── Server-side classification ───────────────────────────────────────────
+    // Runs BEFORE calling Claude so we can pass an explicit type hint.
+    // If the user explicitly chose a type, skip auto-classification.
+    //
+    // CRITICAL: Classify on the RECENT tail of the transcript, NOT the full history.
+    // In a 700-word conversation about pumps/requirements, a recent command like
+    // "let's do a user journey mapping" gets drowned out by older keywords.
+    // The classifier must reflect the user's LATEST intent, not accumulated topics.
+    const CLASSIFY_TAIL_WORDS = 150;
+    const userPickedType = vizType && vizType !== "auto";
+
+    let classificationInput: string;
+    if (focusSegment) {
+      classificationInput = focusSegment;
+    } else {
+      const words = normalized.split(/\s+/);
+      classificationInput =
+        words.length > CLASSIFY_TAIL_WORDS
+          ? words.slice(-CLASSIFY_TAIL_WORDS).join(" ")
+          : normalized;
+    }
+
+    // Timestamp-baseret "latest chunk": de seneste 30 sek af tale fra roomet.
+    // Mere præcis end tegn-baserede zoner ved varierende taletempo.
+    const LATEST_CHUNK_WINDOW_MS = 30_000;
+    let latestChunk: string | null = null;
+    if (roomId && !focusSegment) {
+      const recentSegs = getRecentSegments(roomId, LATEST_CHUNK_WINDOW_MS);
+      if (recentSegs.length > 0) {
+        latestChunk = recentSegs
+          .map((s) => `[${s.speakerName}]: ${s.text}`)
+          .join("\n");
+      }
+    }
+
+    const classification = userPickedType
+      ? null
+      : classifyVisualizationIntent(
+          classificationInput,
+          workspaceDomain,
+          latestChunk,
+        );
+
+    if (classification) {
+      const totalWords = normalized.split(/\s+/).filter(Boolean).length;
+      const classifyWords = classificationInput
+        .split(/\s+/)
+        .filter(Boolean).length;
       console.log(
-        `[refinement] Detected in room ${roomId} (${refinement.confidence}):`,
-        refinement.phrases.join(" | ")
+        `[classify] Input: ${classifyWords}/${totalWords} words (${focusSegment ? "focusSegment" : "tail"}) latestChunk: ${latestChunk ? latestChunk.split(/\s+/).filter(Boolean).length + "w" : "none"} → ${classification.family} (lead=${classification.lead}, ambiguous=${classification.ambiguous})`,
       );
     }
-  }
 
-  // ─── Server-side classification ───────────────────────────────────────────
-  // Runs BEFORE calling Claude so we can pass an explicit type hint.
-  // If the user explicitly chose a type, skip auto-classification.
-  //
-  // CRITICAL: Classify on the RECENT tail of the transcript, NOT the full history.
-  // In a 700-word conversation about pumps/requirements, a recent command like
-  // "let's do a user journey mapping" gets drowned out by older keywords.
-  // The classifier must reflect the user's LATEST intent, not accumulated topics.
-  const CLASSIFY_TAIL_WORDS = 150;
-  const userPickedType = vizType && vizType !== "auto";
-
-  let classificationInput: string;
-  if (focusSegment) {
-    classificationInput = focusSegment;
-  } else {
-    const words = normalized.split(/\s+/);
-    classificationInput = words.length > CLASSIFY_TAIL_WORDS
-      ? words.slice(-CLASSIFY_TAIL_WORDS).join(" ")
-      : normalized;
-  }
-
-  const classification = userPickedType
-    ? null
-    : classifyVisualizationIntent(classificationInput, workspaceDomain);
-
-  if (classification) {
-    const totalWords = normalized.split(/\s+/).filter(Boolean).length;
-    const classifyWords = classificationInput.split(/\s+/).filter(Boolean).length;
-    console.log(
-      `[classify] Input: ${classifyWords}/${totalWords} words (${focusSegment ? "focusSegment" : "tail"}) → ${classification.family} (lead=${classification.lead}, ambiguous=${classification.ambiguous})`
-    );
-  }
-
-  // Resolve the effective family to inject into the prompt
-  let resolvedFamily: VizFamily | null = null;
-  if (userPickedType) {
-    // Map frontend vizType values → family ids
-    const typeToFamily: Record<string, VizFamily> = {
-      "hmi":          "hmi_interface",
-      "journey":      "user_journey",
-      "workflow":     "workflow_process",
-      "product":      "physical_product",
-      "requirements": "requirements_matrix",
-      "management":   "management_summary",
-      "kanban":       "management_summary",
-      "decisions":    "management_summary",
-      "timeline":     "management_summary",
-      "persona":      "persona_research",
-      "research":     "persona_research",
-      "empathy":      "persona_research",
-      "blueprint":    "service_blueprint",
-      "architecture": "service_blueprint",
-      "sitemap":      "service_blueprint",
-      "stakeholders": "service_blueprint",
-      "comparison":   "comparison_evaluation",
-      "evaluation":   "comparison_evaluation",
-      "swot":         "comparison_evaluation",
-      "scorecard":    "comparison_evaluation",
-      "designsystem": "design_system",
-      "styleguide":   "design_system",
-      "components":   "design_system",
-    };
-    resolvedFamily = typeToFamily[vizType!] ?? null;
-  } else if (classification && !classification.ambiguous) {
-    resolvedFamily = classification.family;
-  }
-
-  // ─── Topic-shift detection ─────────────────────────────────────────────────
-  // When the classified family CHANGES from the previous visualization's family,
-  // force a fresh start — don't try to incrementally update a user_journey into
-  // a physical_product, etc. This prevents the most common topic-shift failure.
-  if (resolvedFamily && roomId && !freshStart && !refinementDirective) {
-    const room = getRoom(roomId);
-    if (room?.lastFamily && room.lastFamily !== resolvedFamily) {
-      console.log(
-        `[topic-shift] Family changed: ${room.lastFamily} → ${resolvedFamily} in room ${roomId} — forcing fresh visualization`
-      );
-      effectivePreviousHtml = undefined;
+    // Resolve the effective family to inject into the prompt
+    let resolvedFamily: VizFamily | null = null;
+    if (userPickedType) {
+      // Map frontend vizType values → family ids
+      const typeToFamily: Record<string, VizFamily> = {
+        hmi: "hmi_interface",
+        journey: "user_journey",
+        workflow: "workflow_process",
+        product: "physical_product",
+        requirements: "requirements_matrix",
+        management: "management_summary",
+        kanban: "management_summary",
+        decisions: "management_summary",
+        timeline: "management_summary",
+        persona: "persona_research",
+        research: "persona_research",
+        empathy: "persona_research",
+        blueprint: "service_blueprint",
+        architecture: "service_blueprint",
+        sitemap: "service_blueprint",
+        stakeholders: "service_blueprint",
+        comparison: "comparison_evaluation",
+        evaluation: "comparison_evaluation",
+        swot: "comparison_evaluation",
+        scorecard: "comparison_evaluation",
+        designsystem: "design_system",
+        styleguide: "design_system",
+        components: "design_system",
+      };
+      resolvedFamily = typeToFamily[vizType!] ?? null;
+    } else if (classification && !classification.ambiguous) {
+      resolvedFamily = classification.family;
     }
-  }
 
-  const vizPerfStart = performance.now();
+    // ─── Topic-shift detection ─────────────────────────────────────────────────
+    // Når klassificeret family ændrer sig ift. sidste viz, skal vi ikke bevare
+    // journey/workflow-HTML som canvas — selv hvis refinement‑detektoren har slået til
+    // (den er tiltænkt zoom/tilføj‑kolonne, ikke “nu er det fysisk hardware”).
+    if (resolvedFamily && roomId && !freshStart) {
+      const room = getRoom(roomId);
+      if (room?.lastFamily && room.lastFamily !== resolvedFamily) {
+        console.log(
+          `[topic-shift] Family changed: ${room.lastFamily} → ${resolvedFamily} in room ${roomId} — forcing fresh visualization`,
+        );
+        effectivePreviousHtml = undefined;
+        refinementDirective = null;
+      }
+    }
 
-  const vizQuality = evaluateVisualizationInput(normalized, {
-    bypassForRefinement: !!refinementDirective,
-    userPickedVisualizationType: !!userPickedType,
-  });
-  if (!vizQuality.ok) {
+    const vizPerfStart = performance.now();
+
+    const vizQuality = evaluateVisualizationInput(normalized, {
+      bypassForRefinement: !!refinementDirective,
+      userPickedVisualizationType: !!userPickedType,
+    });
+    function sendSkipped(
+      reason: string,
+      extra?: Record<string, unknown>,
+    ): void {
+      res.setHeader("Content-Type", "text/event-stream");
+      res.setHeader("Cache-Control", "no-cache");
+      res.setHeader("Connection", "keep-alive");
+      res.setHeader("X-Accel-Buffering", "no");
+      res.flushHeaders();
+      res.write(
+        `data: ${JSON.stringify({ type: "skipped", reason, ...extra })}\n\n`,
+      );
+      res.end();
+    }
+
+    if (!vizQuality.ok) {
+      sendSkipped(vizQuality.reason, {
+        wordCount: vizQuality.wordCount,
+        minWords: MIN_WORDS_FOR_VISUALIZATION,
+        hint: "For lidt indhold til visualisering. Fortsæt samtalen, eller vælg en fast visualization-type (ikke Auto).",
+      });
+      req.log?.info({
+        msg: "viz_perf",
+        vizPerf: {
+          skipped: true,
+          reason: vizQuality.reason,
+          wordCount: vizQuality.wordCount,
+          ttMs: Math.round(performance.now() - vizPerfStart),
+          roomId: roomId ?? null,
+        },
+      });
+      return;
+    }
+
+    // ─── Ambiguity guard ──────────────────────────────────────────────────────
+    // Klassifikatoren er ikke sikker på typen OG der er ingen tidligere
+    // visualisering at opdatere — generér ikke generisk HTML, vent på mere indhold.
+    // Bypasses hvis: bruger har valgt type, refinement er detekteret, focusSegment.
+    if (
+      !userPickedType &&
+      !refinementDirective &&
+      !focusSegment &&
+      !effectivePreviousHtml &&
+      classification?.ambiguous
+    ) {
+      sendSkipped("ambiguous_no_context", {
+        wordCount: vizQuality.wordCount,
+        hint: "Emnet er endnu ikke klart nok. Fortsæt samtalen — systemet genererer når det ved hvilken type der passer.",
+      });
+      req.log?.info({
+        msg: "viz_perf",
+        vizPerf: {
+          skipped: true,
+          reason: "ambiguous_no_context",
+          wordCount: vizQuality.wordCount,
+          ttMs: Math.round(performance.now() - vizPerfStart),
+          roomId: roomId ?? null,
+        },
+      });
+      return;
+    }
+
+    // ─── Word-count delta guard ───────────────────────────────────────────────
+    // Undgår at regenerere når samtalen ikke har vokset nok siden sidst.
+    // Fx: stille perioder, small-talk, pauser — ingen Claude-kald.
+    // Bypasses hvis: freshStart, refinement, focusSegment, topic-skift, ingen forrige viz.
+    const MIN_NEW_WORDS_FOR_REGEN = 10;
+    if (!freshStart && !refinementDirective && !focusSegment && roomId) {
+      const room = getRoom(roomId);
+      if (
+        room?.lastVizWordCount &&
+        room.lastVizWordCount > 0 &&
+        effectivePreviousHtml
+      ) {
+        const wordGrowth = vizQuality.wordCount - room.lastVizWordCount;
+        const familyChanged =
+          resolvedFamily &&
+          room.lastFamily &&
+          room.lastFamily !== resolvedFamily;
+        if (wordGrowth < MIN_NEW_WORDS_FOR_REGEN && !familyChanged) {
+          sendSkipped("insufficient_new_content", {
+            wordCount: vizQuality.wordCount,
+            lastVizWordCount: room.lastVizWordCount,
+            wordGrowth,
+            hint: `Kun ${wordGrowth} nye ord siden sidst. Systemet venter på mere indhold.`,
+          });
+          req.log?.info({
+            msg: "viz_perf",
+            vizPerf: {
+              skipped: true,
+              reason: "insufficient_new_content",
+              wordGrowth,
+              wordCount: vizQuality.wordCount,
+              ttMs: Math.round(performance.now() - vizPerfStart),
+              roomId: roomId ?? null,
+            },
+          });
+          return;
+        }
+      }
+    }
+
+    const streamT0 = performance.now();
     res.setHeader("Content-Type", "text/event-stream");
     res.setHeader("Cache-Control", "no-cache");
     res.setHeader("Connection", "keep-alive");
     res.setHeader("X-Accel-Buffering", "no");
     res.flushHeaders();
-    res.write(
-      `data: ${JSON.stringify({
-        type: "skipped",
-        reason: vizQuality.reason,
-        wordCount: vizQuality.wordCount,
-        minWords: MIN_WORDS_FOR_VISUALIZATION,
-        hint:
-          "For lidt indhold til visualisering. Fortsæt samtalen, eller vælg en fast visualization-type (ikke Auto).",
-      })}\n\n`
-    );
-    res.end();
-    req.log?.info({
-      msg: "viz_perf",
-      vizPerf: {
-        skipped: true,
-        reason: vizQuality.reason,
-        wordCount: vizQuality.wordCount,
-        ttMs: Math.round(performance.now() - vizPerfStart),
-        roomId: roomId ?? null,
-      },
+    const ttHeadersMs = Math.round(performance.now() - streamT0);
+
+    // Track client disconnect so we skip broadcast for orphaned requests
+    let clientDisconnected = false;
+    req.on("close", () => {
+      clientDisconnected = true;
     });
-    return;
-  }
+    const vizStartedAt = Date.now();
 
-  const streamT0 = performance.now();
-  res.setHeader("Content-Type", "text/event-stream");
-  res.setHeader("Cache-Control", "no-cache");
-  res.setHeader("Connection", "keep-alive");
-  res.setHeader("X-Accel-Buffering", "no");
-  res.flushHeaders();
-  const ttHeadersMs = Math.round(performance.now() - streamT0);
+    if (classification) {
+      res.write(
+        `data: ${JSON.stringify({
+          type: "meta",
+          classification: {
+            family: classification.family,
+            topic: classification.topic,
+            ambiguous: classification.ambiguous,
+            lead: classification.lead,
+            scores: classification.scores.slice(0, 4),
+          },
+          refinement: refinementDirective
+            ? { detected: true, directive: refinementDirective }
+            : null,
+        })}\n\n`,
+      );
+    } else if (refinementDirective) {
+      res.write(
+        `data: ${JSON.stringify({
+          type: "meta",
+          refinement: { detected: true, directive: refinementDirective },
+        })}\n\n`,
+      );
+    }
 
-  // Track client disconnect so we skip broadcast for orphaned requests
-  let clientDisconnected = false;
-  req.on("close", () => { clientDisconnected = true; });
-  const vizStartedAt = Date.now();
+    // ─── Debug payload: send full prompt construction details ───────────────
+    {
+      const totalWords = normalized.split(/\s+/).filter(Boolean).length;
+      const classifyWords = classificationInput
+        .split(/\s+/)
+        .filter(Boolean).length;
+      res.write(
+        `data: ${JSON.stringify({
+          type: "debug",
+          timestamp: new Date().toISOString(),
+          classification: classification
+            ? {
+                inputMode: focusSegment ? "focusSegment" : "tail",
+                inputWords: classifyWords,
+                totalWords,
+                inputText: classificationInput.slice(0, 500),
+                family: classification.family,
+                topic: classification.topic,
+                lead: classification.lead,
+                ambiguous: classification.ambiguous,
+                allScores: classification.scores.slice(0, 8),
+              }
+            : null,
+          userPickedType: !!userPickedType,
+          vizType: vizType ?? "auto",
+          resolvedFamily: resolvedFamily ?? null,
+          vizModel: vizModel ?? "haiku",
+          isIncremental: !freshStart && !!effectivePreviousHtml,
+          isRefinement: !!refinementDirective,
+          refinementDirective: refinementDirective ?? null,
+          hasPreviousHtml: !!effectivePreviousHtml,
+          focusSegment: focusSegment ?? null,
+          workspaceDomain: workspaceDomain ?? null,
+          transcriptTotalWords: totalWords,
+          roomId: roomId ?? null,
+        })}\n\n`,
+      );
+    }
 
-  if (classification) {
-    res.write(
-      `data: ${JSON.stringify({
-        type: "meta",
-        classification: {
-          family:   classification.family,
-          topic:    classification.topic,
-          ambiguous: classification.ambiguous,
-          lead:     classification.lead,
-          scores:   classification.scores.slice(0, 4),
+    let fullHtml = "";
+    let firstChunkMs: number | null = null;
+
+    try {
+      for await (const chunk of streamVisualization(
+        {
+          transcript: normalized,
+          vizType,
+          vizModel: vizModel as VizModel | null | undefined,
+          title,
+          context,
+          previousHtml: effectivePreviousHtml,
+          freshStart,
+          roomId,
+          resolvedFamily,
+          refinementDirective,
+          workspaceDomain,
+          focusSegment,
         },
-        refinement: refinementDirective ? { detected: true, directive: refinementDirective } : null,
-      })}\n\n`
-    );
-  } else if (refinementDirective) {
-    res.write(
-      `data: ${JSON.stringify({
-        type: "meta",
-        refinement: { detected: true, directive: refinementDirective },
-      })}\n\n`
-    );
-  }
+        (c) => {
+          if (firstChunkMs == null)
+            firstChunkMs = Math.round(performance.now() - streamT0);
+          res.write(`data: ${JSON.stringify({ type: "chunk", text: c })}\n\n`);
+        },
+        (promptInfo) => {
+          res.write(
+            `data: ${JSON.stringify({
+              type: "debug_prompt",
+              systemPrompt: promptInfo.systemPrompt,
+              userMessage: promptInfo.userMessage,
+              model: promptInfo.model,
+              maxTokens: promptInfo.maxTokens,
+            })}\n\n`,
+          );
+        },
+      )) {
+        fullHtml += chunk;
+      }
 
-  // ─── Debug payload: send full prompt construction details ───────────────
-  {
-    const totalWords = normalized.split(/\s+/).filter(Boolean).length;
-    const classifyWords = classificationInput.split(/\s+/).filter(Boolean).length;
-    res.write(
-      `data: ${JSON.stringify({
-        type: "debug",
-        timestamp: new Date().toISOString(),
-        classification: classification ? {
-          inputMode: focusSegment ? "focusSegment" : "tail",
-          inputWords: classifyWords,
-          totalWords,
-          inputText: classificationInput.slice(0, 500),
-          family: classification.family,
-          topic: classification.topic,
-          lead: classification.lead,
-          ambiguous: classification.ambiguous,
-          allScores: classification.scores.slice(0, 8),
-        } : null,
-        userPickedType: !!userPickedType,
+      const ttDoneMs = Math.round(performance.now() - streamT0);
+
+      const meta = {
         vizType: vizType ?? "auto",
-        resolvedFamily: resolvedFamily ?? null,
         vizModel: vizModel ?? "haiku",
-        isIncremental: !freshStart && !!effectivePreviousHtml,
-        isRefinement: !!refinementDirective,
-        refinementDirective: refinementDirective ?? null,
-        hasPreviousHtml: !!effectivePreviousHtml,
-        focusSegment: focusSegment ?? null,
+        wordCount: normalized.split(/\s+/).filter(Boolean).length,
+        incremental: !freshStart && !!effectivePreviousHtml,
+        classifiedFamily: resolvedFamily ?? classification?.family ?? null,
+        refinement: refinementDirective ? true : false,
         workspaceDomain: workspaceDomain ?? null,
-        transcriptTotalWords: totalWords,
-        roomId: roomId ?? null,
-      })}\n\n`
-    );
-  }
+      };
 
-  let fullHtml = "";
-  let firstChunkMs: number | null = null;
+      const cleanHtml = stripCodeFences(fullHtml);
+      const qualityOk = isHtmlQualityOk(cleanHtml);
 
-  try {
-    for await (const chunk of streamVisualization(
-      {
-        transcript: normalized,
-        vizType,
-        vizModel: vizModel as VizModel | null | undefined,
-        title,
-        context,
-        previousHtml: effectivePreviousHtml,
-        freshStart,
-        roomId,
-        resolvedFamily,
-        refinementDirective,
-        workspaceDomain,
-        focusSegment,
-      },
-      (c) => {
-        if (firstChunkMs == null) firstChunkMs = Math.round(performance.now() - streamT0);
-        res.write(`data: ${JSON.stringify({ type: "chunk", text: c })}\n\n`);
-      },
-      (promptInfo) => {
+      if (clientDisconnected) {
+        console.log(
+          `[viz-orphan] Client disconnected during generation — skipping broadcast/save (room=${roomId}, family=${resolvedFamily ?? classification?.family}, took=${Math.round(performance.now() - streamT0)}ms)`,
+        );
+      } else if (qualityOk) {
+        if (roomId) {
+          const room = getRoom(roomId);
+          if (room) {
+            room.lastVisualization = cleanHtml;
+            room.lastFamily = resolvedFamily ?? classification?.family ?? null;
+            broadcastEvent(roomId, "visualization", { html: cleanHtml, meta });
+          }
+          saveVisualization(
+            roomId,
+            cleanHtml,
+            resolvedFamily ?? classification?.family ?? "generic",
+            meta.wordCount,
+          ).catch(() => {});
+          if (title) {
+            updateMeetingTitle(roomId, title).catch(() => {});
+          }
+        }
         res.write(
-          `data: ${JSON.stringify({
-            type: "debug_prompt",
-            systemPrompt: promptInfo.systemPrompt,
-            userMessage: promptInfo.userMessage,
-            model: promptInfo.model,
-            maxTokens: promptInfo.maxTokens,
-          })}\n\n`
+          `data: ${JSON.stringify({ type: "done", html: cleanHtml, meta })}\n\n`,
+        );
+      } else {
+        res.write(
+          `data: ${JSON.stringify({ type: "error", error: "Generated visualization was incomplete. Please try again." })}\n\n`,
         );
       }
-    )) {
-      fullHtml += chunk;
-    }
 
-    const ttDoneMs = Math.round(performance.now() - streamT0);
-
-    const meta = {
-      vizType:         vizType ?? "auto",
-      vizModel:        vizModel ?? "haiku",
-      wordCount:       normalized.split(/\s+/).filter(Boolean).length,
-      incremental:     !freshStart && !!effectivePreviousHtml,
-      classifiedFamily: resolvedFamily ?? classification?.family ?? null,
-      refinement:      refinementDirective ? true : false,
-      workspaceDomain: workspaceDomain ?? null,
-    };
-
-    const cleanHtml = stripCodeFences(fullHtml);
-    const qualityOk = isHtmlQualityOk(cleanHtml);
-
-    if (clientDisconnected) {
-      console.log(
-        `[viz-orphan] Client disconnected during generation — skipping broadcast/save (room=${roomId}, family=${resolvedFamily ?? classification?.family}, took=${Math.round(performance.now() - streamT0)}ms)`
+      req.log?.info({
+        msg: "viz_perf",
+        vizPerf: {
+          ttHeadersMs,
+          ttfcMs: firstChunkMs,
+          ttDoneMs,
+          ttTotalPrepPlusStreamMs: Math.round(performance.now() - vizPerfStart),
+          qualityOk,
+          vizModel: vizModel ?? "haiku",
+          resolvedFamily: resolvedFamily ?? classification?.family ?? null,
+          classifiedAmbiguous: classification?.ambiguous ?? null,
+          userPickedType: !!userPickedType,
+          incremental: !freshStart && !!effectivePreviousHtml,
+          refinement: !!refinementDirective,
+          roomId: roomId ?? null,
+          workspaceDomain: workspaceDomain ?? null,
+          transcriptWords: normalized.split(/\s+/).filter(Boolean).length,
+          orphaned: clientDisconnected,
+        },
+      });
+    } catch (err: any) {
+      req.log.error({ err }, "Visualization generation failed");
+      const status = err?.status ?? err?.statusCode;
+      const isOverloaded = status === 529 || status === 503;
+      const errorMsg = isOverloaded
+        ? "AI-modellen er midlertidigt overbelastet. Prøv igen om et øjeblik."
+        : "Visualization generation failed.";
+      res.write(
+        `data: ${JSON.stringify({ type: "error", error: errorMsg, retryable: isOverloaded })}\n\n`,
       );
-    } else if (qualityOk) {
-      if (roomId) {
-        const room = getRoom(roomId);
-        if (room) {
-          room.lastVisualization = cleanHtml;
-          room.lastFamily = resolvedFamily ?? classification?.family ?? null;
-          broadcastEvent(roomId, "visualization", { html: cleanHtml, meta });
-        }
-        saveVisualization(
-          roomId,
-          cleanHtml,
-          resolvedFamily ?? classification?.family ?? "generic",
-          meta.wordCount
-        ).catch(() => {});
-        if (title) {
-          updateMeetingTitle(roomId, title).catch(() => {});
-        }
-      }
-      res.write(`data: ${JSON.stringify({ type: "done", html: cleanHtml, meta })}\n\n`);
-    } else {
-      res.write(`data: ${JSON.stringify({ type: "error", error: "Generated visualization was incomplete. Please try again." })}\n\n`);
+
+      req.log?.info({
+        msg: "viz_perf",
+        vizPerf: {
+          error: true,
+          ttHeadersMs,
+          ttfcMs: firstChunkMs,
+          ttDoneMs: Math.round(performance.now() - streamT0),
+          vizModel: vizModel ?? "haiku",
+          roomId: roomId ?? null,
+          retryable: isOverloaded,
+        },
+      });
     }
 
-    req.log?.info({
-      msg: "viz_perf",
-      vizPerf: {
-        ttHeadersMs,
-        ttfcMs: firstChunkMs,
-        ttDoneMs,
-        ttTotalPrepPlusStreamMs: Math.round(performance.now() - vizPerfStart),
-        qualityOk,
-        vizModel: vizModel ?? "haiku",
-        resolvedFamily: resolvedFamily ?? classification?.family ?? null,
-        classifiedAmbiguous: classification?.ambiguous ?? null,
-        userPickedType: !!userPickedType,
-        incremental: !freshStart && !!effectivePreviousHtml,
-        refinement: !!refinementDirective,
-        roomId: roomId ?? null,
-        workspaceDomain: workspaceDomain ?? null,
-        transcriptWords: normalized.split(/\s+/).filter(Boolean).length,
-        orphaned: clientDisconnected,
-      },
-    });
-  } catch (err: any) {
-    req.log.error({ err }, "Visualization generation failed");
-    const status = err?.status ?? err?.statusCode;
-    const isOverloaded = status === 529 || status === 503;
-    const errorMsg = isOverloaded
-      ? "AI-modellen er midlertidigt overbelastet. Prøv igen om et øjeblik."
-      : "Visualization generation failed.";
-    res.write(`data: ${JSON.stringify({ type: "error", error: errorMsg, retryable: isOverloaded })}\n\n`);
-
-    req.log?.info({
-      msg: "viz_perf",
-      vizPerf: {
-        error: true,
-        ttHeadersMs,
-        ttfcMs: firstChunkMs,
-        ttDoneMs: Math.round(performance.now() - streamT0),
-        vizModel: vizModel ?? "haiku",
-        roomId: roomId ?? null,
-        retryable: isOverloaded,
-      },
-    });
-  }
-
-  res.end();
+    res.end();
   } catch (err) {
     if (res.headersSent) {
       try {
@@ -455,10 +582,10 @@ router.post("/visualize", async (req, res, next): Promise<void> => {
 // POST /api/viz/fill-tab-panels
 const FillTabsSchema = z.object({
   transcript: z.string(),
-  roomId:     z.string().optional().nullable(),
-  title:      z.string().optional().nullable(),
-  context:    z.string().optional().nullable(),
-  tabs:       z.array(z.object({ id: z.string(), label: z.string() })),
+  roomId: z.string().optional().nullable(),
+  title: z.string().optional().nullable(),
+  context: z.string().optional().nullable(),
+  tabs: z.array(z.object({ id: z.string(), label: z.string() })),
   workspaceDomain: z.string().optional().nullable(),
 });
 
@@ -469,12 +596,15 @@ router.post("/viz/fill-tab-panels", async (req, res): Promise<void> => {
     return;
   }
 
-  let { transcript, roomId, title, context, tabs, workspaceDomain } = parsed.data;
+  let { transcript, roomId, title, context, tabs, workspaceDomain } =
+    parsed.data;
 
   if (!transcript.trim() && roomId) {
     const room = getRoom(roomId);
     if (room && room.segments.length > 0) {
-      transcript = room.segments.map((s) => `[${s.speakerName}]: ${s.text}`).join("\n");
+      transcript = room.segments
+        .map((s) => `[${s.speakerName}]: ${s.text}`)
+        .join("\n");
     }
   }
 
@@ -484,7 +614,13 @@ router.post("/viz/fill-tab-panels", async (req, res): Promise<void> => {
   }
 
   try {
-    const panels = await fillTabPanels(transcript, tabs, title, context, workspaceDomain);
+    const panels = await fillTabPanels(
+      transcript,
+      tabs,
+      title,
+      context,
+      workspaceDomain,
+    );
     res.json({ panels });
   } catch (err) {
     req.log.error({ err }, "fill-tab-panels failed");
@@ -495,9 +631,9 @@ router.post("/viz/fill-tab-panels", async (req, res): Promise<void> => {
 // POST /api/actions
 const ActionsSchema = z.object({
   transcript: z.string(),
-  roomId:     z.string().optional().nullable(),
-  title:      z.string().optional().nullable(),
-  context:    z.string().optional().nullable(),
+  roomId: z.string().optional().nullable(),
+  title: z.string().optional().nullable(),
+  context: z.string().optional().nullable(),
   workspaceDomain: z.string().optional().nullable(),
 });
 
@@ -513,7 +649,9 @@ router.post("/actions", async (req, res): Promise<void> => {
   if (!transcript.trim() && roomId) {
     const room = getRoom(roomId);
     if (room && room.segments.length > 0) {
-      transcript = room.segments.map((s) => `[${s.speakerName}]: ${s.text}`).join("\n");
+      transcript = room.segments
+        .map((s) => `[${s.speakerName}]: ${s.text}`)
+        .join("\n");
     }
   }
 
@@ -533,15 +671,18 @@ router.post("/actions", async (req, res): Promise<void> => {
       transcript,
       title,
       context,
-      (c) => res.write(`data: ${JSON.stringify({ type: "chunk", text: c })}\n\n`),
-      workspaceDomain
+      (c) =>
+        res.write(`data: ${JSON.stringify({ type: "chunk", text: c })}\n\n`),
+      workspaceDomain,
     )) {
       // chunks written in callback above
     }
     res.write(`data: ${JSON.stringify({ type: "done" })}\n\n`);
   } catch (err) {
     req.log.error({ err }, "actions extraction failed");
-    res.write(`data: ${JSON.stringify({ type: "error", error: "Failed to extract actions" })}\n\n`);
+    res.write(
+      `data: ${JSON.stringify({ type: "error", error: "Failed to extract actions" })}\n\n`,
+    );
   }
 
   res.end();

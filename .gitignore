@@ -33,6 +33,9 @@ node_modules
 .env.local
 .env.*.local
 
+# Lokal session-/debug-output
+/logs/
+
 # misc
 /.sass-cache
 /connect.lock
@@ -59,3 +62,6 @@ Thumbs.db
 
 # Lokale Claude Code-tilladelser (maskinspecifikke)
 .claude/settings.local.json
+
+# Claude Code personlige praeferencer
+CLAUDE.local.md

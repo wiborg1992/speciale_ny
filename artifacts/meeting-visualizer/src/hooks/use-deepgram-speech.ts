@@ -65,10 +65,11 @@ export function useDeepgramSpeech({
   const commitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const maxAgeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // How long to wait after the LAST is_final chunk before committing (silence window)
-  const SILENCE_MS = 6000;
-  // Hard ceiling: commit after this long regardless of ongoing speech
-  const MAX_BUFFER_MS = 45_000;
+  // Vent så længe efter sidste is_final før vi committer til transskriptet.
+  // Længere vindue ⇒ færre, længere segmenter (samme Deepgram-is_final, kun vores flush).
+  const SILENCE_MS = 5000;
+  // Tvangs-commit under lang monolog så UI/SSE ikke venter for evigt
+  const MAX_BUFFER_MS = 25_000;
 
   const getSpeakerLabel = useCallback((speakerId: number): string => {
     return speakerNamesRef.current[speakerId] ?? `Speaker ${speakerId + 1}`;
@@ -156,7 +157,12 @@ export function useDeepgramSpeech({
         utterance_end_ms: "2500",
         vad_events: "true",
       });
-      keywords.forEach((kw) => params.append("keywords", kw));
+
+      // Keywords boosting er kun dokumenteret for nova-2/1/Enhanced/Base.
+      // Vi bruger nova-3 for engelsk, så undgår at sende keywords i det tilfælde.
+      if (model === "nova-2" && keywords.length > 0) {
+        keywords.forEach((kw) => params.append("keywords", kw));
+      }
 
       // 4. Open WebSocket with token auth via subprotocol
       const wsUrl = `wss://api.deepgram.com/v1/listen?${params.toString()}`;
@@ -205,30 +211,27 @@ export function useDeepgramSpeech({
             if (data.is_final) {
               pendingBufferRef.current.push({ transcript, speaker: dominantSpeaker });
 
-              // Silence-debounce: reset on every new is_final chunk.
-              // Only fires if speech truly stops for SILENCE_MS (6 s).
-              // UtteranceEnd is NOT used as a flush trigger — it fires too eagerly
-              // for workshop conversations where short think-pauses are common.
+              // Nulstil stilhedstimer ved hvert nyt is_final — først commit efter SILENCE_MS uden nye finals.
               if (commitTimerRef.current) clearTimeout(commitTimerRef.current);
               commitTimerRef.current = setTimeout(flushBuffer, SILENCE_MS);
 
-              // Hard ceiling: start a one-shot 45 s max-age timer when buffer
-              // first fills so a very long monologue still gets committed.
+              // Én max-alder-timer fra første chunk i denne “blok”
               if (!maxAgeTimerRef.current) {
                 maxAgeTimerRef.current = setTimeout(flushBuffer, MAX_BUFFER_MS);
               }
 
-              setInterimText("");
+              const speakerLabel = getSpeakerLabel(dominantSpeaker);
+              const pending = pendingBufferRef.current.map((b) => b.transcript).join(" ");
+              setInterimText(`[${speakerLabel}] ${pending}`);
             } else {
               // Show live interim preview
               const pending = pendingBufferRef.current.map((b) => b.transcript).join(" ");
               const speakerLabel = getSpeakerLabel(dominantSpeaker);
               setInterimText(`[${speakerLabel}] ${[pending, transcript].filter(Boolean).join(" ")}`);
             }
-          } else if (data.type === "UtteranceEnd") {
-            // Intentionally ignored as a flush trigger — used only for debugging
-            console.debug("[deepgram] UtteranceEnd received (not flushing)");
           }
+          // UtteranceEnd bruges ikke til flush: den giver mange korte segmenter.
+          // Vi samler flere is_final-chunks og committer ved SILENCE_MS / MAX_BUFFER_MS / stop.
         } catch {
           // ignore malformed messages
         }

@@ -77,6 +77,27 @@ export function normalizeTranscript(text: string): string {
     .replace(/\bfremm?hæv\b/gi, "fremhæv")
     // Units split by ASR
     .replace(/\bm\s*3\s*\/?\s*h\b/gi, "m³/h")
+    // ── Journey terminology (help STT inconsistencies) ─────────────────────
+    // English "user journey"
+    .replace(/\buser\s+journ\w*\b/gi, "user journey")
+    .replace(/\bcustomer\s+journ\w*\b/gi, "customer journey")
+    .replace(/\buserney\b/gi, "user journey")
+    .replace(/\buser\s*your\b/gi, "user journey")
+    .replace(/\buser\s*junior\b/gi, "user journey")
+    .replace(/\buser\s*jour\b/gi, "user journey")
+    .replace(/\bjour\s*ney\b/gi, "journey")
+    .replace(/\bmaving\b/gi, "mapping")
+    .replace(/\buser\s*journey\s*(map|mapping|maving)\b/gi, "user journey mapping")
+    .replace(/\bjourney\s+mapping\b/gi, "journey mapping")
+    .replace(/\bjourney\s+map\b/gi, "journey map")
+    // English alternatives + "map"/"touchpoint" compounds
+    .replace(/\btouch\s+point\w*\b/gi, "touchpoint")
+    .replace(/\bpain\s+point\w*\b/gi, "painpoint")
+    // Danish variants
+    .replace(/\bbruger\s*rejse\w*\b/gi, "brugerrejse")
+    .replace(/\bkunde\s*rejse\w*\b/gi, "kunderejse")
+    .replace(/\bberørings\s*punkt\w*\b/gi, "berøringspunkt")
+    .replace(/\bsmerte\s*punkt\w*\b/gi, "smertepunkt")
     .replace(/\s{2,}/g, " ")
     .trim();
 

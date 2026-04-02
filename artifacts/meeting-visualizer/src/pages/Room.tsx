@@ -17,7 +17,8 @@ import { useLocalStorage } from "@/hooks/use-local-storage";
 import { useSpeech } from "@/hooks/use-speech";
 import { useDeepgramSpeech } from "@/hooks/use-deepgram-speech";
 import { useRoomSSE } from "@/hooks/use-room-sse";
-import { useVisualizeStream } from "@/hooks/use-visualize-stream";
+import { useVisualizeStream, type VizDebugInfo } from "@/hooks/use-visualize-stream";
+import { recordMeetingVisit } from "@/lib/recent-meetings-log";
 import { usePostSegment } from "@workspace/api-client-react";
 
 import { Button } from "@/components/ui/button";
@@ -36,6 +37,8 @@ interface VizVersion {
   name: string;
   html: string;
   timestamp: number;
+  /** Snapshot af server debug for netop denne version (til DBG-panel per v). */
+  debugSnapshot?: VizDebugInfo | null;
 }
 
 const VIZ_TYPES = [
@@ -117,6 +120,19 @@ function getSpeakerColor(speakerName: string, speakerMap: Map<string, number>): 
   return SPEAKER_COLORS[idx];
 }
 
+function cloneVizDebug(info: VizDebugInfo | null | undefined): VizDebugInfo | null {
+  if (!info) return null;
+  try {
+    return structuredClone(info) as VizDebugInfo;
+  } catch {
+    try {
+      return JSON.parse(JSON.stringify(info)) as VizDebugInfo;
+    } catch {
+      return { ...info };
+    }
+  }
+}
+
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export default function Room() {
@@ -193,6 +209,19 @@ export default function Room() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title: meetingTitle }),
       }).catch(() => {});
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, [meetingTitle, roomId]);
+
+  useEffect(() => {
+    if (!roomId) return;
+    recordMeetingVisit(roomId, meetingTitle || "");
+  }, [roomId]);
+
+  useEffect(() => {
+    if (!roomId) return;
+    const timer = setTimeout(() => {
+      recordMeetingVisit(roomId, meetingTitle || "");
     }, 2000);
     return () => clearTimeout(timer);
   }, [meetingTitle, roomId]);
@@ -280,18 +309,24 @@ export default function Room() {
   const hasContext = ctxPurpose || ctxProjects || ctxAttend || ctxExtra || uploadedFiles.length > 0;
 
   // ── Version history ─────────────────────────────────────────────────────────
-  const addVizVersion = useCallback((html: string) => {
+  const addVizVersion = useCallback((html: string, debugSnapshot: VizDebugInfo | null = null) => {
     const trimmed = html.trim();
     if (trimmed.length < 50) return;
+    const snap = cloneVizDebug(debugSnapshot);
     setVizHistory(prev => {
       const last = prev[prev.length - 1];
-      if (last && last.html.trim() === trimmed) return prev;
+      if (last && last.html.trim() === trimmed) {
+        if (snap && !(last.debugSnapshot && last.debugSnapshot.prompt)) {
+          return [...prev.slice(0, -1), { ...last, debugSnapshot: snap }];
+        }
+        return prev;
+      }
       const capped = prev.length >= MAX_VIZ_HISTORY ? prev.slice(1) : prev;
       vizVersionCounterRef.current += 1;
       const version = vizVersionCounterRef.current;
       const name = extractVizName(html) || `Version ${version}`;
       setActiveVersion(version);
-      return [...capped, { version, name, html: trimmed, timestamp: Date.now() }];
+      return [...capped, { version, name, html: trimmed, timestamp: Date.now(), debugSnapshot: snap }];
     });
   }, []);
 
@@ -300,18 +335,24 @@ export default function Room() {
   useEffect(() => {
     if (!isGenerating && streamedHtml && streamedHtml.length > 50) {
       setDisplayHtml(streamedHtml);
-      addVizVersion(streamedHtml);
+      addVizVersion(streamedHtml, debugInfo ?? null);
       setVizModel(prev => prev === "haiku" ? "opus" : prev);
     }
-  }, [isGenerating, streamedHtml, addVizVersion]);
+  }, [isGenerating, streamedHtml, addVizVersion, debugInfo]);
 
   // When SSE viz arrives from another user
   useEffect(() => {
     if (sseViz.html && !isGenerating) {
       setDisplayHtml(sseViz.html);
-      addVizVersion(sseViz.html);
+      addVizVersion(sseViz.html, null);
     }
-  }, [sseViz.html]);
+  }, [sseViz.html, isGenerating, addVizVersion]);
+
+  const displayDebug = useMemo(() => {
+    if (isGenerating) return debugInfo;
+    const entry = vizHistory.find((v) => v.version === activeVersion);
+    return entry?.debugSnapshot ?? null;
+  }, [isGenerating, debugInfo, vizHistory, activeVersion]);
 
   const loadVizVersion = useCallback((version: number) => {
     const entry = vizHistory.find(v => v.version === version);
@@ -434,7 +475,87 @@ export default function Room() {
       .join(" ")
       .match(/\b[A-ZÆØÅ][a-zæøå]{2,}\b/g) ?? [];
     const ctxKeywords = [...new Set(ctxWords)].slice(0, 10).map(w => `${w}:2`);
-    return [...vizKeywords, ...domainKeywords, ...ctxKeywords];
+
+    // Deepgram keyword boosting virker bedst med enkelt-ord og moderate intensifiers.
+    // Vi normaliserer derfor især "journey"-fraser og reducerer aggressiv boost-styrke,
+    // samt capper til max 100 keywords/request.
+    const parseEntry = (entry: string): { kw: string; boost: number } => {
+      const idx = entry.lastIndexOf(":");
+      if (idx <= 0) return { kw: entry.trim(), boost: 2 };
+      const kw = entry.slice(0, idx).trim();
+      const boost = Number(entry.slice(idx + 1));
+      return { kw, boost: Number.isFinite(boost) ? boost : 2 };
+    };
+
+    const adjustBoost = (boost: number): number => {
+      // Moderat boost for at undgå falske positiver pga. overboost.
+      if (boost >= 5) return 2.25;
+      if (boost >= 4) return 1.8;
+      if (boost === 3) return 1.5;
+      return Math.max(1.1, boost);
+    };
+
+    const normalizeJourneyPhrase = (kw: string, boost: number): Array<{ kw: string; boost: number }> => {
+      const lower = kw.toLowerCase();
+
+      // "user journey" / "customer journey"
+      if (lower.includes("journey mapping")) return [
+        { kw: "journey", boost },
+        { kw: "mapping", boost: 1.5 },
+      ];
+      if (lower.includes("journey map")) return [
+        { kw: "journey", boost },
+        { kw: "mapping", boost: 1.3 },
+      ];
+      if (lower.includes("user journey") || lower.includes("customer journey")) return [
+        { kw: "journey", boost },
+      ];
+
+      // "experience map" / "experience mapping"
+      if (lower.includes("experience map")) return [{ kw: "experience", boost }];
+      if (lower.includes("experience mapping")) return [
+        { kw: "experience", boost },
+        { kw: "mapping", boost: 1.3 },
+      ];
+
+      // "touch point(s)" -> touchpoint (single token)
+      if (lower === "touch point" || lower === "touch points" || lower.includes("touch point")) {
+        return [{ kw: "touchpoint", boost }];
+      }
+
+      // "pain point(s)" -> painpoint (single token)
+      if (lower === "pain point" || lower === "pain points" || lower.includes("pain point")) {
+        return [{ kw: "painpoint", boost }];
+      }
+
+      return [{ kw, boost }];
+    };
+
+    const raw = [...vizKeywords, ...domainKeywords, ...ctxKeywords];
+    const bestByKw = new Map<string, number>();
+
+    for (const entry of raw) {
+      const { kw, boost } = parseEntry(entry);
+      const normalized = normalizeJourneyPhrase(kw, boost);
+      for (const item of normalized) {
+        const finalKw = item.kw.trim();
+        if (!finalKw) continue;
+
+        // Basic sanity filters: skip overly short generic tokens.
+        const looksLikeAbbrev = /^[A-Z0-9]{2,}$/.test(finalKw);
+        if (!looksLikeAbbrev && finalKw.length < 4) continue;
+
+        const finalBoost = adjustBoost(item.boost);
+        const prev = bestByKw.get(finalKw);
+        if (prev === undefined || finalBoost > prev) bestByKw.set(finalKw, finalBoost);
+      }
+    }
+
+    const capped = [...bestByKw.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 100);
+
+    return capped.map(([kw, boost]) => `${kw}:${boost}`);
   }, [workspaceDomain, ctxPurpose, ctxProjects, ctxExtra]);
 
   const browserSpeech = useSpeech({
@@ -1454,7 +1575,12 @@ export default function Room() {
                 <button
                   key={v.version}
                   onClick={() => loadVizVersion(v.version)}
-                  title={v.name + " · " + format(new Date(v.timestamp), "HH:mm")}
+                  title={
+                    (v.debugSnapshot ? "DBG · " : "") +
+                    v.name +
+                    " · " +
+                    format(new Date(v.timestamp), "HH:mm")
+                  }
                   className={cn(
                     "shrink-0 flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono border transition-colors",
                     activeVersion === v.version
@@ -1464,6 +1590,9 @@ export default function Room() {
                 >
                   <span className="font-bold">v{v.version}</span>
                   <span className="max-w-[80px] truncate opacity-70">{v.name}</span>
+                  {v.debugSnapshot && (
+                    <span className="text-[8px] text-amber-500/90 font-bold">DBG</span>
+                  )}
                 </button>
               ))}
             </div>
@@ -1474,14 +1603,21 @@ export default function Room() {
             <div className="shrink-0 max-h-[40%] overflow-y-auto border-b border-amber-500/30 bg-amber-950/20 font-mono text-[10px] leading-relaxed">
               <div className="px-4 py-2 space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-amber-400 font-semibold uppercase tracking-wider text-[11px]">Debug Inspector</span>
-                  {debugInfo?.performanceMs && (
-                    <span className="text-muted-foreground">{(debugInfo.performanceMs / 1000).toFixed(1)}s total</span>
+                  <span className="text-amber-400 font-semibold uppercase tracking-wider text-[11px]">
+                    Debug Inspector
+                    <span className="text-muted-foreground font-mono normal-case ml-2">· v{activeVersion}</span>
+                  </span>
+                  {displayDebug?.performanceMs != null && displayDebug.performanceMs > 0 && (
+                    <span className="text-muted-foreground">{(displayDebug.performanceMs / 1000).toFixed(1)}s total</span>
                   )}
                 </div>
 
-                {!debugInfo ? (
-                  <p className="text-muted-foreground py-2">No debug data yet. Generate a visualization to see details.</p>
+                {!displayDebug ? (
+                  <p className="text-muted-foreground py-2">
+                    {isGenerating
+                      ? "Henter debug…"
+                      : "Ingen debug gemt for denne version — vælg en version med DBG-badge, eller generér på ny."}
+                  </p>
                 ) : (
                   <>
                     {/* Classification section */}
@@ -1491,21 +1627,21 @@ export default function Room() {
                         Classification
                       </summary>
                       <div className="ml-3 mt-1 space-y-0.5 text-foreground/70">
-                        {debugInfo.classification ? (
+                        {displayDebug.classification ? (
                           <>
-                            <div><span className="text-muted-foreground">Result:</span> <span className="text-green-400 font-semibold">{debugInfo.classification.family}</span> ({debugInfo.classification.topic})</div>
-                            <div><span className="text-muted-foreground">Lead:</span> {debugInfo.classification.lead} · <span className="text-muted-foreground">Ambiguous:</span> {debugInfo.classification.ambiguous ? "yes" : "no"}</div>
-                            <div><span className="text-muted-foreground">Input mode:</span> {debugInfo.classification.inputMode} · <span className="text-muted-foreground">Words:</span> {debugInfo.classification.inputWords}/{debugInfo.classification.totalWords}</div>
-                            <div className="text-muted-foreground">Scores: {debugInfo.classification.allScores?.map((s: any) => `${s.family}:${s.score}`).join(" · ")}</div>
+                            <div><span className="text-muted-foreground">Result:</span> <span className="text-green-400 font-semibold">{displayDebug.classification.family}</span> ({displayDebug.classification.topic})</div>
+                            <div><span className="text-muted-foreground">Lead:</span> {displayDebug.classification.lead} · <span className="text-muted-foreground">Ambiguous:</span> {displayDebug.classification.ambiguous ? "yes" : "no"}</div>
+                            <div><span className="text-muted-foreground">Input mode:</span> {displayDebug.classification.inputMode} · <span className="text-muted-foreground">Words:</span> {displayDebug.classification.inputWords}/{displayDebug.classification.totalWords}</div>
+                            <div className="text-muted-foreground">Scores: {displayDebug.classification.allScores?.map((s: any) => `${s.family}:${s.score}`).join(" · ")}</div>
                             <details className="mt-1">
                               <summary className="cursor-pointer text-muted-foreground/60 hover:text-muted-foreground [&::-webkit-details-marker]:hidden flex items-center gap-1">
                                 <span className="opacity-50">▸</span> Classification input text
                               </summary>
-                              <pre className="mt-1 p-2 bg-black/30 rounded border border-border/30 whitespace-pre-wrap break-words max-h-24 overflow-y-auto text-foreground/60">{debugInfo.classification.inputText}</pre>
+                              <pre className="mt-1 p-2 bg-black/30 rounded border border-border/30 whitespace-pre-wrap break-words max-h-24 overflow-y-auto text-foreground/60">{displayDebug.classification.inputText}</pre>
                             </details>
                           </>
                         ) : (
-                          <div><span className="text-muted-foreground">Skipped</span> (user picked type: {debugInfo.vizType})</div>
+                          <div><span className="text-muted-foreground">Skipped</span> (user picked type: {displayDebug.vizType})</div>
                         )}
                       </div>
                     </details>
@@ -1517,33 +1653,33 @@ export default function Room() {
                         Generation Config
                       </summary>
                       <div className="ml-3 mt-1 space-y-0.5 text-foreground/70">
-                        <div><span className="text-muted-foreground">Family:</span> <span className="text-blue-400">{debugInfo.resolvedFamily ?? "none"}</span> · <span className="text-muted-foreground">Model:</span> {debugInfo.vizModel} · <span className="text-muted-foreground">Type:</span> {debugInfo.vizType}</div>
-                        <div><span className="text-muted-foreground">Incremental:</span> {debugInfo.isIncremental ? "yes" : "no"} · <span className="text-muted-foreground">Refinement:</span> {debugInfo.isRefinement ? "yes" : "no"} · <span className="text-muted-foreground">Has prev HTML:</span> {debugInfo.hasPreviousHtml ? "yes" : "no"}</div>
-                        <div><span className="text-muted-foreground">Domain:</span> {debugInfo.workspaceDomain ?? "none"} · <span className="text-muted-foreground">Words:</span> {debugInfo.transcriptTotalWords} · <span className="text-muted-foreground">Room:</span> {debugInfo.roomId}</div>
-                        {debugInfo.focusSegment && <div><span className="text-muted-foreground">Focus:</span> {debugInfo.focusSegment}</div>}
-                        {debugInfo.refinementDirective && <div><span className="text-muted-foreground">Directive:</span> {debugInfo.refinementDirective}</div>}
+                        <div><span className="text-muted-foreground">Family:</span> <span className="text-blue-400">{displayDebug.resolvedFamily ?? "none"}</span> · <span className="text-muted-foreground">Model:</span> {displayDebug.vizModel} · <span className="text-muted-foreground">Type:</span> {displayDebug.vizType}</div>
+                        <div><span className="text-muted-foreground">Incremental:</span> {displayDebug.isIncremental ? "yes" : "no"} · <span className="text-muted-foreground">Refinement:</span> {displayDebug.isRefinement ? "yes" : "no"} · <span className="text-muted-foreground">Has prev HTML:</span> {displayDebug.hasPreviousHtml ? "yes" : "no"}</div>
+                        <div><span className="text-muted-foreground">Domain:</span> {displayDebug.workspaceDomain ?? "none"} · <span className="text-muted-foreground">Words:</span> {displayDebug.transcriptTotalWords} · <span className="text-muted-foreground">Room:</span> {displayDebug.roomId}</div>
+                        {displayDebug.focusSegment && <div><span className="text-muted-foreground">Focus:</span> {displayDebug.focusSegment}</div>}
+                        {displayDebug.refinementDirective && <div><span className="text-muted-foreground">Directive:</span> {displayDebug.refinementDirective}</div>}
                       </div>
                     </details>
 
                     {/* Prompt */}
-                    {debugInfo.prompt && (
+                    {displayDebug.prompt && (
                       <details className="group">
                         <summary className="cursor-pointer text-amber-400/80 hover:text-amber-400 [&::-webkit-details-marker]:hidden flex items-center gap-1">
                           <span className="opacity-50 group-open:rotate-90 transition-transform">▸</span>
-                          Full Prompt ({debugInfo.prompt.model} · {debugInfo.prompt.maxTokens} max tokens)
+                          Full Prompt ({displayDebug.prompt.model} · {displayDebug.prompt.maxTokens} max tokens)
                         </summary>
                         <div className="ml-3 mt-1 space-y-2">
                           <details>
                             <summary className="cursor-pointer text-muted-foreground/60 hover:text-muted-foreground [&::-webkit-details-marker]:hidden flex items-center gap-1">
-                              <span className="opacity-50">▸</span> System prompt ({debugInfo.prompt.systemPrompt.length} chars)
+                              <span className="opacity-50">▸</span> System prompt ({displayDebug.prompt.systemPrompt.length} chars)
                             </summary>
-                            <pre className="mt-1 p-2 bg-black/30 rounded border border-border/30 whitespace-pre-wrap break-words max-h-48 overflow-y-auto text-foreground/60">{debugInfo.prompt.systemPrompt}</pre>
+                            <pre className="mt-1 p-2 bg-black/30 rounded border border-border/30 whitespace-pre-wrap break-words max-h-48 overflow-y-auto text-foreground/60">{displayDebug.prompt.systemPrompt}</pre>
                           </details>
                           <details>
                             <summary className="cursor-pointer text-muted-foreground/60 hover:text-muted-foreground [&::-webkit-details-marker]:hidden flex items-center gap-1">
-                              <span className="opacity-50">▸</span> User message ({debugInfo.prompt.userMessage.length} chars)
+                              <span className="opacity-50">▸</span> User message ({displayDebug.prompt.userMessage.length} chars)
                             </summary>
-                            <pre className="mt-1 p-2 bg-black/30 rounded border border-border/30 whitespace-pre-wrap break-words max-h-48 overflow-y-auto text-foreground/60">{debugInfo.prompt.userMessage}</pre>
+                            <pre className="mt-1 p-2 bg-black/30 rounded border border-border/30 whitespace-pre-wrap break-words max-h-48 overflow-y-auto text-foreground/60">{displayDebug.prompt.userMessage}</pre>
                           </details>
                         </div>
                       </details>
@@ -1572,7 +1708,7 @@ export default function Room() {
 
             {outputTab === "transcript" && (
               <div className="h-full overflow-y-auto p-4">
-                {segments.length === 0 ? (
+                {segments.length === 0 && !interimText ? (
                   <div className="flex items-center justify-center h-full">
                     <div className="text-center space-y-4 text-muted-foreground max-w-xs">
                       <FileText className="w-12 h-12 mx-auto opacity-20" />
@@ -1583,7 +1719,7 @@ export default function Room() {
                     </div>
                   </div>
                 ) : (
-                  <div className="space-y-0.5">
+                    <div className="space-y-0.5">
                     <div className="flex items-center justify-between mb-3 pb-2 border-b border-border">
                       <div className="text-xs font-mono text-muted-foreground">
                         {segments.length} segment{segments.length !== 1 ? "s" : ""} · {currentWordCount} words · {[...new Set(segments.map(s => s.speakerName))].length} speaker{[...new Set(segments.map(s => s.speakerName))].length !== 1 ? "s" : ""}
@@ -1614,6 +1750,21 @@ export default function Room() {
                         </div>
                       );
                     })}
+                    {interimText && (
+                      <div className="group flex items-start gap-3 py-1.5 px-2 rounded bg-primary/5 border border-primary/15">
+                        <span className="shrink-0 text-[10px] font-mono text-primary/70 pt-0.5 w-14 text-right">
+                          live
+                        </span>
+                        <span className="shrink-0 w-2 h-2 rounded-full mt-1.5 bg-primary/60 animate-pulse" />
+                        <div className="flex-1 min-w-0">
+                          <span className="text-[10px] font-mono font-bold uppercase tracking-wider mr-2 text-primary/90">
+                            IN PROGRESS
+                          </span>
+                          <span className="text-sm text-foreground/90 leading-relaxed italic">{interimText}</span>
+                          <span className="inline-block w-1 h-4 ml-1 bg-primary/50 animate-pulse align-middle" />
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

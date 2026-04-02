@@ -3,6 +3,7 @@ import { cn } from "@/lib/utils";
 import { Minimize2, Maximize2, Pencil, RotateCcw } from "lucide-react";
 import { Button } from "./ui/button";
 import { useIframeEdit } from "@/hooks/use-iframe-edit";
+import { StreamingSandOverlay } from "./StreamingSandOverlay";
 
 const BASE = import.meta.env.BASE_URL;
 
@@ -70,6 +71,9 @@ const VIZ_INTERACT_SCRIPT = `
   }, true);
 })();
 `;
+
+/** Under streaming: opdater iframe max. så ofte for at undgå blink ved hver SSE-chunk */
+const STREAMING_IFRAME_THROTTLE_MS = 340;
 
 function isHtmlRenderable(html: string | null): boolean {
   if (!html || html.length < 300) return false;
@@ -343,6 +347,9 @@ export function IframeRenderer({
   const fillPendingRef = useRef(false);
   const originalHtmlRef = useRef<string | null>(null);
   const editHook = useIframeEdit(iframeRef);
+  /** Seneste HTML fra props — læses i throttled interval under streaming */
+  const pendingHtmlRef = useRef<string | null>(null);
+  const streamFlushIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const [skeletonProgress, setSkeletonProgress] = useState(0);
   const progressTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -366,6 +373,8 @@ export function IframeRenderer({
       if (progressTimerRef.current) clearInterval(progressTimerRef.current);
     };
   }, [isStreaming]);
+
+  pendingHtmlRef.current = html;
 
   const renderable = isHtmlRenderable(html);
   const showSkeleton = isStreaming && !renderable;
@@ -446,26 +455,59 @@ ${t}
     }
   }, [roomId, title, context, workspaceDomain]);
 
+  const writeHtmlToIframe = useCallback(
+    (rawHtml: string) => {
+      if (!iframeRef.current) return;
+      const doc = iframeRef.current.contentDocument;
+      if (!doc) return;
+      originalHtmlRef.current = rawHtml;
+      editHook.disable();
+      setIsEditMode(false);
+      fillPendingRef.current = false;
+      doc.open();
+      doc.write(buildDocument(rawHtml));
+      doc.close();
+    },
+    [editHook],
+  );
+
+  // Under streaming: throttled iframe-opdateringer (undgår blink ved hver chunk)
   useEffect(() => {
-    if (!html || !renderable || !iframeRef.current) return;
-    const doc = iframeRef.current.contentDocument;
-    if (!doc) return;
-
-    originalHtmlRef.current = html;
-    editHook.disable();
-    setIsEditMode(false);
-    fillPendingRef.current = false;
-    doc.open();
-    doc.write(buildDocument(html));
-    doc.close();
-
-    if (!isStreaming) {
-      setTimeout(() => {
-        const d = iframeRef.current?.contentDocument;
-        if (d) fillLazyTabs(d);
-      }, 400);
+    if (!isStreaming || !renderable) {
+      if (streamFlushIntervalRef.current) {
+        clearInterval(streamFlushIntervalRef.current);
+        streamFlushIntervalRef.current = null;
+      }
+      return;
     }
-  }, [html, renderable, isStreaming, fillLazyTabs]);
+
+    const tick = () => {
+      const h = pendingHtmlRef.current;
+      if (h && isHtmlRenderable(h)) writeHtmlToIframe(h);
+    };
+
+    tick();
+    streamFlushIntervalRef.current = setInterval(tick, STREAMING_IFRAME_THROTTLE_MS);
+
+    return () => {
+      if (streamFlushIntervalRef.current) {
+        clearInterval(streamFlushIntervalRef.current);
+        streamFlushIntervalRef.current = null;
+      }
+    };
+  }, [isStreaming, renderable, writeHtmlToIframe]);
+
+  // Når ikke streaming: ét fuldt skriv pr. færdig HTML (inkl. lazy tabs)
+  useEffect(() => {
+    if (isStreaming) return;
+    if (!html || !renderable || !iframeRef.current) return;
+    writeHtmlToIframe(html);
+
+    setTimeout(() => {
+      const d = iframeRef.current?.contentDocument;
+      if (d) fillLazyTabs(d);
+    }, 400);
+  }, [html, renderable, isStreaming, fillLazyTabs, writeHtmlToIframe]);
 
   const toggleEditMode = useCallback(() => {
     const newMode = !isEditMode;
@@ -577,16 +619,27 @@ ${t}
       )}
 
       {!isEmpty && (
-        <iframe
-          ref={iframeRef}
+        <div
           className={cn(
-            "w-full rounded-lg bg-card/20 border transition-all duration-300",
-            showSkeleton ? "absolute opacity-0 pointer-events-none h-0" : "flex-1",
-            isEditMode ? "border-primary/40 ring-1 ring-primary/20" : "border-border"
+            "relative min-h-0 w-full",
+            showSkeleton ? "absolute h-0 overflow-hidden opacity-0" : "flex-1 flex flex-col"
           )}
-          title="AI Visualization"
-          style={{ pointerEvents: "auto" }}
-        />
+        >
+          <iframe
+            ref={iframeRef}
+            className={cn(
+              "w-full rounded-lg bg-card/20 border transition-opacity duration-200",
+              showSkeleton ? "pointer-events-none h-0 min-h-0 shrink-0 opacity-0" : "min-h-0 flex-1",
+              isEditMode ? "border-primary/40 ring-1 ring-primary/20" : "border-border",
+              isStreaming && renderable && !showSkeleton && "opacity-[0.98]"
+            )}
+            title="AI Visualization"
+            style={{ pointerEvents: "auto" }}
+          />
+          {isStreaming && renderable && !showSkeleton && (
+            <StreamingSandOverlay active assemblyProgress={skeletonProgress} />
+          )}
+        </div>
       )}
     </div>
   );

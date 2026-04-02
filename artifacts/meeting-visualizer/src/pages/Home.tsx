@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useLocalStorage } from "@/hooks/use-local-storage";
 import { generateRoomCode } from "@/lib/utils";
+import { getLocalMeetingLog } from "@/lib/recent-meetings-log";
 
 const BASE = import.meta.env.BASE_URL;
 
@@ -20,6 +21,15 @@ interface MeetingRow {
   segmentCount: number;
   wordCount: number;
   speakerNames: string;
+}
+
+function parseSpeakers(json: string): string[] {
+  try {
+    const p = JSON.parse(json);
+    return Array.isArray(p) ? p : [];
+  } catch {
+    return [];
+  }
 }
 
 export default function Home() {
@@ -37,7 +47,27 @@ export default function Home() {
     staleTime: 30_000,
   });
 
-  const recentMeetings = (data?.meetings ?? []).slice(0, 5);
+  const recentMeetings = useMemo(() => {
+    const api = data?.meetings ?? [];
+    const apiIds = new Set(api.map((m) => m.roomId.toUpperCase()));
+    const local = getLocalMeetingLog();
+    const synthetic: MeetingRow[] = local
+      .filter((e) => !apiIds.has(e.roomId.toUpperCase()))
+      .map((e, i) => ({
+        id: -1000 - i,
+        roomId: e.roomId,
+        title: e.title || `Room ${e.roomId}`,
+        createdAt: e.visitedAt,
+        updatedAt: e.visitedAt,
+        segmentCount: 0,
+        wordCount: 0,
+        speakerNames: "[]",
+      }));
+    const merged = [...api, ...synthetic].sort(
+      (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+    );
+    return merged.slice(0, 5);
+  }, [data?.meetings]);
 
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
@@ -132,67 +162,70 @@ export default function Home() {
           </div>
         </motion.div>
 
-        {recentMeetings.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.3 }}
-            className="mt-6 glass-panel rounded-xl p-4"
-          >
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-xs font-display font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
-                <Clock className="w-3.5 h-3.5" />
-                Recent Meetings
-              </h2>
-              <button
-                onClick={() => setLocation("/history")}
-                className="text-[10px] font-mono text-muted-foreground hover:text-primary transition-colors flex items-center gap-1"
-              >
-                <Archive className="w-3 h-3" />
-                View All
-              </button>
-            </div>
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.3 }}
+          className="mt-6 glass-panel rounded-xl p-4 border border-border/50"
+        >
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-xs font-display font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
+              <Clock className="w-3.5 h-3.5" />
+              Recent Meetings
+            </h2>
+            <button
+              type="button"
+              onClick={() => setLocation("/history")}
+              className="text-[10px] font-mono text-muted-foreground hover:text-primary transition-colors flex items-center gap-1"
+            >
+              <Archive className="w-3 h-3" />
+              View All
+            </button>
+          </div>
+
+          {recentMeetings.length === 0 ? (
+            <p className="text-[11px] text-muted-foreground py-6 text-center leading-relaxed">
+              Ingen møder endnu — opret et rum eller tilslut med kode. Besøgte rum gemmes her (også uden database).
+            </p>
+          ) : (
             <div className="space-y-1.5">
-              {recentMeetings.map(m => {
-                const speakers: string[] = (() => {
-                  try { return JSON.parse(m.speakerNames); } catch { return []; }
-                })();
+              {recentMeetings.map((m) => {
+                const speakers = parseSpeakers(m.speakerNames);
                 return (
                   <button
-                    key={m.id}
+                    key={`${m.id}-${m.roomId}`}
+                    type="button"
                     onClick={() => setLocation(`/room/${m.roomId}`)}
-                    className="w-full flex items-center justify-between p-2.5 rounded-lg hover:bg-white/5 transition-colors group text-left"
+                    className="w-full flex items-center justify-between p-2.5 rounded-lg hover:bg-white/5 transition-colors group text-left border border-transparent hover:border-border/40"
                   >
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm text-white font-mono truncate">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-sm text-white font-medium truncate">
                           {m.title || `Room ${m.roomId}`}
                         </span>
-                        <span className="text-[10px] font-mono text-muted-foreground/60 shrink-0">
+                        <span className="text-[10px] font-mono text-muted-foreground/70 shrink-0 bg-accent/30 px-1 rounded">
                           {m.roomId}
                         </span>
                       </div>
-                      <div className="flex items-center gap-3 mt-0.5 text-[10px] text-muted-foreground">
+                      <div className="flex items-center gap-3 mt-1 text-[10px] text-muted-foreground">
                         <span>{formatDistanceToNow(new Date(m.updatedAt), { addSuffix: true })}</span>
-                        <span className="flex items-center gap-1">
+                        <span className="flex items-center gap-1" title="Segments">
                           <MessageSquare className="w-2.5 h-2.5" />
                           {m.segmentCount}
                         </span>
-                        {speakers.length > 0 && (
-                          <span className="flex items-center gap-1">
-                            <Users className="w-2.5 h-2.5" />
-                            {speakers.length}
-                          </span>
-                        )}
+                        <span className="flex items-center gap-1" title="Speakers">
+                          <Users className="w-2.5 h-2.5" />
+                          {speakers.length > 0 ? speakers.length : "—"}
+                        </span>
                       </div>
                     </div>
-                    <ExternalLink className="w-3.5 h-3.5 text-muted-foreground/40 group-hover:text-primary transition-colors shrink-0" />
+                    <ExternalLink className="w-3.5 h-3.5 text-muted-foreground/40 group-hover:text-primary transition-colors shrink-0 ml-2" />
                   </button>
                 );
               })}
             </div>
-          </motion.div>
-        )}
+          )}
+        </motion.div>
       </div>
     </div>
   );

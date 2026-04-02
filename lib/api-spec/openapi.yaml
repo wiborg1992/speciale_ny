@@ -166,6 +166,24 @@ components:
           description: >
             Workspace corpus — grundfos (industrial pumps default), gabriel (furniture/textiles),
             or generic/neutral/other. Omitted or null defaults to grundfos on the server.
+        vizType:
+          type: ["string", "null"]
+          description: Visualization kind (auto, journey, workflow, product, …) or null for auto-detect.
+        vizModel:
+          type: ["string", "null"]
+          description: Model tier (haiku, sonnet, opus, gemini-flash, gemini-pro).
+        title:
+          type: ["string", "null"]
+          description: Optional meeting title.
+        context:
+          type: ["string", "null"]
+          description: Optional structured context for the model.
+        freshStart:
+          type: boolean
+          description: If true, do not refine from previous HTML.
+        focusSegment:
+          type: ["string", "null"]
+          description: 'Segment that triggered generation, format "Speaker: text".'
       required:
         - transcript
 

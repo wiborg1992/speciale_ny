@@ -40,6 +40,15 @@ function runThroughPipeline(raw: string): ReturnType<typeof classifyVisualizatio
   return classifyVisualizationIntent(normalized, "gabriel");
 }
 
+function runGrundfos(
+  fullRaw: string,
+  latestChunkRaw: string | null,
+): ReturnType<typeof classifyVisualizationIntent> {
+  const normalized = normalizeTranscript(fullRaw);
+  const latestNorm = latestChunkRaw ? normalizeTranscript(latestChunkRaw) : null;
+  return classifyVisualizationIntent(normalized, "grundfos", latestNorm);
+}
+
 function describeVolume(chars: number): string {
   const minsLow = (chars / CHARS_PER_MIN_SPOKEN_LOW).toFixed(1);
   return `${chars} tegn (~≥ ${minsLow} min talt tekst, grov nedre grænse)`;
@@ -92,8 +101,29 @@ function main(): void {
   console.log(`\n4) HMI-krop → sidste: sammenlign kolonner\n   family=${t4.family}`);
   assertEq("case4 family", t4.family, "comparison_evaluation");
 
+  // ── Grundfos / fysisk hardware vs journey + workflow (latestChunk som “live” tale) ──
+  const longJourneyBody =
+    "customer user journey map touchpoints pain points swimlane when the technician arrives at the site PIN code handover to customer CRA compliance problem";
+  const prefixGrundfos = buildLongMeeting(longJourneyBody, approxWorkshopChars);
+
+  const physicalPivot =
+    "\n[Speaker 1]: And, alright, that leads us to look at the physical hardware in this case, we're going to look at the physical pump and how to design the pump with the normal display and insert button for the PIN code.";
+  const t5 = runGrundfos(prefixGrundfos + physicalPivot, physicalPivot.trim());
   console.log(
-    "\nAlle fictive cases OK (klassifikator + normalizer, sidste segment/topic-shift på lang transskript)."
+    `\n5) Lang journey-krop (Grundfos) → latest: physical hardware / pump design\n   family=${t5.family} ambiguous=${t5.ambiguous}`
+  );
+  assertEq("case5 family (physical after journey)", t5.family, "physical_product");
+
+  const handoverNoise =
+    "\n[Speaker 1]: To have a look at the hardware. What we're going to visualize now is the front panel design pin insert section login screen sign in handover to customer European regulation.";
+  const t6 = runGrundfos(prefixGrundfos + handoverNoise, handoverNoise.trim());
+  console.log(
+    `\n6) Samme krop → latest: hardware + front panel (handover-ord i teksten)\n   family=${t6.family} ambiguous=${t6.ambiguous}`
+  );
+  assertEq("case6 family (hardware vs workflow noise)", t6.family, "physical_product");
+
+  console.log(
+    "\nAlle fictive cases OK (klassifikator + normalizer, sidste segment/topic-shift på lang transskript, Grundfos hardware-regression)."
   );
 }
 

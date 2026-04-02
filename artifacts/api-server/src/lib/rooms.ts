@@ -68,7 +68,7 @@ export function removeParticipant(roomId: string, name: string): void {
 export function broadcastEvent(
   roomId: string,
   eventType: string,
-  data: unknown
+  data: unknown,
 ): void {
   const room = rooms.get(roomId);
   if (!room) return;
@@ -78,8 +78,7 @@ export function broadcastEvent(
   for (const client of room.clients) {
     try {
       client.write(payload);
-    } catch {
-    }
+    } catch {}
   }
 }
 
@@ -103,4 +102,19 @@ export function getMergedTranscript(roomId: string): string {
     .filter((s) => s.isFinal)
     .map((s) => `[${s.speakerName}]: ${s.text}`)
     .join("\n");
+}
+
+/**
+ * Returnerer de seneste segmenter inden for et tidsvindue (ms fra nu).
+ * Bruges til timestamp-baseret "latestChunk" til klassifikatoren —
+ * mere præcis end tegn-baserede zoner ved varierende taletempo.
+ */
+export function getRecentSegments(
+  roomId: string,
+  windowMs: number,
+): TranscriptSegment[] {
+  const room = rooms.get(roomId);
+  if (!room) return [];
+  const cutoff = Date.now() - windowMs;
+  return room.segments.filter((s) => s.isFinal && s.timestamp >= cutoff);
 }
