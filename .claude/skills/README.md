@@ -5,7 +5,11 @@ Skills are slash commands you invoke with `/name`. They run in the main conversa
 - `disable-model-invocation: true` — manual only, you type `/name` to trigger
 - Without that flag — Claude can also trigger the skill automatically when relevant
 
-## Available Skills
+**Hvornår hvilken skill?** Se den samlede matrix i [`.claude/README.md`](../README.md#hvilken-skill-kort-matrix).
+
+**Speciale-pakker** (under `skills/` som egne mapper): `visual-generator`, `deploy-check`, `systematic-debug` — plus delte som `backend-patterns`, `test-writer`, `verification-loop`, osv.
+
+## Available Skills (uddrag — alle mapper med `SKILL.md` tæller)
 
 ### /setupdotclaude
 **Trigger**: Manual only

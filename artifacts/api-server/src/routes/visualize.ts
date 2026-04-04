@@ -10,10 +10,16 @@ import {
 } from "../lib/visualizer.js";
 import {
   classifyVisualizationIntent,
-  VIZ_FAMILY_LABEL,
+  CLASSIFY_SWITCH_LEAD,
   type VizFamily,
+  type ClassificationResult,
 } from "../lib/classifier.js";
 import { getRoom, broadcastEvent, getRecentSegments } from "../lib/rooms.js";
+import {
+  computeEssenceBullets,
+  extractVizTitleFromHtml,
+  roomToMeetingEssencePayload,
+} from "../lib/meeting-essence.js";
 import { saveVisualization, updateMeetingTitle } from "../lib/meeting-store.js";
 import { detectRefinementIntent } from "../lib/refinement-detector.js";
 import {
@@ -22,6 +28,79 @@ import {
 } from "../lib/transcript-quality.js";
 
 const router: IRouter = Router();
+
+// ─── resolveFamily — P1–P8 decision order ────────────────────────────────────
+// P0 (userPickedType) løses i route-handleren før dette kald.
+// Ren funktion: ingen side-effects, ingen adgang til room-state.
+//
+// Decision order (højest prioritet øverst):
+//   P1  focusSegment      → brug classifier.family direkte, bypass alt
+//   P2  hardOverride=true → brug classifier.family, bypass inertia og refinement-lås
+//   P3  ambiguous + lastFamily  → arv lastFamily  [log: ambiguous_inherit]
+//   P4  ambiguous + !lastFamily → null (route skipper)
+//   P5  refinement + lastFamily → lås til lastFamily  [Strategi A: refinement blokerer ordinær klassifikation]
+//   P6  !ambiguous + lead >= CLASSIFY_SWITCH_LEAD + lastFamily → skift familie
+//   P7  !ambiguous + !lastFamily → brug classifier.family (første viz)
+//   P8  !ambiguous + lead < CLASSIFY_SWITCH_LEAD + lastFamily → inertia, behold lastFamily
+export function resolveFamily(params: {
+  classification: ClassificationResult | null;
+  lastFamily: VizFamily | null;
+  hasFocusSegment: boolean;
+  refinementDetected: boolean;
+}): VizFamily | null {
+  const { classification, lastFamily, hasFocusSegment, refinementDetected } =
+    params;
+
+  // P1: focusSegment — bypass alt, brug klassifikatorens direkte resultat
+  if (hasFocusSegment && classification) {
+    return classification.family;
+  }
+
+  if (!classification) return null;
+
+  // P2: hardOverride — TOPIC_SHIFT_OVERRIDE eller RECENT_ZONE_OVERRIDE slog til
+  // Bypasser inertia og refinement-lås. Eneste ikke-bruger vej der kan trumfe P5.
+  if (classification.hardOverride) {
+    return classification.family;
+  }
+
+  // P3: ambiguous + etableret familie → arv
+  if (classification.ambiguous && lastFamily) {
+    console.log(`[ambiguous-inherit] holder ${lastFamily}`);
+    return lastFamily;
+  }
+
+  // P4: ambiguous + ingen etableret familie → null (route skipper visualisering)
+  if (classification.ambiguous) {
+    return null;
+  }
+
+  // P5: refinement detekteret + etableret familie → lås
+  // Strategi A: kun P0/P1/P2 kan bryde ud. Høj lead fra ordinær klassifikation
+  // bryder IKKE refinement-lås — det er bivirkningssignal, ikke brugerinstruktion.
+  if (refinementDetected && lastFamily) {
+    return lastFamily;
+  }
+
+  // P6: klar ny familie med tilstrækkelig sikkerhed + etableret familie → skift
+  if (lastFamily && classification.lead >= CLASSIFY_SWITCH_LEAD) {
+    console.log(
+      `[family-switch] ${lastFamily} → ${classification.family} (lead=${classification.lead})`,
+    );
+    return classification.family;
+  }
+
+  // P7: første viz (ingen etableret familie) → brug klassifikatorens resultat
+  if (!lastFamily) {
+    return classification.family;
+  }
+
+  // P8: lead for lav til at skifte etableret familie → inertia
+  console.log(
+    `[inertia] lead=${classification.lead} < ${CLASSIFY_SWITCH_LEAD}, holder ${lastFamily}`,
+  );
+  return lastFamily;
+}
 
 const rateLimitMap = new Map<string, number[]>();
 const RATE_LIMIT_WINDOW = 60_000;
@@ -64,7 +143,115 @@ const VisualizeBodySchema = z.object({
   workspaceDomain: z.string().optional().nullable(),
   /** "Speaker: text" of the specific segment the user clicked to trigger this generation */
   focusSegment: z.string().optional().nullable(),
+  /** Eksplicit brugervalg efter disambiguation-dialog: "fresh" = ny viz, "refine" = byg videre */
+  userVizIntent: z.enum(["fresh", "refine"]).optional().nullable(),
 });
+
+export type DisambiguationReason = "refinement_vs_topic_shift";
+
+/**
+ * Ren funktion — ingen side-effects. Returnerer gate-resultat.
+ * Eksporteret så den kan testes uden HTTP.
+ *
+ * Gate: refinement_vs_topic_shift
+ *   Refinement-frase detekteret SAMT klassifikatoren er sikker på en ny family
+ *   (lead >= CLASSIFY_SWITCH_LEAD) der adskiller sig fra lastFamily.
+ *   P5 ville blindt låse til lastFamily — i stedet spørger vi brugeren.
+ */
+export function checkDisambiguationGate(params: {
+  refinementDirective: string | null;
+  classification: ClassificationResult | null;
+  lastFamily: VizFamily | null;
+  effectivePreviousHtml: string | null | undefined;
+  userPickedType: boolean;
+  focusSegment: string | null | undefined;
+  userVizIntent: string | null | undefined;
+}): {
+  needsIntent: boolean;
+  reason: DisambiguationReason | null;
+  defaultChoice: "fresh" | "refine" | null;
+  detectedFamily: VizFamily | null;
+} {
+  const {
+    refinementDirective,
+    classification,
+    lastFamily,
+    effectivePreviousHtml,
+    userPickedType,
+    focusSegment,
+    userVizIntent,
+  } = params;
+
+  // Bypass: bruger har allerede svaret, valgt type eksplicit, eller klikket segment
+  if (userVizIntent || userPickedType || focusSegment) {
+    return {
+      needsIntent: false,
+      reason: null,
+      defaultChoice: null,
+      detectedFamily: null,
+    };
+  }
+
+  // Gate: refinement-signal + stærkt topic-skift i modsat retning
+  const hasConflict =
+    refinementDirective != null &&
+    classification != null &&
+    !classification.ambiguous &&
+    classification.lead >= CLASSIFY_SWITCH_LEAD &&
+    lastFamily != null &&
+    classification.family !== lastFamily &&
+    !!effectivePreviousHtml;
+
+  if (hasConflict) {
+    return {
+      needsIntent: true,
+      reason: "refinement_vs_topic_shift",
+      // Default: ny viz, fordi topic-skiftet er stærkt (høj lead)
+      defaultChoice: "fresh",
+      detectedFamily: classification!.family,
+    };
+  }
+
+  return {
+    needsIntent: false,
+    reason: null,
+    defaultChoice: null,
+    detectedFamily: null,
+  };
+}
+
+function sendNeedIntent(
+  res: import("express").Response,
+  reason: DisambiguationReason,
+  defaultChoice: "fresh" | "refine",
+  detectedFamily: string | null,
+  currentFamily: string | null,
+  scores: Array<{ family: string; score: number }>,
+): void {
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+  res.setHeader("X-Accel-Buffering", "no");
+  res.flushHeaders();
+
+  const EXPLANATIONS: Record<DisambiguationReason, string> = {
+    refinement_vs_topic_shift:
+      "Samtalen bevæger sig i en ny retning, men du talte om at justere den nuværende visualisering. Hvad skal der ske?",
+  };
+
+  res.write(
+    `data: ${JSON.stringify({
+      type: "need_intent",
+      disambiguationReason: reason,
+      defaultChoice,
+      explanation: EXPLANATIONS[reason],
+      detectedFamily,
+      currentFamily,
+      scores: scores.slice(0, 4),
+    })}\n\n`,
+  );
+  res.end();
+}
 
 router.post("/visualize", async (req, res, next): Promise<void> => {
   try {
@@ -94,6 +281,7 @@ router.post("/visualize", async (req, res, next): Promise<void> => {
       freshStart,
       workspaceDomain,
       focusSegment,
+      userVizIntent,
     } = parsed.data;
 
     if (transcript.length > MAX_BODY_CHARS) {
@@ -154,7 +342,8 @@ router.post("/visualize", async (req, res, next): Promise<void> => {
     // In a 700-word conversation about pumps/requirements, a recent command like
     // "let's do a user journey mapping" gets drowned out by older keywords.
     // The classifier must reflect the user's LATEST intent, not accumulated topics.
-    const CLASSIFY_TAIL_WORDS = 150;
+    /** Ord sendes til klassifikator (tail). Øget så "physical pump" mv. ikke falder ud af vinduet før PIN/HMI-dominans. */
+    const CLASSIFY_TAIL_WORDS = 280;
     const userPickedType = vizType && vizType !== "auto";
 
     let classificationInput: string;
@@ -187,6 +376,7 @@ router.post("/visualize", async (req, res, next): Promise<void> => {
           classificationInput,
           workspaceDomain,
           latestChunk,
+          normalized,
         );
 
     if (classification) {
@@ -199,49 +389,86 @@ router.post("/visualize", async (req, res, next): Promise<void> => {
       );
     }
 
-    // Resolve the effective family to inject into the prompt
-    let resolvedFamily: VizFamily | null = null;
+    // ─── Resolve viz-familie (P0–P8 decision order) ─────────────────────────────
+    //
+    // P0: userPickedType — løses her (typeToFamily-mapping), IKKE i resolveFamily
+    // P1–P8: resolveFamily() — ren funktion, testbar uden HTTP
+    //
+    // Spec: https://github.com/... (se plan v3 i commit-historik)
+    const TYPE_TO_FAMILY: Record<string, VizFamily> = {
+      hmi: "hmi_interface",
+      journey: "user_journey",
+      workflow: "workflow_process",
+      product: "physical_product",
+      requirements: "requirements_matrix",
+      management: "management_summary",
+      kanban: "management_summary",
+      decisions: "management_summary",
+      timeline: "management_summary",
+      persona: "persona_research",
+      research: "persona_research",
+      empathy: "persona_research",
+      blueprint: "service_blueprint",
+      architecture: "service_blueprint",
+      sitemap: "service_blueprint",
+      stakeholders: "service_blueprint",
+      comparison: "comparison_evaluation",
+      evaluation: "comparison_evaluation",
+      swot: "comparison_evaluation",
+      scorecard: "comparison_evaluation",
+      designsystem: "design_system",
+      styleguide: "design_system",
+      components: "design_system",
+    };
+
+    const lastFamily = (
+      roomId ? (getRoom(roomId)?.lastFamily ?? null) : null
+    ) as VizFamily | null;
+
+    let resolvedFamily: VizFamily | null;
     if (userPickedType) {
-      // Map frontend vizType values → family ids
-      const typeToFamily: Record<string, VizFamily> = {
-        hmi: "hmi_interface",
-        journey: "user_journey",
-        workflow: "workflow_process",
-        product: "physical_product",
-        requirements: "requirements_matrix",
-        management: "management_summary",
-        kanban: "management_summary",
-        decisions: "management_summary",
-        timeline: "management_summary",
-        persona: "persona_research",
-        research: "persona_research",
-        empathy: "persona_research",
-        blueprint: "service_blueprint",
-        architecture: "service_blueprint",
-        sitemap: "service_blueprint",
-        stakeholders: "service_blueprint",
-        comparison: "comparison_evaluation",
-        evaluation: "comparison_evaluation",
-        swot: "comparison_evaluation",
-        scorecard: "comparison_evaluation",
-        designsystem: "design_system",
-        styleguide: "design_system",
-        components: "design_system",
-      };
-      resolvedFamily = typeToFamily[vizType!] ?? null;
-    } else if (classification && !classification.ambiguous) {
-      resolvedFamily = classification.family;
+      // P0: brugeren har valgt eksplicit — bypass alt
+      resolvedFamily = TYPE_TO_FAMILY[vizType!] ?? null;
+    } else {
+      resolvedFamily = resolveFamily({
+        classification,
+        lastFamily,
+        hasFocusSegment: !!focusSegment,
+        refinementDetected: !!refinementDirective,
+      });
     }
 
-    // ─── Topic-shift detection ─────────────────────────────────────────────────
-    // Når klassificeret family ændrer sig ift. sidste viz, skal vi ikke bevare
-    // journey/workflow-HTML som canvas — selv hvis refinement‑detektoren har slået til
-    // (den er tiltænkt zoom/tilføj‑kolonne, ikke “nu er det fysisk hardware”).
-    if (resolvedFamily && roomId && !freshStart) {
-      const room = getRoom(roomId);
-      if (room?.lastFamily && room.lastFamily !== resolvedFamily) {
+    // ─── userVizIntent override ───────────────────────────────────────────────
+    // Brugeren har svaret på disambiguation-dialogen — respektér det over P5/P8.
+    if (userVizIntent === "fresh") {
+      effectivePreviousHtml = undefined;
+      refinementDirective = null;
+      // Bypass inertia/refinement-lås: brug klassifikatorens direkte familie
+      if (classification) resolvedFamily = classification.family;
+    } else if (userVizIntent === "refine") {
+      // Sørg for at vi har previousHtml fra rummet hvis klienten ikke sendte det
+      if (!effectivePreviousHtml && roomId) {
+        const room = getRoom(roomId);
+        if (room?.lastVisualization)
+          effectivePreviousHtml = room.lastVisualization;
+      }
+    }
+
+    // ─── Topic-shift clear ────────────────────────────────────────────────────
+    // Ryd previousHtml når resolved familie ikke matcher serverens lastFamily — ELLER
+    // når lastFamily mangler (ny instans, restart, state ikke delt): ellers sender
+    // klienten stadig previousHtml → isIncremental=true og gammelt layout bløder ind.
+    // Refinement: ikke ryd (Strategi A / bruger retter bevidst samme viz).
+    if (resolvedFamily && roomId && !freshStart && !refinementDirective) {
+      const noServerFamily = lastFamily == null;
+      const familyMismatch =
+        lastFamily != null && lastFamily !== resolvedFamily;
+      if (noServerFamily || familyMismatch) {
+        const reason = noServerFamily
+          ? `no server lastFamily (clear previousHtml if any) → ${resolvedFamily}`
+          : `family changed: ${lastFamily} → ${resolvedFamily}`;
         console.log(
-          `[topic-shift] Family changed: ${room.lastFamily} → ${resolvedFamily} in room ${roomId} — forcing fresh visualization`,
+          `[topic-shift] ${reason} in room ${roomId} — forcing fresh visualization`,
         );
         effectivePreviousHtml = undefined;
         refinementDirective = null;
@@ -356,6 +583,39 @@ router.post("/visualize", async (req, res, next): Promise<void> => {
       }
     }
 
+    // ─── Disambiguation gate ──────────────────────────────────────────────────
+    // Spørg brugeren når refinement-signal og stærkt topic-skift konflikterer.
+    // Kun når brugeren IKKE allerede har svaret (userVizIntent) og ikke har valgt
+    // type eksplicit eller klikket et segment.
+    {
+      const gate = checkDisambiguationGate({
+        refinementDirective,
+        classification,
+        lastFamily,
+        effectivePreviousHtml,
+        userPickedType: !!userPickedType,
+        focusSegment,
+        userVizIntent,
+      });
+      if (gate.needsIntent && gate.reason && gate.defaultChoice) {
+        console.log(
+          `[disambiguation] ${gate.reason} in room ${roomId} — detectedFamily=${gate.detectedFamily}, currentFamily=${lastFamily}`,
+        );
+        sendNeedIntent(
+          res,
+          gate.reason,
+          gate.defaultChoice,
+          gate.detectedFamily,
+          lastFamily,
+          (classification?.scores ?? []).map((s) => ({
+            family: s.id,
+            score: s.score,
+          })),
+        );
+        return;
+      }
+    }
+
     const streamT0 = performance.now();
     res.setHeader("Content-Type", "text/event-stream");
     res.setHeader("Cache-Control", "no-cache");
@@ -367,7 +627,9 @@ router.post("/visualize", async (req, res, next): Promise<void> => {
     // Track client disconnect so we skip broadcast for orphaned requests
     let clientDisconnected = false;
     req.on("close", () => {
-      clientDisconnected = true;
+      if (!res.writableEnded) {
+        clientDisconnected = true;
+      }
     });
     const vizStartedAt = Date.now();
 
@@ -438,6 +700,11 @@ router.post("/visualize", async (req, res, next): Promise<void> => {
     let fullHtml = "";
     let firstChunkMs: number | null = null;
 
+    const roomBeforeViz = roomId ? getRoom(roomId) : undefined;
+    const meetingEssenceForPrompt = roomBeforeViz
+      ? roomToMeetingEssencePayload(roomBeforeViz)
+      : null;
+
     try {
       for await (const chunk of streamVisualization(
         {
@@ -453,6 +720,7 @@ router.post("/visualize", async (req, res, next): Promise<void> => {
           refinementDirective,
           workspaceDomain,
           focusSegment,
+          meetingEssence: meetingEssenceForPrompt,
         },
         (c) => {
           if (firstChunkMs == null)
@@ -499,6 +767,14 @@ router.post("/visualize", async (req, res, next): Promise<void> => {
           if (room) {
             room.lastVisualization = cleanHtml;
             room.lastFamily = resolvedFamily ?? classification?.family ?? null;
+            const fromHtml = extractVizTitleFromHtml(cleanHtml);
+            room.lastVizTitle =
+              fromHtml ??
+              (title?.trim() ? title.trim().slice(0, 84) : room.lastVizTitle);
+            room.meetingEssenceBullets = computeEssenceBullets(
+              classification,
+              (resolvedFamily ?? classification?.family ?? null) as VizFamily | null,
+            );
             broadcastEvent(roomId, "visualization", { html: cleanHtml, meta });
           }
           saveVisualization(

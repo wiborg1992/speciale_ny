@@ -6,14 +6,60 @@ import {
   addParticipant,
   removeParticipant,
   broadcastEvent,
-  getMergedTranscript,
   addSegment,
 } from "../lib/rooms.js";
 import { getMeetingByRoom } from "../lib/meeting-store.js";
 
 const router: IRouter = Router();
 
-const hydrating = new Set<string>();
+/** Én delt DB-hydrering pr. room — undgår at faner der forbinder samtidig springer load over. */
+const roomHydrationInflight = new Map<string, Promise<void>>();
+
+/** Undgå gigantiske SSE-payloads; fuld historik kan stadig hentes via GET /api/meetings/:roomId. */
+const MAX_SSE_HISTORY_SEGMENTS = 10_000;
+
+function getRoomDbHydrationPromise(roomId: string): Promise<void> {
+  const existing = roomHydrationInflight.get(roomId);
+  if (existing) return existing;
+
+  const room = getOrCreateRoom(roomId);
+  if (room.segments.length > 0) {
+    return Promise.resolve();
+  }
+
+  const p = (async () => {
+    try {
+      const dbData = await getMeetingByRoom(roomId);
+      if (!dbData || dbData.segments.length === 0) return;
+
+      const r = getOrCreateRoom(roomId);
+      if (r.segments.length > 0) return;
+
+      for (const seg of dbData.segments) {
+        addSegment(roomId, {
+          id: seg.segmentId,
+          speakerName: seg.speakerName,
+          text: seg.text,
+          timestamp: new Date(seg.timestamp).getTime(),
+          isFinal: seg.isFinal,
+        });
+      }
+      if (dbData.visualizations.length > 0) {
+        const latest = dbData.visualizations[dbData.visualizations.length - 1];
+        r.lastVisualization = latest.html;
+        r.lastVizWordCount = latest.wordCount;
+        r.lastFamily = (latest as { family?: string | null }).family ?? null;
+      }
+    } catch (err) {
+      console.error("Failed to load meeting from DB:", err);
+    } finally {
+      roomHydrationInflight.delete(roomId);
+    }
+  })();
+
+  roomHydrationInflight.set(roomId, p);
+  return p;
+}
 
 router.get("/sse", async (req, res): Promise<void> => {
   const roomId = (req.query.room as string) || "default";
@@ -29,39 +75,22 @@ router.get("/sse", async (req, res): Promise<void> => {
     addClient(roomId, res);
     addParticipant(roomId, participantName);
 
+    await getRoomDbHydrationPromise(roomId);
     const room = getOrCreateRoom(roomId);
 
-    if (room.segments.length === 0 && !hydrating.has(roomId)) {
-      hydrating.add(roomId);
-      try {
-        const dbData = await getMeetingByRoom(roomId);
-        if (dbData && dbData.segments.length > 0) {
-          for (const seg of dbData.segments) {
-            addSegment(roomId, {
-              id: seg.segmentId,
-              speakerName: seg.speakerName,
-              text: seg.text,
-              timestamp: new Date(seg.timestamp).getTime(),
-              isFinal: seg.isFinal,
-            });
-          }
-          if (dbData.visualizations.length > 0) {
-            room.lastVisualization = dbData.visualizations[0].html;
-            room.lastVizWordCount = dbData.visualizations[0].wordCount;
-            room.lastFamily = (dbData.visualizations[0] as any).family ?? null;
-          }
-        }
-      } catch (err) {
-        console.error("Failed to load meeting from DB:", err);
-      } finally {
-        hydrating.delete(roomId);
-      }
-    }
-
     if (room.segments.length > 0) {
-      const recentSegments = room.segments.slice(-20);
+      const segmentsForWire =
+        room.segments.length > MAX_SSE_HISTORY_SEGMENTS
+          ? room.segments.slice(-MAX_SSE_HISTORY_SEGMENTS)
+          : room.segments;
       res.write(
-        `event: history\ndata: ${JSON.stringify({ segments: recentSegments })}\n\n`
+        `event: history\ndata: ${JSON.stringify({
+          segments: segmentsForWire,
+          truncated:
+            room.segments.length > MAX_SSE_HISTORY_SEGMENTS
+              ? room.segments.length - MAX_SSE_HISTORY_SEGMENTS
+              : 0,
+        })}\n\n`,
       );
     }
 

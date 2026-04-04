@@ -1,5 +1,7 @@
 # Agent Orchestration
 
+**Projekt-specifikke agenter** (review, frontend, …) ligger i `.claude/agents/` — se `.claude/README.md` § *Agenter*. Tabellen nedenfor dækker typisk **globale** agenter under `~/.claude/agents/` og tilsvarende roller.
+
 ## Available Agents
 
 Located in `~/.claude/agents/`:

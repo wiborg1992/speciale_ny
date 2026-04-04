@@ -4,7 +4,9 @@ import {
   getMeetingByRoom,
   deleteMeeting,
   updateMeetingTitle,
+  clearMeetingTranscript,
 } from "../lib/meeting-store.js";
+import { clearRoomSegments, broadcastEvent } from "../lib/rooms.js";
 
 const router: IRouter = Router();
 
@@ -52,6 +54,19 @@ router.patch("/meetings/:roomId", async (req, res): Promise<void> => {
   } catch (err) {
     console.error("Failed to update meeting:", err);
     res.status(500).json({ error: "Failed to update meeting" });
+  }
+});
+
+router.post("/meetings/:roomId/clear-transcript", async (req, res): Promise<void> => {
+  try {
+    const { roomId } = req.params;
+    await clearMeetingTranscript(roomId);
+    clearRoomSegments(roomId);
+    broadcastEvent(roomId, "transcript_cleared", { ok: true });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("Failed to clear transcript:", err);
+    res.status(500).json({ error: "Failed to clear transcript" });
   }
 });
 

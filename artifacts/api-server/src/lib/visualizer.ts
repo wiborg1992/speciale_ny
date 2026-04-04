@@ -14,6 +14,7 @@ import {
   normalizeWorkspaceDomain,
   type WorkspaceDomain,
 } from "./workspace-domain.js";
+import type { MeetingEssenceForPrompt } from "./meeting-essence.js";
 
 const client = new Anthropic();
 
@@ -36,14 +37,19 @@ function getGeminiClient(): GoogleGenAI | null {
   return _geminiClient;
 }
 
-export type VizModel = "haiku" | "sonnet" | "opus" | "gemini-flash" | "gemini-pro";
+export type VizModel =
+  | "haiku"
+  | "sonnet"
+  | "opus"
+  | "gemini-flash"
+  | "gemini-pro";
 
 const MODEL_IDS: Record<VizModel, string> = {
-  haiku:         "claude-haiku-4-5",
-  sonnet:        "claude-sonnet-4-6",
-  opus:          "claude-opus-4-6",
+  haiku: "claude-haiku-4-5",
+  sonnet: "claude-sonnet-4-6",
+  opus: "claude-opus-4-6",
   "gemini-flash": "gemini-2.5-flash",
-  "gemini-pro":   "gemini-2.5-pro",
+  "gemini-pro": "gemini-2.5-pro",
 };
 
 const GEMINI_MODELS = new Set<VizModel>(["gemini-flash", "gemini-pro"]);
@@ -51,23 +57,32 @@ const GEMINI_MODELS = new Set<VizModel>(["gemini-flash", "gemini-pro"]);
 const OPENAI_FALLBACK_MODEL = "gpt-4o";
 
 const MAX_TOKENS: Record<VizModel, number> = {
-  haiku:         8192,
-  sonnet:        8192,
-  opus:          8192,
+  haiku: 8192,
+  sonnet: 8192,
+  opus: 8192,
   "gemini-flash": 8192,
-  "gemini-pro":   8192,
+  "gemini-pro": 8192,
 };
 
 const MAX_TOKENS_PUMP: Record<VizModel, number> = {
-  haiku:         8192,
-  sonnet:        10000,
-  opus:          12000,
+  haiku: 8192,
+  sonnet: 10000,
+  opus: 12000,
   "gemini-flash": 8192,
-  "gemini-pro":   12000,
+  "gemini-pro": 12000,
 };
 
-const MAX_TRANSCRIPT_CHARS = 100_000;
-const MAX_PREV_VIZ_CHARS   = 70_000;
+/** Sekundær appendix — stadig cap'et, men FOKUS-sektionen er primær (seneste ord). */
+const MAX_TRANSCRIPT_CHARS = 72_000;
+const MAX_PREV_VIZ_CHARS = 70_000;
+/** Matcher klassifikatorens tail — "hvad driver figuren nu" */
+const PRIMARY_FOCUS_WORDS = 280;
+
+function sliceTailWords(text: string, wordCount: number): string {
+  const words = text.split(/\s+/).filter(Boolean);
+  if (words.length <= wordCount) return text.trim();
+  return words.slice(-wordCount).join(" ");
+}
 
 function truncateTranscript(transcript: string): string {
   if (transcript.length <= MAX_TRANSCRIPT_CHARS) return transcript;
@@ -76,8 +91,12 @@ function truncateTranscript(transcript: string): string {
   return `[Note: ${omitted} characters of earlier transcript were omitted for speed — use the rest as the meeting context.]\n\n${transcript.slice(-keep)}`;
 }
 
-function truncatePreviousViz(html: string): { snippet: string; truncated: boolean } {
-  if (html.length <= MAX_PREV_VIZ_CHARS) return { snippet: html, truncated: false };
+function truncatePreviousViz(html: string): {
+  snippet: string;
+  truncated: boolean;
+} {
+  if (html.length <= MAX_PREV_VIZ_CHARS)
+    return { snippet: html, truncated: false };
   const budget = MAX_PREV_VIZ_CHARS - 240;
   const headChars = Math.floor(budget * 0.48);
   const tailChars = budget - headChars;
@@ -610,7 +629,9 @@ The visualization must feel genuinely usable. MANDATORY real controls:
 
 A) LOGIN FLOW — when transcript mentions login screen/onboarding: generate real login + dashboard behind it.
 B) STATEFUL CONTROLS — pump panels: START/STOP buttons toggle running class, MODE selector switches visual states, ALARM ACK clears ledAlarm.
-C) HOST TABS (HMI / top nav — required when showing horizontal section tab bar):
+C) HMI PRIMARY TABS + CLICKABLE PANELS — **ONLY for family hmi_interface** (Grundfos iSolutions–style dashboard with a horizontal main tab bar). **Do NOT** use this full data-viz-host-tabs shell, mandatory tab script, or iSolutions primary-tab chrome for requirements_matrix, user_journey, workflow_process, physical_product, generic, etc. — those families use (D) CSS-only tabs, static sections, or tables instead.
+
+When **and only when** hmi_interface is the active visualization family, if you show a horizontal main tab strip (Overview | Settings | Drift log | Security | …), implement it as:
 <div data-viz-host-tabs="1" data-viz-lazy-tabs="1" class="(your root class)">
   <div role="tablist" class="(tab strip class)">
     <button type="button" role="tab" data-viz-tab="0" aria-selected="true" class="viz-tab-active (your tab class)">OVERVIEW</button>
@@ -622,7 +643,21 @@ C) HOST TABS (HMI / top nav — required when showing horizontal section tab bar
   </div>
 </div>
 Rules: data-viz-tab value MUST match data-viz-tab-panel. First panel: style="display:block" — NO hidden. Non-first: style="display:none" AND hidden AND data-viz-pending="1".
-D) TABS (CSS-only): Hidden radio + labels for simple layouts.
+
+**hmi_interface only — tab switching script (mandatory; no dead clicks):** End the document with an inline <script> (no CDN) that on tab click updates aria-selected, shows the matching panel (display:block, remove hidden), and hides others. Prefer matching within each data-viz-host-tabs host. IIFE or DOMContentLoaded. Minimal pattern:
+  <script>(function(){document.querySelectorAll('[data-viz-host-tabs]').forEach(function(host){host.querySelectorAll('[data-viz-tab]').forEach(function(tab){
+    tab.addEventListener('click',function(){
+      var id=tab.getAttribute('data-viz-tab');
+      host.querySelectorAll('[data-viz-tab]').forEach(function(t){t.setAttribute('aria-selected',t===tab?'true':'false');});
+      host.querySelectorAll('[data-viz-tab-panel]').forEach(function(p){
+        p.style.display=p.getAttribute('data-viz-tab-panel')===id?'block':'none';
+        if(p.style.display==='none'){p.setAttribute('hidden','');}else{p.removeAttribute('hidden');}
+      });
+    });
+  });});})();</script>
+Alternative for hmi_interface only: button.tab-btn with data-tab="overview" plus div.tab-content#overview plus a small IIFE that toggles .active / display — same requirement: tabs MUST switch visible content in the browser.
+
+D) TABS (CSS-only): Hidden radio + labels for simple layouts — **preferred for non-hmi_interface families** when sub-sections need tab-like UI.
 E) TOGGLES: data-viz-toggle="selector" — host toggles class viz-open.
 F) COLLAPSIBLE: <details><summary> for drill-down metrics.
 G) HOVER: All cards/buttons use cursor:pointer and :hover state.
@@ -787,13 +822,17 @@ export interface VisualizerParams {
   workspaceDomain?: string | null;
   /** "Speaker: text" of the specific segment the user clicked to trigger this generation */
   focusSegment?: string | null;
+  /** Fra room-state før dette kald — baggrund, ikke hovedkilde */
+  meetingEssence?: MeetingEssenceForPrompt | null;
 }
 
 /** Maps server-side family IDs to clear, unambiguous instructions for the AI */
 const FAMILY_INSTRUCTIONS: Record<string, string> = {
   hmi_interface: `GENERATE: HMI / SCADA DASHBOARD — Grundfos iSolutions dark-theme interface.
 Use the full HMI design language defined in the system prompt (dark navy backgrounds, cyan accents, tab navigation, gauge widgets, live value cards).
-DO NOT use light backgrounds. DO NOT generate journey maps, flowcharts, or product illustrations.`,
+DO NOT use light backgrounds. DO NOT generate journey maps, flowcharts, or product illustrations.
+
+TAB INTERACTIVITY (this family only): Horizontal main tabs (Overview, Settings, Drift log, Security, etc.) MUST be fully interactive in the browser — clicking a tab shows its panel and hides the others. Use either (1) the data-viz-host-tabs + data-viz-tab / data-viz-tab-panel pattern with the inline script from the system prompt, or (2) <button type="button" class="tab-btn" data-tab="id"> with matching content regions id="id" and a small closing inline <script> IIFE. Do not deliver static tab labels with no JavaScript when multiple main panels exist.`,
 
   user_journey: `GENERATE: USER JOURNEY MAP — light background, swim lane layout.
 Show phases across the top (e.g., Awareness → Onboarding → Use → Support → Renewal).
@@ -886,12 +925,22 @@ title, description, and visual "Do" vs "Don't" example pairs.
 Use clean, technical documentation style. Grid-aligned. Code-adjacent feel.
 Light background with subtle grid. DO NOT use dark HMI style.`,
 
-  generic: `GENERATE: The most appropriate visualization type based on the transcript content.
-Do NOT default to meeting notes, dictation-style summaries, or "what people said" bullet walls — those are incorrect for this product even if they look neat.
-You MUST output a **visual prototype** (structured UI): pick among HMI dashboard, user journey, workflow/flowchart,
-pump hardware, persona/empathy map, service blueprint, comparison/evaluation matrix, design system spec,
-timeline/roadmap, kanban, or decision log — with cards, diagrams, tables, or panels, not plain note prose.
-Read the transcript carefully and commit fully to one type — do not mix styles.`,
+  generic: `GENERATE: STRUCTURED OVERVIEW — card-grid or section-header layout.
+The user has explicitly requested no specific diagram type. Your output must still be a VISUAL STRUCTURE — never a plain notepad or bullet wall.
+
+REQUIRED STRUCTURE:
+  • 3–4 named sections with clear headings reflecting actual meeting topics
+  • Each section: white card (#FFFFFF) on #F8FAFC background, 1px border (#E2E8F0), 12–16px border-radius
+  • Within each card: short bullet points or a mini-table — never running prose
+  • Use a single accent colour derived from the transcript context (default: #0077C8)
+  • Typography: Outfit or Inter, body 14–15px, headings 18–20px bold
+  • No fixed diagram shape (no swimlanes, no flowchart arrows, no SVG hardware)
+
+ABSOLUTELY NOT ALLOWED:
+  ✗ "Meeting notes" or "Observations" heading
+  ✗ Bullet list of everything that was said, in order
+  ✗ Plain <ul>/<li> without card structure
+  ✗ Fake polish: dark gradient background with white prose text`,
 };
 
 function systemPromptForDomain(domain: WorkspaceDomain): string {
@@ -900,7 +949,7 @@ function systemPromptForDomain(domain: WorkspaceDomain): string {
 
 function familyInstructionForDomain(
   family: string,
-  domain: WorkspaceDomain
+  domain: WorkspaceDomain,
 ): string | undefined {
   const base = FAMILY_INSTRUCTIONS[family];
   if (!base) return undefined;
@@ -919,13 +968,35 @@ Centre a detailed illustration or exploded diagram with spec callouts. Avoid def
     }
   }
 
+  // Generic family: domæne-specifik tone, fælles struktur (card-grid, ingen notater)
+  if (family === "generic") {
+    if (domain === "gabriel") {
+      return `GENERATE: STRUCTURED DATA OVERVIEW — card-grid layout with analytics tone.
+3–4 sections reflecting the meeting topics. Each card: white background, subtle border, bullet points or mini-table.
+Accent: #3B82F6 or derive from context. Typography: Inter/Outfit. No charts unless transcript has numbers.
+ABSOLUTELY NOT: meeting notes prose, bullet wall, dark gradient background.`;
+    }
+    if (domain === "generic") {
+      return `GENERATE: STRUCTURED OVERVIEW — neutral card-grid layout.
+3–4 named sections (white cards, #F8FAFC background, single accent colour from context).
+Bullet points or mini-tables inside cards — never running prose or meeting notes aesthetic.`;
+    }
+    // grundfos: brug base-instructionen (Grundfos-farver allerede inkluderet)
+    return base;
+  }
+
   return text;
 }
 
 export async function* streamVisualization(
   params: VisualizerParams,
   onChunk: (chunk: string) => void,
-  onPromptReady?: (info: { systemPrompt: string; userMessage: string; model: string; maxTokens: number }) => void,
+  onPromptReady?: (info: {
+    systemPrompt: string;
+    userMessage: string;
+    model: string;
+    maxTokens: number;
+  }) => void,
 ): AsyncGenerator<string> {
   const {
     transcript,
@@ -939,31 +1010,56 @@ export async function* streamVisualization(
     refinementDirective,
     workspaceDomain,
     focusSegment,
+    meetingEssence,
   } = params;
 
   const domain = normalizeWorkspaceDomain(workspaceDomain);
   const systemPrompt = systemPromptForDomain(domain);
 
   const model = MODEL_IDS[vizModel ?? "haiku"];
-  const isPump =
-    domain === "grundfos" && resolvedFamily === "physical_product";
+  const isPump = domain === "grundfos" && resolvedFamily === "physical_product";
   const maxTokens = isPump
     ? MAX_TOKENS_PUMP[vizModel ?? "haiku"]
     : MAX_TOKENS[vizModel ?? "haiku"];
 
   const transcriptForModel = truncateTranscript(transcript);
 
-  const isIncremental = !freshStart && !!previousHtml && previousHtml.trim().length > 80;
+  const isIncremental =
+    !freshStart && !!previousHtml && previousHtml.trim().length > 80;
 
   let userMessage = "";
   if (title) userMessage += `Meeting title: ${title}\n\n`;
-  if (context) userMessage += `MEETING CONTEXT:\n${context}\n\n`;
+  if (context) userMessage += `ADDITIONAL MEETING CONTEXT (from facilitator — structured notes/files):\n${context}\n\n`;
+
+  const essence = meetingEssence;
+  if (
+    essence &&
+    (essence.bullets.length > 0 ||
+      essence.lastVizTitle ||
+      essence.lastFamilyLabel)
+  ) {
+    userMessage +=
+      `KORT MØDEHUKOMMELSE (fra før denne figur — baggrund, ikke hovedkilde; prioriter FOKUS-sektionen under):\n`;
+    if (essence.lastVizTitle) {
+      userMessage += `• Sidste visualisering (titel): ${essence.lastVizTitle}\n`;
+    }
+    if (essence.lastFamilyLabel) {
+      userMessage += `• Sidste hovedtype: ${essence.lastFamilyLabel}\n`;
+    }
+    for (const b of essence.bullets) {
+      userMessage += `• ${b}\n`;
+    }
+    userMessage += `\n`;
+  }
 
   const familyDirective = resolvedFamily
     ? familyInstructionForDomain(resolvedFamily, domain)
     : undefined;
   if (resolvedFamily && familyDirective) {
-    const source = (vizType && vizType !== "auto") ? "USER-SELECTED TYPE" : "SERVER CLASSIFICATION (high confidence)";
+    const source =
+      vizType && vizType !== "auto"
+        ? "USER-SELECTED TYPE"
+        : "SERVER CLASSIFICATION (high confidence)";
     userMessage += `⚡ ${source} — follow these instructions exactly:\n${familyDirective}\n\n`;
   } else if (vizType && vizType !== "auto") {
     userMessage += `⚡ USER-SELECTED TYPE: Generate SPECIFICALLY this visualization type — nothing else: ${vizType}\n\n`;
@@ -976,7 +1072,13 @@ export async function* streamVisualization(
     userMessage += `=== CR/CRE MULTISTAGE PUMP TEMPLATE ===\n${CR_PUMP_TEMPLATE}\n\n`;
   }
 
-  userMessage += `Here is the meeting transcript:\n\n${transcriptForModel}\n\n`;
+  const primaryFocus = focusSegment
+    ? focusSegment.trim()
+    : sliceTailWords(transcript, PRIMARY_FOCUS_WORDS);
+
+  userMessage += `FOKUS — seneste indhold (ca. sidste ${PRIMARY_FOCUS_WORDS} ord af transskriptet, medmindre et fokus-segment er angivet). Prioritér dette når du vælger hvad figuren primært handler om nu:\n\n${primaryFocus}\n\n`;
+
+  userMessage += `HELE TRANSSKRIPTET (sekundær reference — brug til detaljer, navne og tal; lad FOKUS styre emne og type; undgå at lade gamle afsnit dominere over nye):\n\n${transcriptForModel}\n\n`;
 
   if (isIncremental && previousHtml) {
     const { snippet, truncated } = truncatePreviousViz(previousHtml);
@@ -985,8 +1087,7 @@ export async function* streamVisualization(
       : "\n\n";
 
     if (refinementDirective) {
-      userMessage +=
-        `🎯 REFINEMENT MODE — THE USER SPOKE A SPECIFIC MODIFICATION REQUEST:
+      userMessage += `🎯 REFINEMENT MODE — THE USER SPOKE A SPECIFIC MODIFICATION REQUEST:
 The participants are directing you to modify the existing visualization in a specific way.
 Their spoken instructions have been parsed into these directives:
 
@@ -1004,8 +1105,7 @@ CRITICAL RULES FOR REFINEMENT:
 CURRENT VISUALIZATION (modify this — do not discard):
 ${snippet}${tail}`;
     } else {
-      userMessage +=
-        `INCREMENTAL UPDATE — CRITICAL RULES:
+      userMessage += `INCREMENTAL UPDATE — CRITICAL RULES:
 The meeting has continued since the last visualization was generated.
 The server has ALREADY verified that the topic has NOT changed — do NOT second-guess this.
 You MUST keep the existing layout structure, visual style, and type. Then ENHANCE it:
@@ -1065,7 +1165,12 @@ ${snippet}${tail}`;
     try {
       const stream = await gemini.models.generateContentStream({
         model: geminiModelId,
-        contents: [{ role: "user", parts: [{ text: `${systemPrompt}\n\n${userMessage}` }] }],
+        contents: [
+          {
+            role: "user",
+            parts: [{ text: `${systemPrompt}\n\n${userMessage}` }],
+          },
+        ],
         config: { maxOutputTokens: maxTokens },
       });
       let fullText = "";
@@ -1102,7 +1207,7 @@ ${snippet}${tail}`;
           const wait = Math.min(1000 * Math.pow(2, attempt), 4000);
           await new Promise((r) => setTimeout(r, wait));
           console.log(
-            `[retry] Attempt ${attempt + 1} with model ${tryModel} (original: ${model})`
+            `[retry] Attempt ${attempt + 1} with model ${tryModel} (original: ${model})`,
           );
         }
 
@@ -1131,26 +1236,35 @@ ${snippet}${tail}`;
       } catch (err: any) {
         lastError = err;
         const status = err?.status ?? err?.statusCode;
-        if (status === 529 || status === 503 || status === 500 || status === 502) {
+        if (
+          status === 529 ||
+          status === 503 ||
+          status === 500 ||
+          status === 502
+        ) {
           console.warn(
-            `[retry] Anthropic ${tryModel} returned ${status} (attempt ${attempt + 1}/${MAX_RETRIES + 1})`
+            `[retry] Anthropic ${tryModel} returned ${status} (attempt ${attempt + 1}/${MAX_RETRIES + 1})`,
           );
           continue;
         }
         console.warn(
-          `[retry] Anthropic ${tryModel} returned non-retryable status ${status} — skipping to next fallback`
+          `[retry] Anthropic ${tryModel} returned non-retryable status ${status} — skipping to next fallback`,
         );
         break;
       }
     }
-    console.warn(`[retry] All attempts exhausted for Anthropic model ${tryModel}, trying next fallback...`);
+    console.warn(
+      `[retry] All attempts exhausted for Anthropic model ${tryModel}, trying next fallback...`,
+    );
   }
 
   anthropicExhausted = true;
 
   const openaiClient = getOpenAIClient();
   if (anthropicExhausted && openaiClient) {
-    console.log(`[fallback] All Anthropic models exhausted — falling back to OpenAI ${OPENAI_FALLBACK_MODEL}`);
+    console.log(
+      `[fallback] All Anthropic models exhausted — falling back to OpenAI ${OPENAI_FALLBACK_MODEL}`,
+    );
     try {
       const openaiStream = await openaiClient.chat.completions.create({
         model: OPENAI_FALLBACK_MODEL,
@@ -1175,12 +1289,17 @@ ${snippet}${tail}`;
 
       return fullText;
     } catch (openaiErr: any) {
-      console.error(`[fallback] OpenAI fallback also failed:`, openaiErr?.message ?? openaiErr);
+      console.error(
+        `[fallback] OpenAI fallback also failed:`,
+        openaiErr?.message ?? openaiErr,
+      );
       lastError = openaiErr;
     }
   }
 
-  throw lastError ?? new Error("All model attempts failed (Anthropic + OpenAI)");
+  throw (
+    lastError ?? new Error("All model attempts failed (Anthropic + OpenAI)")
+  );
 }
 
 export async function fillTabPanels(
@@ -1188,12 +1307,17 @@ export async function fillTabPanels(
   tabs: Array<{ id: string; label: string }>,
   title?: string | null,
   context?: string | null,
-  workspaceDomain?: string | null
+  workspaceDomain?: string | null,
 ): Promise<Record<string, string>> {
   const domain = normalizeWorkspaceDomain(workspaceDomain);
-  const fillSystem = adaptAuxiliarySystemPrompt(FILL_TAB_PANELS_SYSTEM_BASE, domain);
+  const fillSystem = adaptAuxiliarySystemPrompt(
+    FILL_TAB_PANELS_SYSTEM_BASE,
+    domain,
+  );
   const transcriptForModel = truncateTranscript(transcript);
-  const tabLines = tabs.map(t => `- id "${t.id}" — label: ${t.label || "section"}`).join("\n");
+  const tabLines = tabs
+    .map((t) => `- id "${t.id}" — label: ${t.label || "section"}`)
+    .join("\n");
 
   let userMsg = "";
   if (title) userMsg += `Meeting title: ${title}\n\n`;
@@ -1229,7 +1353,7 @@ export async function* streamActions(
   title?: string | null,
   context?: string | null,
   onChunk?: (chunk: string) => void,
-  workspaceDomain?: string | null
+  workspaceDomain?: string | null,
 ): AsyncGenerator<string> {
   const domain = normalizeWorkspaceDomain(workspaceDomain);
   const actionsSystem = adaptAuxiliarySystemPrompt(ACTIONS_SYSTEM_BASE, domain);

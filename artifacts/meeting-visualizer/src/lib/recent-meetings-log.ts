@@ -41,6 +41,14 @@ export function getLocalMeetingLog(): LocalMeetingLogEntry[] {
 }
 
 /** Kald fra Room når brugeren er i et rum (bevarer titel når den findes). */
+/** Fjern ét besøg fra den lokale log (fx efter slet på forsiden). */
+export function removeMeetingFromLocalLog(roomId: string): void {
+  if (typeof window === "undefined" || !roomId || roomId.length < 3) return;
+  const id = roomId.toUpperCase().slice(0, 8);
+  const list = readRaw().filter((e) => e.roomId !== id);
+  localStorage.setItem(LS_KEY, JSON.stringify(list.slice(0, MAX_ENTRIES)));
+}
+
 export function recordMeetingVisit(roomId: string, title: string): void {
   if (typeof window === "undefined" || !roomId || roomId.length < 3) return;
   const id = roomId.toUpperCase().slice(0, 8);

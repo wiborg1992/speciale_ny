@@ -27,11 +27,15 @@ export interface ClassificationResult {
   ambiguous: boolean;
   lead: number;
   runnerUp: string | null;
+  /** true KUN når family-score === 999 — dvs. en TOPIC_SHIFT_OVERRIDE eller RECENT_ZONE_OVERRIDE slog til. */
+  hardOverride: boolean;
 }
 
 const VIZ_CLASSIFY_TAIL_CHARS = 12_000;
 const CLASSIFY_MIN_TOTAL = 8;
-const CLASSIFY_MIN_LEAD = 4;
+export const CLASSIFY_MIN_LEAD = 4;
+/** Krævet lead for at skifte en ETABLERET familie (P6 i decision order). */
+export const CLASSIFY_SWITCH_LEAD = 12;
 
 const FAMILY_PRIORITY_ORDER: VizFamily[] = [
   "hmi_interface",
@@ -153,6 +157,11 @@ const VIZ_FAMILY_SIGNALS: Array<{
       ["oplevelseskort", 16],
       ["emotion curve", 14],
       ["følelsesskala", 14],
+      // Eskalering — journey-kontekst (alarm → vedligehold)
+      ["eskaler", 10],
+      ["eskaleres", 10],
+      ["escalation", 10],
+      ["escalate", 8],
     ],
   },
   {
@@ -189,6 +198,20 @@ const VIZ_FAMILY_SIGNALS: Array<{
       ["if this then", 10],
       ["hvad er processen", 14],
       ["how does the process work", 14],
+      // Swimlanes er også procesdiagram-artefakt (ikke kun user journey)
+      ["swimlane", 10],
+      ["swimlanes", 10],
+      // Beslutningspunkter — dansk naturlig tale
+      ["beslutningspunkt", 14],
+      ["decision point", 14],
+      // Produktions-/ERP-termer
+      ["erp integration", 14],
+      ["batchjob", 12],
+      ["batch job", 12],
+      ["qa godkender", 14],
+      ["qa approval", 14],
+      ["frigives til", 10],
+      ["released to", 8],
     ],
   },
   {
@@ -255,6 +278,16 @@ const VIZ_FAMILY_SIGNALS: Array<{
       ["what does it look like", 14],
       ["hvad ser det ud", 14],
       ["how does it look", 12],
+      // Connector- og input-terminologi
+      ["drejeknap", 14],
+      ["rotary knob", 14],
+      ["rj45", 14],
+      ["ethernet connector", 12],
+      ["panel connector", 10],
+      ["kabelstik", 10],
+      ["front panel hardware", 20],
+      ["hardware på bordet", 14],
+      ["hardware on the table", 12],
     ],
   },
   {
@@ -317,6 +350,14 @@ const VIZ_FAMILY_SIGNALS: Array<{
       ["regulatorisk overensstemmelse", 14],
       ["annex", 8],
       ["bilag", 8],
+      // IEC 62443 sammenskrevet + requirement-ID præfikser
+      ["iec62443", 16],
+      ["fr-", 8],
+      ["pl-", 8],
+      ["sr-", 8],
+      ["sporbarhed", 14],
+      ["status pr. krav", 16],
+      ["status per requirement", 14],
     ],
   },
   {
@@ -344,6 +385,15 @@ const VIZ_FAMILY_SIGNALS: Array<{
       ["vi besluttede", 12],
       ["we decided", 12],
       ["beslutning", 10],
+      // Dansk quarterly + opsummering
+      ["kvartal", 10],
+      ["opsummering", 12],
+      ["resumé", 10],
+      ["executive resume", 14],
+      // Kapital og pilot
+      ["kapitalbehov", 12],
+      ["capital requirements", 12],
+      ["pilot site", 10],
     ],
   },
   {
@@ -402,6 +452,19 @@ const VIZ_FAMILY_SIGNALS: Array<{
       ["problem statement", 14],
       ["validated problem", 14],
       ["valideret problem", 14],
+      // Stærke persona-formuleringer
+      ["primær persona", 22],
+      ["primary persona", 22],
+      ["sekundær persona", 18],
+      ["secondary persona", 18],
+      // Værktøjer og daglig praksis
+      ["tools they use", 12],
+      ["værktøjer de bruger", 12],
+      ["their daily tools", 10],
+      ["tillid til alarmprioritering", 16],
+      ["tillid til alarm", 12],
+      ["trust in alarm prioritization", 12],
+      ["trust in alarms", 10],
     ],
   },
   {
@@ -445,6 +508,17 @@ const VIZ_FAMILY_SIGNALS: Array<{
       ["evidence", 5],
       ["physical evidence", 14],
       ["fysisk bevis", 14],
+      // Aftermarket / support-kontekst
+      ["supportlinje", 14],
+      ["spare parts", 12],
+      ["reservedele", 12],
+      ["tier 2 tekniker", 14],
+      ["tier 2 support", 14],
+      ["tier 2 technician", 12],
+      ["1. linje support", 12],
+      ["first line support", 12],
+      ["second line support", 14],
+      ["anden linje support", 12],
     ],
   },
   {
@@ -512,6 +586,15 @@ const VIZ_FAMILY_SIGNALS: Array<{
       ["option a", 8],
       ["option b", 8],
       ["option c", 8],
+      // Vendor comparison / udbud
+      ["vendor comparison", 20],
+      ["vendor a vs", 16],
+      ["leverandør a vs", 16],
+      ["leverandørsammenligning", 18],
+      ["tco", 14],
+      ["total cost of ownership", 16],
+      ["integration maturity", 14],
+      ["integrationsmodenhed", 14],
     ],
   },
   {
@@ -568,6 +651,13 @@ const VIZ_FAMILY_SIGNALS: Array<{
       ["one component many combinations", 20],
       ["platform features", 14],
       ["platform design", 14],
+      // Datagrid og harmonisering
+      ["datagrid", 14],
+      ["data grid", 14],
+      ["ensret", 12],
+      ["harmonize across", 14],
+      ["standardize across", 14],
+      ["ensretning", 12],
     ],
   },
 ];
@@ -992,7 +1082,10 @@ const TOPIC_SHIFT_OVERRIDES: Array<{ pattern: string; target: VizFamily }> = [
   { pattern: "leads us to look at the physical", target: "physical_product" },
   { pattern: "front panel design", target: "physical_product" },
   { pattern: "only the front panel", target: "physical_product" },
-  { pattern: "only thing we're going to have is the front panel", target: "physical_product" },
+  {
+    pattern: "only thing we're going to have is the front panel",
+    target: "physical_product",
+  },
   { pattern: "primarily on the the pin insert", target: "physical_product" },
   { pattern: "primarily on the pin insert", target: "physical_product" },
   { pattern: "looking at the front panel", target: "physical_product" },
@@ -1510,6 +1603,21 @@ const TOPIC_SHIFT_OVERRIDES: Array<{ pattern: string; target: VizFamily }> = [
   { pattern: "we need a design system", target: "design_system" },
   { pattern: "show me a pattern library", target: "design_system" },
   { pattern: "create a ui kit", target: "design_system" },
+  // Generic — eksplicit "ingen diagramtype" overrides (manglede hidtil)
+  { pattern: "saml tankerne fra i dag", target: "generic" },
+  { pattern: "bare en simpel oversigt", target: "generic" },
+  { pattern: "ingen specifik diagramtype", target: "generic" },
+  { pattern: "ingen fast diagramtype", target: "generic" },
+  { pattern: "just a simple summary", target: "generic" },
+  { pattern: "no specific diagram", target: "generic" },
+  { pattern: "no specific type", target: "generic" },
+  { pattern: "bare samle op", target: "generic" },
+  { pattern: "just collect the thoughts", target: "generic" },
+  // Workflow swimlane — eksplicit procesdiagram med swimlanes
+  { pattern: "vis processen med swimlanes", target: "workflow_process" },
+  { pattern: "show the process with swimlanes", target: "workflow_process" },
+  { pattern: "swimlane diagram", target: "workflow_process" },
+  { pattern: "swimlane procesdiagram", target: "workflow_process" },
 ];
 
 /**
@@ -1601,10 +1709,62 @@ function scoreZone(
  */
 const ZONE_LATEST_MULT = 4.0;
 
+/** Seneste N ord fra fuld transskript — fanger "physical pump" før tail er HMI/PIN-tung. */
+const PHYSICAL_LONG_RANGE_WORDS = 400;
+const PHYSICAL_LONG_RANGE_PHRASES: string[] = [
+  "physical pump",
+  "the physical pump",
+  "a physical pump",
+  "fysisk pumpe",
+  "den fysiske pumpe",
+  "physical product",
+  "the physical product",
+  "hardware of the pump",
+  "pump enclosure",
+  "pump housing",
+  "mechanical layout",
+  "external ports",
+  "front panel layout",
+  "frontpanel layout",
+  "RJ45 port",
+  "cable gland",
+  "kabelgennemføring",
+];
+
+/**
+ * Løft physical_product hvis stærke hardware-fraser findes i et bredere ordvindue
+ * end tail-inputtet (fx sidste 400 ord af fuld transskript).
+ */
+function boostPhysicalFromLongRangeWindow(
+  mergedMap: Map<string, number>,
+  rawText: string,
+): void {
+  const words = rawText.trim().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return;
+  const chunk =
+    words.length > PHYSICAL_LONG_RANGE_WORDS
+      ? words.slice(-PHYSICAL_LONG_RANGE_WORDS).join(" ")
+      : rawText;
+  const norm = normalizeForClassification(chunk);
+  let add = 0;
+  for (const p of PHYSICAL_LONG_RANGE_PHRASES) {
+    if (norm.includes(p)) add += 18;
+  }
+  add = Math.min(add, 72);
+  if (add > 0) {
+    mergedMap.set(
+      "physical_product",
+      (mergedMap.get("physical_product") ?? 0) + add,
+    );
+  }
+}
+
 export function classifyVisualizationIntent(
   transcript: string,
   workspaceDomain?: string | null,
   latestChunk?: string | null,
+  /** Fuld (normaliseret) transskript til ekstra physical-window; typisk samme som route's `normalized`. */
+  longRangeTranscript?: string | null,
 ): ClassificationResult {
   const domain = normalizeWorkspaceDomain(workspaceDomain);
   const topicShiftOverrides =
@@ -1673,6 +1833,11 @@ export function classifyVisualizationIntent(
       );
     }
   }
+
+  const longSource = longRangeTranscript?.trim()
+    ? longRangeTranscript
+    : transcript;
+  boostPhysicalFromLongRangeWindow(mergedMap, longSource);
 
   // ─── HARD OVERRIDE: topic-shift phrases auto-win ────────────────────────────
   // Priority 0: latestChunk (timestamp-baseret, mest præcis)
@@ -1780,6 +1945,7 @@ export function classifyVisualizationIntent(
       ambiguous: false,
       lead: 999,
       runnerUp: sorted[1]?.id ?? null,
+      hardOverride: true,
     };
   }
 
@@ -1825,6 +1991,7 @@ export function classifyVisualizationIntent(
       ambiguous: false,
       lead,
       runnerUp: top.id === recentOverride ? (second.id ?? null) : top.id,
+      hardOverride: true,
     };
   }
 
@@ -1838,6 +2005,7 @@ export function classifyVisualizationIntent(
       ambiguous: true,
       lead,
       runnerUp: top.score > 0 ? top.id : (second.id ?? null),
+      hardOverride: false,
     };
   }
 
@@ -1857,6 +2025,7 @@ export function classifyVisualizationIntent(
       ambiguous: false,
       lead,
       runnerUp: second.id ?? null,
+      hardOverride: false,
     };
   }
 
@@ -1867,5 +2036,6 @@ export function classifyVisualizationIntent(
     ambiguous: false,
     lead,
     runnerUp: second.id ?? null,
+    hardOverride: false,
   };
 }

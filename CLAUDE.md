@@ -1,9 +1,9 @@
-﻿    # Meeting AI Visualizer — Speciale (Jakob, AAU Cand.IT 10. semester)
+    # Meeting AI Visualizer — Speciale (Jakob, AAU Cand.IT 10. semester)
 
 ## Projekt
 Real-time mødetransskription → AI-genererede HTML-visualiseringer.
-Stack: Node.js + Express, AssemblyAI v3 (dansk transskription), Claude API (streaming), Railway deploy.
-Monorepo: pnpm workspaces (`packages/api-server`, `packages/meeting-visualizer`).
+Stack: Node.js + Express, transskription (fx AssemblyAI v3 og/eller Deepgram, dansk), Claude API (streaming), Railway deploy.
+Monorepo: pnpm workspaces — pakker under `artifacts/*`, `lib/*`, `scripts` (se `pnpm-workspace.yaml`). Hovedapps: `@workspace/api-server`, `@workspace/meeting-visualizer`.
 
 **Specialet handler om vibe-coding som design research-metode (Research through Design).**
 

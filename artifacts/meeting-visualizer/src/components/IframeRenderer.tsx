@@ -3,7 +3,6 @@ import { cn } from "@/lib/utils";
 import { Minimize2, Maximize2, Pencil, RotateCcw } from "lucide-react";
 import { Button } from "./ui/button";
 import { useIframeEdit } from "@/hooks/use-iframe-edit";
-import { StreamingSandOverlay } from "./StreamingSandOverlay";
 
 const BASE = import.meta.env.BASE_URL;
 
@@ -72,8 +71,8 @@ const VIZ_INTERACT_SCRIPT = `
 })();
 `;
 
-/** Under streaming: opdater iframe max. så ofte for at undgå blink ved hver SSE-chunk */
-const STREAMING_IFRAME_THROTTLE_MS = 340;
+/** Under streaming: færre fulde doc.write() ⇒ mindre hvid blink mellem opdateringer */
+const STREAMING_IFRAME_THROTTLE_MS = 850;
 
 function isHtmlRenderable(html: string | null): boolean {
   if (!html || html.length < 300) return false;
@@ -628,17 +627,13 @@ ${t}
           <iframe
             ref={iframeRef}
             className={cn(
-              "w-full rounded-lg bg-card/20 border transition-opacity duration-200",
+              "w-full rounded-lg bg-card/20 border",
               showSkeleton ? "pointer-events-none h-0 min-h-0 shrink-0 opacity-0" : "min-h-0 flex-1",
-              isEditMode ? "border-primary/40 ring-1 ring-primary/20" : "border-border",
-              isStreaming && renderable && !showSkeleton && "opacity-[0.98]"
+              isEditMode ? "border-primary/40 ring-1 ring-primary/20" : "border-border"
             )}
             title="AI Visualization"
             style={{ pointerEvents: "auto" }}
           />
-          {isStreaming && renderable && !showSkeleton && (
-            <StreamingSandOverlay active assemblyProgress={skeletonProgress} />
-          )}
         </div>
       )}
     </div>

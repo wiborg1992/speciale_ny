@@ -17,6 +17,10 @@ export interface RoomState {
   lastVisualization: string | null;
   lastVizWordCount: number;
   lastFamily: string | null;
+  /** Sidste viz-titel (h1/h2) til kort mødehukommelse i næste prompt */
+  lastVizTitle: string | null;
+  /** 3–5 bullets fra seneste klassifikation — sendes som kontekst i næste viz */
+  meetingEssenceBullets: string[];
 }
 
 const rooms = new Map<string, RoomState>();
@@ -32,6 +36,8 @@ export function getOrCreateRoom(roomId: string): RoomState {
       lastVisualization: null,
       lastVizWordCount: 0,
       lastFamily: null,
+      lastVizTitle: null,
+      meetingEssenceBullets: [],
     });
   }
   return rooms.get(roomId)!;
@@ -89,6 +95,13 @@ export function addSegment(roomId: string, segment: TranscriptSegment): void {
   if (room.segments.length > 1000) {
     room.segments.splice(0, room.segments.length - 1000);
   }
+}
+
+/** Tøm live-transskript i hukommelsen (DB håndteres i meeting-store). */
+export function clearRoomSegments(roomId: string): void {
+  const room = rooms.get(roomId);
+  if (!room) return;
+  room.segments = [];
 }
 
 export function getAllRooms(): RoomState[] {

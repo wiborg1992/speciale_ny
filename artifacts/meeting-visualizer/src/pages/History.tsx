@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format, formatDistanceToNow } from "date-fns";
 import { Link } from "wouter";
 import { ArrowLeft, Clock, MessageSquare, ExternalLink, Users, Trash2, FileText } from "lucide-react";
+import { removeMeetingFromLocalLog } from "@/lib/recent-meetings-log";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
@@ -38,7 +39,8 @@ export default function History() {
       const res = await fetch(`${BASE}api/meetings/${roomId}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Failed to delete");
     },
-    onSuccess: () => {
+    onSuccess: (_void, roomId) => {
+      removeMeetingFromLocalLog(roomId);
       queryClient.invalidateQueries({ queryKey: ["meetings"] });
       setDeletingId(null);
     },

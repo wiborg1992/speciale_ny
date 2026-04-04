@@ -9,6 +9,7 @@
     "start": "node --enable-source-maps --env-file=../../.env ./dist/index.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test:fictive-classifier": "pnpm run build && node --enable-source-maps ./dist/scripts/run-fictive-classifier-tests.mjs",
+    "test:fictive-route": "pnpm run build && node --enable-source-maps ./dist/scripts/run-fictive-route-tests.mjs",
     "benchmark:viz": "node ./benchmark-visualize.mjs",
     "benchmark:viz:auto": "cross-env BENCHMARK_SUITE=auto node ./benchmark-visualize.mjs",
     "benchmark:viz:both": "cross-env BENCHMARK_SUITE=both node ./benchmark-visualize.mjs",

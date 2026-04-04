@@ -1,7 +1,7 @@
 # Domæne-termer — Meeting AI Visualizer
 
 - **Visualizer**: Den HTML-baserede visning af mødedata genereret af Claude
-- **Transcript**: Rå tekst fra AssemblyAI-transskriptionen
+- **Transcript**: Rå tekst fra transskriptionen (fx AssemblyAI og/eller Deepgram efter opsætning)
 - **Chunk**: En del af et streaming-svar fra Claude API
 - **Visual mode**: Tilstand hvor output ALTID er renderbar HTML
 - **SSE**: Server-Sent Events — envejs server→klient streaming

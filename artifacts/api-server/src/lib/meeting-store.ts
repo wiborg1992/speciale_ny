@@ -6,6 +6,9 @@ import {
 } from "@workspace/db/schema";
 import { eq, desc, sql } from "drizzle-orm";
 
+/** Max antal gemte visualiseringer der returneres pr. møde (API + SSE-hydrering). */
+export const MAX_VISUALIZATIONS_PER_MEETING = 100;
+
 export async function getOrCreateMeeting(roomId: string, title?: string) {
   if (!db) return undefined;
 
@@ -151,14 +154,45 @@ export async function getMeetingByRoom(roomId: string) {
     .where(eq(segmentsTable.meetingId, meeting.id))
     .orderBy(segmentsTable.timestamp);
 
-  const visualizations = await db
+  const visualizationsDesc = await db
     .select()
     .from(visualizationsTable)
     .where(eq(visualizationsTable.meetingId, meeting.id))
     .orderBy(desc(visualizationsTable.version))
-    .limit(5);
+    .limit(MAX_VISUALIZATIONS_PER_MEETING);
+
+  /** Kronologisk (ældst → nyest) til UI og så `at(-1)` er seneste. */
+  const visualizations = [...visualizationsDesc].reverse();
 
   return { meeting, segments, visualizations };
+}
+
+/** Slet alle segmenter for mødet og nulstil tællere (visualiseringer bevares). */
+export async function clearMeetingTranscript(roomId: string): Promise<void> {
+  if (!db) return;
+  try {
+    const meetings = await db
+      .select()
+      .from(meetingsTable)
+      .where(eq(meetingsTable.roomId, roomId))
+      .limit(1);
+    if (meetings.length === 0) return;
+    const meeting = meetings[0];
+    await db
+      .delete(segmentsTable)
+      .where(eq(segmentsTable.meetingId, meeting.id));
+    await db
+      .update(meetingsTable)
+      .set({
+        segmentCount: 0,
+        wordCount: 0,
+        speakerNames: "[]",
+        updatedAt: new Date(),
+      })
+      .where(eq(meetingsTable.id, meeting.id));
+  } catch (err) {
+    console.error("Failed to clear meeting transcript:", err);
+  }
 }
 
 export async function deleteMeeting(roomId: string) {

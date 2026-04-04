@@ -1,14 +1,24 @@
 import { useState, useMemo } from "react";
 import { useLocation } from "wouter";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { Mic, ArrowRight, Play, Clock, Users, MessageSquare, ExternalLink, Archive } from "lucide-react";
+import {
+  Mic,
+  ArrowRight,
+  Play,
+  Clock,
+  Users,
+  MessageSquare,
+  ExternalLink,
+  Archive,
+  Trash2,
+} from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useLocalStorage } from "@/hooks/use-local-storage";
 import { generateRoomCode } from "@/lib/utils";
-import { getLocalMeetingLog } from "@/lib/recent-meetings-log";
+import { getLocalMeetingLog, removeMeetingFromLocalLog } from "@/lib/recent-meetings-log";
 
 const BASE = import.meta.env.BASE_URL;
 
@@ -34,8 +44,11 @@ function parseSpeakers(json: string): string[] {
 
 export default function Home() {
   const [, setLocation] = useLocation();
+  const queryClient = useQueryClient();
   const [speakerName, setSpeakerName] = useLocalStorage("meetingVisualizer_speakerName", "");
   const [roomCode, setRoomCode] = useState("");
+  const [localLogVersion, setLocalLogVersion] = useState(0);
+  const [deletingRoomId, setDeletingRoomId] = useState<string | null>(null);
 
   const { data } = useQuery<{ meetings: MeetingRow[] }>({
     queryKey: ["meetings"],
@@ -45,6 +58,21 @@ export default function Home() {
       return res.json();
     },
     staleTime: 30_000,
+  });
+
+  const deleteMeetingMutation = useMutation({
+    mutationFn: async (roomId: string) => {
+      const res = await fetch(`${BASE}api/meetings/${encodeURIComponent(roomId)}`, {
+        method: "DELETE",
+      });
+      if (!res.ok && res.status !== 404) throw new Error("delete failed");
+    },
+    onSuccess: (_void, roomId) => {
+      removeMeetingFromLocalLog(roomId);
+      setLocalLogVersion((v) => v + 1);
+      queryClient.invalidateQueries({ queryKey: ["meetings"] });
+      setDeletingRoomId(null);
+    },
   });
 
   const recentMeetings = useMemo(() => {
@@ -67,7 +95,7 @@ export default function Home() {
       (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
     );
     return merged.slice(0, 5);
-  }, [data?.meetings]);
+  }, [data?.meetings, localLogVersion]);
 
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
@@ -191,36 +219,93 @@ export default function Home() {
             <div className="space-y-1.5">
               {recentMeetings.map((m) => {
                 const speakers = parseSpeakers(m.speakerNames);
+                const isSynthetic = m.id < 0;
+                const isConfirming = deletingRoomId === m.roomId;
                 return (
-                  <button
+                  <div
                     key={`${m.id}-${m.roomId}`}
-                    type="button"
-                    onClick={() => setLocation(`/room/${m.roomId}`)}
-                    className="w-full flex items-center justify-between p-2.5 rounded-lg hover:bg-white/5 transition-colors group text-left border border-transparent hover:border-border/40"
+                    className="flex items-stretch gap-1 rounded-lg border border-transparent hover:border-border/40 hover:bg-white/5 transition-colors group"
                   >
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-sm text-white font-medium truncate">
-                          {m.title || `Room ${m.roomId}`}
-                        </span>
-                        <span className="text-[10px] font-mono text-muted-foreground/70 shrink-0 bg-accent/30 px-1 rounded">
-                          {m.roomId}
-                        </span>
+                    <button
+                      type="button"
+                      onClick={() => setLocation(`/room/${m.roomId}`)}
+                      className="flex-1 min-w-0 flex items-center justify-between p-2.5 text-left"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-sm text-white font-medium truncate">
+                            {m.title || `Room ${m.roomId}`}
+                          </span>
+                          <span className="text-[10px] font-mono text-muted-foreground/70 shrink-0 bg-accent/30 px-1 rounded">
+                            {m.roomId}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-3 mt-1 text-[10px] text-muted-foreground">
+                          <span>{formatDistanceToNow(new Date(m.updatedAt), { addSuffix: true })}</span>
+                          <span className="flex items-center gap-1" title="Segments">
+                            <MessageSquare className="w-2.5 h-2.5" />
+                            {m.segmentCount}
+                          </span>
+                          <span className="flex items-center gap-1" title="Speakers">
+                            <Users className="w-2.5 h-2.5" />
+                            {speakers.length > 0 ? speakers.length : "—"}
+                          </span>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-3 mt-1 text-[10px] text-muted-foreground">
-                        <span>{formatDistanceToNow(new Date(m.updatedAt), { addSuffix: true })}</span>
-                        <span className="flex items-center gap-1" title="Segments">
-                          <MessageSquare className="w-2.5 h-2.5" />
-                          {m.segmentCount}
-                        </span>
-                        <span className="flex items-center gap-1" title="Speakers">
-                          <Users className="w-2.5 h-2.5" />
-                          {speakers.length > 0 ? speakers.length : "—"}
-                        </span>
-                      </div>
+                      <ExternalLink className="w-3.5 h-3.5 text-muted-foreground/40 group-hover:text-primary transition-colors shrink-0 ml-2" />
+                    </button>
+                    <div className="flex flex-col justify-center pr-1.5 shrink-0">
+                      {isConfirming ? (
+                        <div className="flex flex-col gap-1 py-1">
+                          <Button
+                            type="button"
+                            variant="destructive"
+                            size="sm"
+                            className="h-6 px-2 text-[9px]"
+                            disabled={!isSynthetic && deleteMeetingMutation.isPending}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (isSynthetic) {
+                                removeMeetingFromLocalLog(m.roomId);
+                                setLocalLogVersion((v) => v + 1);
+                                setDeletingRoomId(null);
+                              } else {
+                                deleteMeetingMutation.mutate(m.roomId);
+                              }
+                            }}
+                          >
+                            {isSynthetic ? "OK" : "Slet"}
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 px-2 text-[9px]"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDeletingRoomId(null);
+                            }}
+                          >
+                            Nej
+                          </Button>
+                        </div>
+                      ) : (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive opacity-60 group-hover:opacity-100"
+                          title="Fjern fra listen"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDeletingRoomId(m.roomId);
+                          }}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      )}
                     </div>
-                    <ExternalLink className="w-3.5 h-3.5 text-muted-foreground/40 group-hover:text-primary transition-colors shrink-0 ml-2" />
-                  </button>
+                  </div>
                 );
               })}
             </div>

@@ -66,10 +66,10 @@ export function useDeepgramSpeech({
   const maxAgeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Vent så længe efter sidste is_final før vi committer til transskriptet.
-  // Længere vindue ⇒ færre, længere segmenter (samme Deepgram-is_final, kun vores flush).
-  const SILENCE_MS = 5000;
+  // Længere vindue ⇒ færre, længere segmenter (typisk 1–2 blokke pr. ytring i stedet for mange små).
+  const SILENCE_MS = 14_000;
   // Tvangs-commit under lang monolog så UI/SSE ikke venter for evigt
-  const MAX_BUFFER_MS = 25_000;
+  const MAX_BUFFER_MS = 90_000;
 
   const getSpeakerLabel = useCallback((speakerId: number): string => {
     return speakerNamesRef.current[speakerId] ?? `Speaker ${speakerId + 1}`;
@@ -154,7 +154,7 @@ export function useDeepgramSpeech({
         interim_results: "true",
         smart_format: "true",
         numerals: "true",
-        utterance_end_ms: "2500",
+        utterance_end_ms: "5000",
         vad_events: "true",
       });
 
