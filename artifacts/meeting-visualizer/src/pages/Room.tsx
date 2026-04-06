@@ -1186,7 +1186,7 @@ export default function Room() {
           freshStart,
           workspaceDomain,
           ...(sketchId ? { sketchId } : {}),
-          ...(isAnnotationTrigger ? { forceVisualize: true } : {}),
+          ...(isAnnotationTrigger ? { forceVisualize: true, isAnnotation: true } : {}),
         },
         {
           onSessionDiagnostic: sessionEval.onStreamDiagnostic,

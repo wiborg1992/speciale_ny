@@ -13,6 +13,8 @@ export type VisualizeRequestWithIntent = VisualizeRequest & {
   sketchId?: string;
   /** Bypass server-side ord-tærskel-check — sættes ved annotation-trigger */
   forceVisualize?: boolean;
+  /** Sand: skitsen er annotation oven på eksisterende viz — AI bruger separat prompt */
+  isAnnotation?: boolean;
 };
 
 export type VisualizeGenerateOptions = {

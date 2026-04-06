@@ -900,6 +900,8 @@ export interface VisualizerParams {
   meetingEssence?: MeetingEssenceForPrompt | null;
   /** Base64-kodet PNG af brugerens Excalidraw-skitse — sendes som image-block til Claude */
   sketchPngBase64?: string | null;
+  /** Sand: skitsen er en annotation oven på en eksisterende viz (ikke en ny skitse) */
+  isAnnotation?: boolean;
 }
 
 /** Maps server-side family IDs to clear, unambiguous instructions for the AI */
@@ -1197,6 +1199,7 @@ export async function* streamVisualization(
     focusSegment,
     meetingEssence,
     sketchPngBase64,
+    isAnnotation,
   } = params;
 
   const domain = normalizeWorkspaceDomain(workspaceDomain);
@@ -1337,13 +1340,30 @@ ${snippet}${tail}`;
   }
 
   if (sketchPngBase64) {
-    userMessage +=
-      `\n\n📐 BRUGER-SKITSE (vedhæftet som billede):\n` +
-      `Deltagerne har skitseret vedhæftede billede som deres initielle forståelse af hvad visualiseringen skal vise. ` +
-      `Brug skitsen som den primære retningsangivelse for layout, struktur og hierarki. ` +
-      `Transskriptionen leverer indholdet — skitsen leverer formen og retningen.\n\n` +
-      `Hvis transskription og skitse tydeligt modsiger hinanden, prioritér den nyeste eksplicitte tale om emnet — ` +
-      `men bevar skitsens layout hvor det er muligt. Afvig kun fra skitsen hvis den er tom eller ufortolkelig.\n`;
+    if (isAnnotation) {
+      userMessage +=
+        `\n\n✏️ ANNOTATION-TILSTAND — EKSISTERENDE VIZ MED HÅNDINSTRUKTIONER (vedhæftet som billede):\n` +
+        `Billedet viser den EKSISTERENDE visualisering med brugertegnede annotationer oven på.\n` +
+        `FORTOLK annotationerne som direkte redigeringsinstruktioner:\n` +
+        `  • Håndskrevet tekst = eksplicit instruktion (fx "lav til visuals", "tilføj kasse her", "fjern tekst", "gør dette til diagram")\n` +
+        `  • Tegnede bokse/rektangler = nye elementer ønsket på det angivne sted\n` +
+        `  • Pile og streger = ønskede forbindelser, flows eller retning\n` +
+        `  • Cirkler/markeringer = "fokus på dette / fremhæv dette element"\n` +
+        `  • Krydser (X) over noget = "fjern dette element"\n\n` +
+        `REGLER:\n` +
+        `  1. Annotationerne har højeste prioritet — de er brugerens eksplicitte ønsker til ændringer\n` +
+        `  2. Bevar ALT der IKKE er annoteret uændret (layout, farver, data, struktur)\n` +
+        `  3. Transskriptionen er kontekst — annotationerne er instrukser\n` +
+        `  4. Hvis annotationerne er uklare, fortolk dem gunstigt i retning af den mest naturlige ændring\n`;
+    } else {
+      userMessage +=
+        `\n\n📐 BRUGER-SKITSE (vedhæftet som billede):\n` +
+        `Deltagerne har skitseret vedhæftede billede som deres initielle forståelse af hvad visualiseringen skal vise. ` +
+        `Brug skitsen som den primære retningsangivelse for layout, struktur og hierarki. ` +
+        `Transskriptionen leverer indholdet — skitsen leverer formen og retningen.\n\n` +
+        `Hvis transskription og skitse tydeligt modsiger hinanden, prioritér den nyeste eksplicitte tale om emnet — ` +
+        `men bevar skitsens layout hvor det er muligt. Afvig kun fra skitsen hvis den er tom eller ufortolkelig.\n`;
+    }
   }
 
   userMessage += "Generate the HTML visualization now.";

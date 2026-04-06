@@ -152,6 +152,8 @@ const VisualizeBodySchema = z.object({
   sketchId: z.string().optional().nullable(),
   /** Bypass ord-tærskel-check — bruges når annotation-sketch trigger viz (ingen nye ord kræves) */
   forceVisualize: z.boolean().optional(),
+  /** Sand når sketchId stammer fra "Tegn på" annotation-mode (ikke ny skitse) */
+  isAnnotation: z.boolean().optional(),
 });
 
 export type DisambiguationReason =
@@ -331,6 +333,7 @@ router.post("/visualize", async (req, res, next): Promise<void> => {
       userVizIntent,
       sketchId,
       forceVisualize,
+      isAnnotation,
     } = parsed.data;
 
     if (transcript.length > MAX_BODY_CHARS) {
@@ -806,6 +809,7 @@ router.post("/visualize", async (req, res, next): Promise<void> => {
           focusSegment,
           meetingEssence: meetingEssenceForPrompt,
           sketchPngBase64,
+          isAnnotation: !!isAnnotation,
         },
         (c) => {
           if (firstChunkMs == null)
