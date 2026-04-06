@@ -178,7 +178,23 @@ export const SketchModal = forwardRef<SketchModalHandle, SketchModalProps>(
 
     const handleApiReady = useCallback((api: ExcalidrawAPI) => {
       excalidrawApiRef.current = api;
-    }, []);
+      // Når der er et baggrundsbillede: fit viewport til billedet med lidt margin.
+      // Kald to gange (80ms + 300ms) som fallback — billede kan være sent registreret.
+      if (backgroundImageDataUrl) {
+        const fitView = () => {
+          try {
+            const els = api.getSceneElements();
+            if (els.length > 0) {
+              api.scrollToContent(els, { fitToContent: true, viewportZoomFactor: 0.95 });
+            }
+          } catch { /* ignore */ }
+        };
+        const t1 = setTimeout(fitView, 80);
+        const t2 = setTimeout(fitView, 350);
+        // Ryd timers hvis API unmountes (best-effort)
+        return () => { clearTimeout(t1); clearTimeout(t2); };
+      }
+    }, [backgroundImageDataUrl]);
 
     const handleSave = useCallback(async () => {
       const count = getElementCount();
