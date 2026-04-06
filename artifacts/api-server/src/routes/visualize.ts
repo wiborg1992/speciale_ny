@@ -464,6 +464,10 @@ router.post("/visualize", async (req, res, next): Promise<void> => {
       designsystem: "design_system",
       styleguide: "design_system",
       components: "design_system",
+      uxprototype: "ux_prototype",
+      prototype: "ux_prototype",
+      clickable: "ux_prototype",
+      mockup: "ux_prototype",
     };
 
     const lastFamily = (

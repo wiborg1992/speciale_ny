@@ -19,6 +19,7 @@ export type VizFamily =
   | "service_blueprint"
   | "comparison_evaluation"
   | "design_system"
+  | "ux_prototype"
   | "generic";
 
 export interface ClassificationResult {
@@ -41,6 +42,7 @@ export const CLASSIFY_SWITCH_LEAD = 12;
 const FAMILY_PRIORITY_ORDER: VizFamily[] = [
   "hmi_interface",
   "user_journey",
+  "ux_prototype",
   "service_blueprint",
   "persona_research",
   // Fysisk produkt før workflow — undgår at “handover/process”-ord slår hardware
@@ -642,6 +644,55 @@ const VIZ_FAMILY_SIGNALS: Array<{
     ],
   },
   {
+    id: 'ux_prototype',
+    label: 'UX prototype / clickable mockup',
+    terms: [
+      ['clickable prototype', 24],
+      ['klikbar prototype', 24],
+      ['klikke igennem', 22],
+      ['click through', 20],
+      ['click through the screens', 22],
+      ['klikke sig igennem', 22],
+      ['navigere mellem skærme', 20],
+      ['navigate between screens', 20],
+      ['prototype navigation', 20],
+      ['multi screen prototype', 20],
+      ['multi-screen prototype', 20],
+      ['screen navigation', 18],
+      ['skærmnavigation', 18],
+      ['interactive prototype', 20],
+      ['interaktiv prototype', 20],
+      ['lo-fi prototype', 18],
+      ['lofi prototype', 18],
+      ['hi-fi prototype', 18],
+      ['hifi prototype', 18],
+      ['high fidelity prototype', 18],
+      ['low fidelity prototype', 18],
+      ['wireframe prototype', 18],
+      ['prototype screens', 18],
+      ['prototype skærme', 18],
+      ['app prototype', 18],
+      ['app prototypen', 18],
+      ['web prototype', 16],
+      ['prototype flow', 18],
+      ['prototypeflow', 18],
+      ['screen flow', 16],
+      ['skærmflow', 16],
+      ['prototype testing', 16],
+      ['prototypetest', 16],
+      ['test prototype', 16],
+      ['user testing prototype', 18],
+      ['figma', 12],
+      ['klikbar mockup', 18],
+      ['clickable mockup', 18],
+      ['vi laver en prototype', 20],
+      ['we are building a prototype', 20],
+      ['lave en prototype', 20],
+      ['build a prototype', 18],
+      ['prototype af', 14],
+    ],
+  },
+  {
     id: "design_system",
     label: "Design system / component spec",
     terms: [
@@ -719,6 +770,7 @@ export const VIZ_FAMILY_LABEL: Record<VizFamily, string> = {
   service_blueprint: "Service Blueprint / Experience Architecture",
   comparison_evaluation: "Comparison / Evaluation Matrix",
   design_system: "Design System / Component Spec",
+  ux_prototype: "UX Prototype / Clickable Mockup",
   generic: "General visualization",
 };
 

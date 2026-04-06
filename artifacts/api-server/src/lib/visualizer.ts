@@ -963,6 +963,46 @@ DATA: Extract all engagement figures, traffic sources, article/content titles, t
 
 DO NOT use dark HMI backgrounds. DO NOT use pump/hardware templates. DO NOT generate a plain bullet-list summary.`,
 
+  ux_prototype: `GENERATE: CLICKABLE MULTI-SCREEN UX PROTOTYPE — navigable interactive mockup.
+
+Build 2–4 distinct screens (views/states) based on what the transcript describes. Show ONE screen at a time; JavaScript manages all navigation.
+
+SCREEN STRUCTURE (mandatory):
+  • Each screen occupies the full viewport — only one is visible at a time (others: display:none)
+  • Every screen has a persistent top navigation bar or header showing: product/app name + current screen label (e.g. "2 / 3 — Detail View")
+  • Navigation elements (buttons, nav items, cards, CTAs, links) MUST transition to the next logical screen when clicked
+  • Every screen except the first MUST have a clearly visible "← Back" or "← Home" button
+  • Screen transitions: use CSS opacity + transform fade (0.25s) for polished feel
+
+SCREENS TO GENERATE based on transcript:
+  • Derive screen names and content from what's discussed. If the meeting describes an app flow, generate those exact screens. If conceptual, use coherent placeholder screens appropriate to the product type.
+  • Label each screen meaningfully: e.g. Home → Product List → Detail → Checkout, or Dashboard → Settings → Profile, etc.
+
+JAVASCRIPT — one trailing inline IIFE:
+  const screens = document.querySelectorAll('[data-screen]');
+  function showScreen(id) {
+    screens.forEach(s => { s.style.opacity='0'; setTimeout(()=>s.style.display='none',200); });
+    const target = document.querySelector('[data-screen="'+id+'"]');
+    target.style.display='block'; setTimeout(()=>target.style.opacity='1',20);
+  }
+  document.querySelectorAll('[data-go]').forEach(btn =>
+    btn.addEventListener('click', () => showScreen(btn.dataset.go))
+  );
+  showScreen('screen-1'); // show first screen on load
+
+INTERACTIVITY within each screen:
+  • Buttons, form fields, toggles, checkboxes should respond to clicks even if just visually (hover states, active states)
+  • At least one navigation action per screen must work (takes user to another screen)
+  • Use data-go="screen-id" on any clickable element that should navigate
+
+VISUAL STYLE:
+  • Mobile-app or web-app feel: clean white/light background, rounded corners, drop shadows on cards
+  • Consistent top navigation bar across all screens
+  • Typography: Inter or Outfit 14–16px body, clear hierarchy
+  • Single accent colour derived from transcript context
+
+DO NOT generate a static dashboard with no navigation. DO NOT use dark HMI chrome. DO NOT generate pump hardware.`,
+
   generic: `GENERATE: STRUCTURED OVERVIEW — card-grid or section-header layout.
 The user has explicitly requested no specific diagram type. Your output must still be a VISUAL STRUCTURE — never a plain notepad or bullet wall.
 
@@ -1004,6 +1044,55 @@ function familyInstructionForDomain(
       return `GENERATE: PHYSICAL PRODUCT OR TANGIBLE ARTIFACT — infer the object from the transcript (equipment, spatial design, consumer product, etc.).
 Centre a detailed illustration or exploded diagram with spec callouts. Avoid defaulting to industrial pumps unless the transcript discusses fluids/pumps.`;
     }
+  }
+
+  // ux_prototype: Gabriel gets Nordic-toned clickable prototype
+  if (family === "ux_prototype") {
+    if (domain === "gabriel") {
+      return `GENERATE: CLICKABLE MULTI-SCREEN UX PROTOTYPE — navigable interactive mockup with Nordic-premium Gabriel aesthetic.
+
+Build 2–4 distinct screens based on what the transcript describes. Show ONE screen at a time; JavaScript manages all navigation.
+
+VISUAL IDENTITY — Gabriel-minded:
+  • Calm Nordic tone: warm off-white (#FAFAF8) or soft grey (#F5F4F2) backgrounds, deep ink (#1A1A1A) or deep green (#1B4332) text
+  • Accent: deep green (#2D6A4F) or forest (#166534) — not Grundfos blue or SCADA cyan
+  • Typography: Inter or Outfit, generous line-height, restrained weight contrasts
+  • Cards: white (#FFFFFF) with 1px #E5E0DB border, 12px border-radius, subtle shadow
+  • Buttons: filled accent for primary, outlined for secondary — tactile feel
+
+SCREEN STRUCTURE (mandatory):
+  • Each screen: full-viewport, display:none by default (only first visible)
+  • Persistent top navigation bar across all screens: logo/app name left, current screen label center (e.g. "2 / 3 — Produktdetalje"), optional icon right
+  • Every screen except the first: visible "← Tilbage" / "← Back" button in header or top-left
+  • CSS fade transition on screen change: opacity 0→1 over 200ms
+
+SCREENS based on transcript:
+  • Derive from what was discussed — if the meeting describes an app, portal, or tool, generate those exact flows
+  • If conceptual, use plausible screens for the product type (e.g. overview → detail → form → confirmation)
+  • Label each screen in Danish or English matching the transcript
+
+JAVASCRIPT — one trailing inline IIFE:
+  const screens = document.querySelectorAll('[data-screen]');
+  function showScreen(id) {
+    screens.forEach(s => { s.style.opacity='0'; setTimeout(()=>{ s.style.display='none'; }, 200); });
+    const t = document.querySelector('[data-screen="'+id+'"]');
+    if (!t) return;
+    t.style.display='flex'; t.style.flexDirection='column';
+    setTimeout(()=>{ t.style.opacity='1'; }, 20);
+  }
+  document.querySelectorAll('[data-go]').forEach(el =>
+    el.addEventListener('click', () => showScreen(el.dataset.go))
+  );
+  showScreen('screen-1');
+
+INTERACTIVITY within screens:
+  • data-go="screen-id" on buttons/cards/links that should navigate
+  • Hover states on interactive elements (CSS :hover)
+  • Form fields, toggles, and checkboxes should respond visually to interaction
+
+DO NOT use dark HMI/SCADA style. DO NOT use Grundfos navy/cyan. DO NOT generate static content with no navigation.`;
+    }
+    // grundfos / generic: use base instruction
   }
 
   // Generic family: domæne-specifik tone, fælles struktur (card-grid, ingen notater)

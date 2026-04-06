@@ -6,6 +6,7 @@ export const VIZ_TYPES = [
   { value: "blueprint", label: "Service Blueprint" },
   { value: "comparison", label: "Comparison / Evaluation" },
   { value: "designsystem", label: "Design System" },
+  { value: "uxprototype", label: "UX Prototype" },
   { value: "workflow", label: "Workflow / Process" },
   { value: "product", label: "Product / Hardware" },
   { value: "requirements", label: "Requirements" },
