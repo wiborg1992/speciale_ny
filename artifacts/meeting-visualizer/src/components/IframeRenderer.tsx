@@ -346,7 +346,6 @@ export function IframeRenderer({
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
-  const [isCapturing, setIsCapturing] = useState(false);
   const fillPendingRef = useRef(false);
   const originalHtmlRef = useRef<string | null>(null);
   const editHook = useIframeEdit(iframeRef);
@@ -560,45 +559,14 @@ ${t}
     }
   }, [isStreaming, fillLazyTabs, editHook]);
 
-  const handleAnnotate = useCallback(async () => {
+  const handleAnnotate = useCallback(() => {
     if (!onAnnotate || !iframeRef.current) return;
-    const iframe = iframeRef.current;
-    const iframeDoc = iframe.contentDocument;
-    if (!iframeDoc?.body) return;
-    setIsCapturing(true);
-    try {
-      // Fang KUN det synlige viewport — ikke hele den scrollbare body
-      const vw = iframe.clientWidth || 1280;
-      const vh = iframe.clientHeight || 720;
-      // Scale ned til max 1400px bredde for at holde filen lille
-      const scale = Math.min(1.5, 1400 / vw);
-
-      const html2canvas = (await import("html2canvas")).default;
-      const canvas = await html2canvas(iframeDoc.body, {
-        allowTaint: true,
-        useCORS: true,
-        // Ingen backgroundColor-override — brug visualiseringens egne styles
-        backgroundColor: null,
-        scale,
-        // Begræns til viewport-dimensioner
-        width: vw,
-        height: vh,
-        windowWidth: vw,
-        windowHeight: vh,
-        x: 0,
-        y: 0,
-        scrollX: 0,
-        scrollY: 0,
-        logging: false,
-      });
-      const dataUrl = canvas.toDataURL("image/jpeg", 0.88);
-      onAnnotate(dataUrl);
-    } catch {
-      // Fallback: send without screenshot — modal åbner stadig
-      onAnnotate("");
-    } finally {
-      setIsCapturing(false);
-    }
+    const iframeDoc = iframeRef.current.contentDocument;
+    if (!iframeDoc) { onAnnotate(""); return; }
+    // Send det fuldt renderede HTML-dokument direkte — ingen screenshot-capture
+    // SketchModal renderer det i en baggrundsiframe i korrekt størrelse
+    const html = iframeDoc.documentElement.outerHTML;
+    onAnnotate(html || "");
   }, [onAnnotate]);
 
   const isEmpty = !html || html.trim() === "";
@@ -616,13 +584,13 @@ ${t}
             <Button
               variant="outline"
               size="sm"
-              disabled={isCapturing || isStreaming}
+              disabled={isStreaming}
               className="h-7 gap-1.5 text-[10px] font-mono uppercase tracking-wider bg-background/90 border-primary/40 text-primary hover:text-primary-foreground hover:bg-primary backdrop-blur-sm"
               onClick={handleAnnotate}
               title="Åbn Excalidraw med visualiseringen som baggrund — tegn ændringer og annotationer"
             >
               <PenLine className="h-3 w-3" />
-              {isCapturing ? "Fanger…" : "Tegn på"}
+              Tegn på
             </Button>
           )}
 

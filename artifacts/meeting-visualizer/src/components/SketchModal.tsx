@@ -1,5 +1,5 @@
 import "@excalidraw/excalidraw/index.css";
-import { forwardRef, lazy, Suspense, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
+import { forwardRef, lazy, Suspense, useCallback, useEffect, useImperativeHandle, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Loader2, PenLine, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -26,30 +26,16 @@ interface SketchModalProps {
   onSave: (result: { pngBase64: string; sceneJson: string; previewDataUrl: string; elementCount: number }) => void;
   initialSceneJson?: string | null;
   title?: string;
-  /** Screenshot af den aktuelle visualisering — vises som HTML baggrundsbillede bag en transparent Excalidraw-canvas */
-  backgroundImageDataUrl?: string | null;
+  /** Fuldt renderet HTML-dokument fra visualiseringen — renderes i en baggrundsiframe */
+  backgroundHtml?: string | null;
   /** Annotation-mode: ændr knaptekster og hints */
   isAnnotationMode?: boolean;
 }
 
-function useImageDimensions(dataUrl: string | null | undefined) {
-  const [dims, setDims] = useState<{ w: number; h: number } | null>(null);
-  useEffect(() => {
-    if (!dataUrl) { setDims(null); return; }
-    const img = new Image();
-    img.onload = () => setDims({ w: img.naturalWidth, h: img.naturalHeight });
-    img.src = dataUrl;
-  }, [dataUrl]);
-  return dims;
-}
-
 export const SketchModal = forwardRef<SketchModalHandle, SketchModalProps>(
-  ({ open, onClose, onSave, initialSceneJson, title, backgroundImageDataUrl, isAnnotationMode = false }, ref) => {
+  ({ open, onClose, onSave, initialSceneJson, title, backgroundHtml, isAnnotationMode = false }, ref) => {
     const excalidrawApiRef = useRef<ExcalidrawAPI | null>(null);
-    const bgDims = useImageDimensions(backgroundImageDataUrl);
-    // Ref til baggrundsbillede-elementet — bruges til eksport-kompostering
-    const bgImgRef = useRef<HTMLImageElement | null>(null);
-    // Ref til Excalidraw container — bruges til at måle dens størrelse ved eksport
+    const bgIframeRef = useRef<HTMLIFrameElement | null>(null);
     const canvasContainerRef = useRef<HTMLDivElement | null>(null);
 
     const resolvedTitle = title ?? (isAnnotationMode
@@ -57,7 +43,18 @@ export const SketchModal = forwardRef<SketchModalHandle, SketchModalProps>(
       : "Tegn en skitse til din session"
     );
 
-    // I annotation-mode: Excalidraw starter tom (baggrundsbilledet er HTML, ikke et element)
+    // Skriv HTML til baggrundsiframen hver gang backgroundHtml ændres
+    useEffect(() => {
+      const iframe = bgIframeRef.current;
+      if (!iframe || !backgroundHtml) return;
+      const doc = iframe.contentDocument;
+      if (!doc) return;
+      doc.open();
+      doc.write(backgroundHtml);
+      doc.close();
+    }, [backgroundHtml]);
+
+    // I annotation-mode: Excalidraw starter tom (baggrundsbilledet er i iframen, ikke et element)
     // I normal mode: genindlæs tidligere scene-elementer
     const initialData = (() => {
       if (isAnnotationMode) {
@@ -100,71 +97,59 @@ export const SketchModal = forwardRef<SketchModalHandle, SketchModalProps>(
 
       const { exportToBlob } = await import("@excalidraw/excalidraw");
 
-      // Annotation-mode: kompositer baggrundsbillede + annotations
-      if (isAnnotationMode && backgroundImageDataUrl && bgDims) {
-        // 1. Lav en canvas med baggrundsbilledets naturlige dimensioner
-        const outW = Math.min(bgDims.w, MAX_DIMENSION);
-        const outH = Math.round(bgDims.h * (outW / bgDims.w));
+      // Annotation-mode: kompositer baggrundsiframe + annotations
+      if (isAnnotationMode && backgroundHtml && bgIframeRef.current) {
+        const iframe = bgIframeRef.current;
+        const container = canvasContainerRef.current;
+        const cW = container?.clientWidth ?? iframe.clientWidth;
+        const cH = container?.clientHeight ?? iframe.clientHeight;
+
+        // 1. Fang baggrundsiframen med html2canvas — den er fuld størrelse (no scaling)
+        const html2canvas = (await import("html2canvas")).default;
+        const iframeDoc = iframe.contentDocument;
+        const bgCanvas = iframeDoc
+          ? await html2canvas(iframeDoc.documentElement, {
+              allowTaint: true,
+              useCORS: true,
+              backgroundColor: null,
+              scale: 1,
+              width: cW,
+              height: cH,
+              windowWidth: cW,
+              windowHeight: cH,
+              logging: false,
+            })
+          : null;
+
+        const outW = Math.min(cW, MAX_DIMENSION);
+        const outH = Math.round(cH * (outW / cW));
         const canvas = document.createElement("canvas");
         canvas.width = outW;
         canvas.height = outH;
         const ctx = canvas.getContext("2d")!;
 
-        // 2. Tegn baggrundsbilledet
-        const bgImg = bgImgRef.current;
-        if (bgImg && bgImg.complete) {
-          ctx.drawImage(bgImg, 0, 0, outW, outH);
-        } else {
-          // Fallback: indlæs fra dataUrl
-          await new Promise<void>((resolve) => {
-            const img = new Image();
-            img.onload = () => { ctx.drawImage(img, 0, 0, outW, outH); resolve(); };
-            img.src = backgroundImageDataUrl;
-          });
+        // 2. Tegn baggrundsiframe-capture
+        if (bgCanvas) {
+          ctx.drawImage(bgCanvas, 0, 0, outW, outH);
         }
 
-        // 3. Eksportér kun annotation-elementerne med transparent baggrund
+        // 3. Eksportér annotation-elementer med transparent baggrund
         if (allElements.length > 0) {
           const annotationBlob = await exportToBlob({
             elements: allElements,
             appState: {
               ...api.getAppState(),
-              exportBackground: false, // transparent
+              exportBackground: false,
             },
             files: api.getFiles(),
             mimeType: "image/png",
           });
 
-          // 4. Find ud af hvor annotations-laget er på skærmen ift. baggrundsbilledet
-          const container = canvasContainerRef.current;
-          if (container) {
-            const cW = container.clientWidth;
-            const cH = container.clientHeight;
-            // object-fit: contain beregning
-            const scale = Math.min(cW / bgDims.w, cH / bgDims.h);
-            const renderedW = bgDims.w * scale;
-            const renderedH = bgDims.h * scale;
-            const offsetX = (cW - renderedW) / 2;
-            const offsetY = (cH - renderedH) / 2;
-
-            // Annotations-laget er eksporteret i Excalidraw canvas-koordinater.
-            // Vi scaler dem så de dækker det samme areal som det renderede baggrundsbillede.
-            const annotBitmap = await createImageBitmap(annotationBlob);
-            // Annotations-billedet dækker hele viewport → vi skalerer til output-størrelse
-            // med korrekt offset for contain-positioning
-            const scaleToOutput = outW / renderedW;
-            const annX = Math.round(-offsetX * scaleToOutput);
-            const annY = Math.round(-offsetY * scaleToOutput);
-            const annW = Math.round(cW * scaleToOutput);
-            const annH = Math.round(cH * (outH / renderedH));
-            ctx.drawImage(annotBitmap, annX, annY, annW, annH);
-            annotBitmap.close();
-          } else {
-            // Fallback: stræk annotations over hele output-canvassen
-            const annotBitmap = await createImageBitmap(annotationBlob);
-            ctx.drawImage(annotBitmap, 0, 0, outW, outH);
-            annotBitmap.close();
-          }
+          const annotBitmap = await createImageBitmap(annotationBlob);
+          // Annotationslaget dækker hele Excalidraw-canvas (=containeren)
+          // → skalér til output-dimensioner
+          ctx.drawImage(annotBitmap, 0, 0, outW, outH);
+          annotBitmap.close();
         }
 
         let pngBase64 = canvas.toDataURL("image/png").split(",")[1];
@@ -210,7 +195,7 @@ export const SketchModal = forwardRef<SketchModalHandle, SketchModalProps>(
 
       const previewDataUrl = canvas.toDataURL("image/jpeg", 0.6);
       return { pngBase64, sceneJson, width: outW, height: outH, previewDataUrl };
-    }, [isAnnotationMode, backgroundImageDataUrl, bgDims]);
+    }, [isAnnotationMode, backgroundHtml]);
 
     useImperativeHandle(ref, () => ({ getElementCount, exportPng }), [getElementCount, exportPng]);
 
@@ -288,57 +273,53 @@ export const SketchModal = forwardRef<SketchModalHandle, SketchModalProps>(
               ref={canvasContainerRef}
               className="flex-1 min-h-0 relative overflow-hidden"
             >
-              {/* Annotation-mode: baggrundsbillede som HTML-element bag den transparente Excalidraw-canvas */}
-              {isAnnotationMode && backgroundImageDataUrl && (
-                <>
-                  {!bgDims && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-zinc-950 z-10">
-                      <Loader2 className="w-6 h-6 animate-spin text-zinc-500" />
-                      <span className="ml-2 text-zinc-500 text-sm font-mono">Indlæser baggrundsbillede…</span>
-                    </div>
-                  )}
-                  {/* Selve billedet: fylder containeren med object-fit:contain */}
-                  <img
-                    ref={bgImgRef}
-                    src={backgroundImageDataUrl}
-                    alt="Visualisering baggrund"
-                    className="absolute inset-0 w-full h-full object-contain pointer-events-none select-none"
-                    style={{ zIndex: 0 }}
-                    draggable={false}
-                  />
-                </>
+              {/* Annotation-mode: vis visualiserings-HTML i en baggrundsiframe */}
+              {isAnnotationMode && (
+                <iframe
+                  ref={bgIframeRef}
+                  title="Visualisering baggrund"
+                  sandbox="allow-scripts allow-same-origin"
+                  scrolling="no"
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    width: "100%",
+                    height: "100%",
+                    border: "none",
+                    pointerEvents: "none",
+                    zIndex: 0,
+                  }}
+                />
               )}
 
               {/* Excalidraw canvas — transparent i annotation-mode, normal i sketch-mode */}
-              {(!isAnnotationMode || bgDims) && (
-                <Suspense
-                  fallback={
-                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-zinc-950">
-                      <Loader2 className="w-8 h-8 animate-spin text-zinc-500" />
-                      <p className="text-zinc-500 text-sm font-mono">Indlæser canvas…</p>
-                    </div>
-                  }
-                >
-                  <div
-                    className={isAnnotationMode ? "annotation-excalidraw" : undefined}
-                    style={{ position: "absolute", inset: 0, zIndex: 1, background: "transparent" }}
-                  >
-                    <Excalidraw
-                      excalidrawAPI={handleApiReady}
-                      theme={isAnnotationMode ? "light" : "dark"}
-                      initialData={initialData}
-                      UIOptions={{
-                        canvasActions: {
-                          saveAsImage: false,
-                          loadScene: false,
-                          export: false,
-                          changeViewBackgroundColor: false,
-                        },
-                      }}
-                    />
+              <Suspense
+                fallback={
+                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-zinc-950">
+                    <Loader2 className="w-8 h-8 animate-spin text-zinc-500" />
+                    <p className="text-zinc-500 text-sm font-mono">Indlæser canvas…</p>
                   </div>
-                </Suspense>
-              )}
+                }
+              >
+                <div
+                  className={isAnnotationMode ? "annotation-excalidraw" : undefined}
+                  style={{ position: "absolute", inset: 0, zIndex: 1, background: "transparent" }}
+                >
+                  <Excalidraw
+                    excalidrawAPI={handleApiReady}
+                    theme={isAnnotationMode ? "light" : "dark"}
+                    initialData={initialData}
+                    UIOptions={{
+                      canvasActions: {
+                        saveAsImage: false,
+                        loadScene: false,
+                        export: false,
+                        changeViewBackgroundColor: false,
+                      },
+                    }}
+                  />
+                </div>
+              </Suspense>
             </div>
           </motion.div>
         )}

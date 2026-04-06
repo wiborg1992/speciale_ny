@@ -138,7 +138,7 @@ export default function Room() {
     roomId ? sessionStorage.getItem(`sketch_scene_${roomId}`) : null,
   );
   // Annotation-mode: brugeren tegner oven på en eksisterende visualisering
-  const [annotateImageDataUrl, setAnnotateImageDataUrl] = useState<string | null>(null);
+  const [annotateHtml, setAnnotateHtml] = useState<string | null>(null);
   const [isAnnotationSketch, setIsAnnotationSketch] = useState(false);
 
   // Fixation-breaker: antal inkrementelle forbedringer i træk
@@ -726,8 +726,8 @@ export default function Room() {
   );
 
   // Annotation-mode: brugeren klikker "Tegn på" på en visualisering → åbn sketch-modal med screenshot som baggrund
-  const handleVizAnnotate = useCallback((screenshotDataUrl: string) => {
-    setAnnotateImageDataUrl(screenshotDataUrl || null);
+  const handleVizAnnotate = useCallback((html: string) => {
+    setAnnotateHtml(html || null);
     setIsAnnotationSketch(true);
     setSketchModalOpen(true);
   }, []);
@@ -735,7 +735,7 @@ export default function Room() {
   // Nulstil annotation-mode når sketch-modal lukkes uden at gemme
   const handleSketchModalClose = useCallback(() => {
     setSketchModalOpen(false);
-    setAnnotateImageDataUrl(null);
+    setAnnotateHtml(null);
     setIsAnnotationSketch(false);
   }, []);
 
@@ -1278,7 +1278,7 @@ export default function Room() {
         handleGenerateRef.current(false);
         // Nulstil annotation-mode så næste manuelle Visualisér ikke bruger annotation-transcriptet
         setIsAnnotationSketch(false);
-        setAnnotateImageDataUrl(null);
+        setAnnotateHtml(null);
       }, 100);
       return () => clearTimeout(t);
     }
@@ -1449,7 +1449,7 @@ export default function Room() {
         onClose={handleSketchModalClose}
         onSave={handleSaveSketch}
         initialSceneJson={isAnnotationSketch ? null : sketchSceneJson}
-        backgroundImageDataUrl={annotateImageDataUrl}
+        backgroundHtml={annotateHtml}
         isAnnotationMode={isAnnotationSketch}
       />
 
@@ -2256,7 +2256,7 @@ export default function Room() {
               <SketchTab
                 previewDataUrl={sketchPreviewDataUrl}
                 elementCount={sketchElementCount}
-                onOpenCanvas={() => { setIsAnnotationSketch(false); setAnnotateImageDataUrl(null); setSketchModalOpen(true); }}
+                onOpenCanvas={() => { setIsAnnotationSketch(false); setAnnotateHtml(null); setSketchModalOpen(true); }}
                 isGenerating={isGenerating}
                 onVisualize={() => {
                   handleGenerate(false);
