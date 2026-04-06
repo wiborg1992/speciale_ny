@@ -1583,47 +1583,6 @@ export default function Room() {
                   </div>
                 )}
 
-                {transcriptionMode === "browser" && (
-                  <div className="shrink-0 px-3 py-2 border-b border-border bg-card/40 space-y-2">
-                    <div className="flex flex-wrap gap-1 items-center">
-                      <span className="text-[9px] font-mono uppercase tracking-wider text-muted-foreground mr-0.5">
-                        Quick select
-                      </span>
-                      {workshopQuickNames.map((name) => (
-                        <button
-                          key={name}
-                          type="button"
-                          onClick={() => setSpeakerName(name)}
-                          title={`Set active speaker to ${name}`}
-                          className={cn(
-                            "px-2 py-0.5 rounded-md text-[10px] font-mono border transition-colors",
-                            speakerName === name
-                              ? "border-primary bg-primary/15 text-primary"
-                              : "border-border bg-secondary/40 text-muted-foreground hover:text-foreground hover:border-primary/40",
-                          )}
-                        >
-                          {name}
-                        </button>
-                      ))}
-                    </div>
-                    <details className="group text-[10px]">
-                      <summary className="cursor-pointer text-muted-foreground hover:text-foreground list-none flex items-center gap-1 [&::-webkit-details-marker]:hidden">
-                        <span className="opacity-60 group-open:rotate-90 transition-transform inline-block">
-                          ▸
-                        </span>
-                        Customise name list (comma-separated)
-                      </summary>
-                      <input
-                        type="text"
-                        value={workshopRosterCsv}
-                        onChange={(e) => setWorkshopRosterCsv(e.target.value)}
-                        className="mt-1.5 w-full h-7 bg-secondary/50 border border-border rounded px-2 text-[11px] font-mono text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary/40"
-                        placeholder="Jesper, Klaus, Maria, …"
-                        spellCheck={false}
-                      />
-                    </details>
-                  </div>
-                )}
                 <div
                   className="flex-1 overflow-y-auto p-3 space-y-3 min-h-0"
                   ref={transcriptRef}
