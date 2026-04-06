@@ -29,6 +29,9 @@ import {
 
 const router: IRouter = Router();
 
+/** Mindste lead før vi spørger brugeren ved “blødt” emneskift (undgå støj ved lead 0–2). */
+const UNCERTAIN_TOPIC_SHIFT_MIN_LEAD = 4;
+
 // ─── resolveFamily — P1–P8 decision order ────────────────────────────────────
 // P0 (userPickedType) løses i route-handleren før dette kald.
 // Ren funktion: ingen side-effects, ingen adgang til room-state.
@@ -147,16 +150,18 @@ const VisualizeBodySchema = z.object({
   userVizIntent: z.enum(["fresh", "refine"]).optional().nullable(),
 });
 
-export type DisambiguationReason = "refinement_vs_topic_shift";
+export type DisambiguationReason =
+  | "refinement_vs_topic_shift"
+  | "ambiguous_with_previous_viz"
+  | "uncertain_topic_shift";
 
 /**
  * Ren funktion — ingen side-effects. Returnerer gate-resultat.
  * Eksporteret så den kan testes uden HTTP.
  *
- * Gate: refinement_vs_topic_shift
- *   Refinement-frase detekteret SAMT klassifikatoren er sikker på en ny family
- *   (lead >= CLASSIFY_SWITCH_LEAD) der adskiller sig fra lastFamily.
- *   P5 ville blindt låse til lastFamily — i stedet spørger vi brugeren.
+ * Gate 1: refinement_vs_topic_shift — refinement + stærkt topic-skift (som før).
+ * Gate 2: ambiguous_with_previous_viz — klassifikation tvetydig, men der findes allerede en viz.
+ * Gate 3: uncertain_topic_shift — klassifikatoren peger på anden familie, men lead er under auto-skift (P8-inertia) — typisk “workflow under pump”-situationer.
  */
 export function checkDisambiguationGate(params: {
   refinementDirective: string | null;
@@ -212,6 +217,40 @@ export function checkDisambiguationGate(params: {
     };
   }
 
+  // Tvetydig klassifikation + eksisterende viz: ikke bare arv stiltiende (P3).
+  if (
+    classification?.ambiguous &&
+    lastFamily &&
+    !!effectivePreviousHtml &&
+    !refinementDirective
+  ) {
+    return {
+      needsIntent: true,
+      reason: "ambiguous_with_previous_viz",
+      defaultChoice: "refine",
+      detectedFamily: classification.family,
+    };
+  }
+
+  // “Blødt” emneskift: anden top-familie, men ikke nok lead til P6 — spørg før inertia tvinger forkert incremental.
+  if (
+    classification &&
+    !classification.ambiguous &&
+    lastFamily &&
+    classification.family !== lastFamily &&
+    !!effectivePreviousHtml &&
+    !refinementDirective &&
+    classification.lead >= UNCERTAIN_TOPIC_SHIFT_MIN_LEAD &&
+    classification.lead < CLASSIFY_SWITCH_LEAD
+  ) {
+    return {
+      needsIntent: true,
+      reason: "uncertain_topic_shift",
+      defaultChoice: "fresh",
+      detectedFamily: classification.family,
+    };
+  }
+
   return {
     needsIntent: false,
     reason: null,
@@ -237,6 +276,10 @@ function sendNeedIntent(
   const EXPLANATIONS: Record<DisambiguationReason, string> = {
     refinement_vs_topic_shift:
       "Samtalen bevæger sig i en ny retning, men du talte om at justere den nuværende visualisering. Hvad skal der ske?",
+    ambiguous_with_previous_viz:
+      "Det er uklart hvilken type figur der passer bedst til det seneste indhold. Vil du bygge videre på den nuværende visualisering, eller starte en ny type?",
+    uncertain_topic_shift:
+      "Det lyder som et nyt emne (fx anden figur-type end den du har), men signalet er ikke helt entydigt. Vil du have en ny visualisering til det nye emne, eller fortsætte på den nuværende?",
   };
 
   res.write(

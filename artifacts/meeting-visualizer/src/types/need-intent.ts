@@ -1,6 +1,9 @@
 /** Payload fra server SSE-event type: "need_intent" */
 export interface NeedIntentPayload {
-  disambiguationReason: "refinement_vs_topic_shift";
+  disambiguationReason:
+    | "refinement_vs_topic_shift"
+    | "ambiguous_with_previous_viz"
+    | "uncertain_topic_shift";
   defaultChoice: "fresh" | "refine";
   /** Dansk forklaringstekst til UI */
   explanation: string;

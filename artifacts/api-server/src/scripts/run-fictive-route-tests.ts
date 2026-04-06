@@ -550,8 +550,77 @@ function main(): void {
     console.log("D15 ✓ ingen gate: userVizIntent='refine' bypass");
   }
 
+  // D16: Blødt emneskift — anden familie, lead mellem min og auto-skift → spørg
+  {
+    const g = checkDisambiguationGate({
+      refinementDirective: null,
+      classification: makeClassification({
+        family: "user_journey",
+        ambiguous: false,
+        lead: 8,
+      }),
+      lastFamily: "hmi_interface",
+      effectivePreviousHtml: "<html>prev</html>",
+      userPickedType: false,
+      focusSegment: null,
+      userVizIntent: null,
+    });
+    assertEq("D16 needsIntent=true (uncertain_topic_shift)", g.needsIntent, true);
+    assertEq("D16 reason=uncertain_topic_shift", g.reason, "uncertain_topic_shift");
+    assertEq("D16 defaultChoice=fresh", g.defaultChoice, "fresh");
+    console.log("D16 ✓ uncertain_topic_shift: lead i [min, switch) → popup");
+  }
+
+  // D17: Tvetydig + eksisterende viz → spørg (ikke stiltiende P3-arv)
+  {
+    const g = checkDisambiguationGate({
+      refinementDirective: null,
+      classification: makeClassification({
+        family: "user_journey",
+        ambiguous: true,
+        lead: 6,
+      }),
+      lastFamily: "physical_product",
+      effectivePreviousHtml: "<html>prev</html>",
+      userPickedType: false,
+      focusSegment: null,
+      userVizIntent: null,
+    });
+    assertEq(
+      "D17 needsIntent=true (ambiguous_with_previous_viz)",
+      g.needsIntent,
+      true,
+    );
+    assertEq(
+      "D17 reason=ambiguous_with_previous_viz",
+      g.reason,
+      "ambiguous_with_previous_viz",
+    );
+    assertEq("D17 defaultChoice=refine", g.defaultChoice, "refine");
+    console.log("D17 ✓ ambiguous_with_previous_viz");
+  }
+
+  // D18: For lav lead — ingen uncertain gate (undgå støj)
+  {
+    const g = checkDisambiguationGate({
+      refinementDirective: null,
+      classification: makeClassification({
+        family: "user_journey",
+        ambiguous: false,
+        lead: 3,
+      }),
+      lastFamily: "hmi_interface",
+      effectivePreviousHtml: "<html>prev</html>",
+      userPickedType: false,
+      focusSegment: null,
+      userVizIntent: null,
+    });
+    assertEq("D18 needsIntent=false (lead under min)", g.needsIntent, false);
+    console.log("D18 ✓ lead<UNCERTAIN_MIN → ingen uncertain gate");
+  }
+
   console.log(
-    "\nAlle disambiguation gate-tests OK (D1–D15, alle betingelser og grænseværdier verificeret).",
+    "\nAlle disambiguation gate-tests OK (D1–D18, alle betingelser og grænseværdier verificeret).",
   );
 
   // ─── resolveFamily edge case tests (R11–R14) ─────────────────────────────
@@ -615,7 +684,7 @@ function main(): void {
   );
 
   console.log("\nAlle edge case tests OK (R11–R14).");
-  console.log("\n=== Alle route-tests bestået: R1–R14 + D1–D15 ===");
+  console.log("\n=== Alle route-tests bestået: R1–R14 + D1–D18 ===");
 }
 
 main();

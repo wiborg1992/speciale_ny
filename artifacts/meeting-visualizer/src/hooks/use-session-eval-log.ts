@@ -1,7 +1,5 @@
-import { useCallback, useState, type MutableRefObject } from "react";
+import { useCallback, useState } from "react";
 import {
-  buildSessionEvalReport,
-  downloadSessionEvalJson,
   sanitizeDebugForExport,
   type SessionEvalErrorEvent,
   type SessionEvalEvent,
@@ -15,17 +13,8 @@ import type { VizDebugInfo } from "@/types/viz-debug";
 
 export type { SessionEvalStreamDiagnostic } from "@/lib/session-eval-report";
 
-export function useSessionEvalLog(params: {
-  roomId: string | undefined;
-  meetingTitle: string;
-  workspaceDomain: string;
-  sessionStartedAtRef: MutableRefObject<number>;
-  getTranscriptWordCount: () => number;
-  getSegmentCount: () => number;
-  getParticipantNames: () => string[];
-}) {
+export function useSessionEvalLog() {
   const [events, setEvents] = useState<SessionEvalEvent[]>([]);
-  const [reviewerNotes, setReviewerNotes] = useState("");
 
   const recordVisualization = useCallback(
     (args: {
@@ -91,22 +80,6 @@ export function useSessionEvalLog(params: {
     [],
   );
 
-  const exportJson = useCallback(() => {
-    const roomId = params.roomId ?? "unknown";
-    const report = buildSessionEvalReport({
-      roomId,
-      meetingTitle: params.meetingTitle,
-      workspaceDomain: params.workspaceDomain,
-      sessionStartedAt: params.sessionStartedAtRef.current,
-      reviewerNotes,
-      events,
-      transcriptWordCountApprox: params.getTranscriptWordCount(),
-      segmentCount: params.getSegmentCount(),
-      participantNames: params.getParticipantNames(),
-    });
-    downloadSessionEvalJson(report);
-  }, [params, reviewerNotes, events]);
-
   const clearLog = useCallback(() => {
     setEvents([]);
   }, []);
@@ -115,10 +88,7 @@ export function useSessionEvalLog(params: {
     recordVisualization,
     recordIntentDecision,
     onStreamDiagnostic,
-    exportJson,
     clearLog,
-    reviewerNotes,
-    setReviewerNotes,
     eventCount: events.length,
     events,
   };

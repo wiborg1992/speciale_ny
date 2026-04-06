@@ -72,7 +72,7 @@ const VIZ_INTERACT_SCRIPT = `
 `;
 
 /** Under streaming: færre fulde doc.write() ⇒ mindre hvid blink mellem opdateringer */
-const STREAMING_IFRAME_THROTTLE_MS = 850;
+const STREAMING_IFRAME_THROTTLE_MS = 1100;
 
 function isHtmlRenderable(html: string | null): boolean {
   if (!html || html.length < 300) return false;
@@ -346,9 +346,14 @@ export function IframeRenderer({
   const fillPendingRef = useRef(false);
   const originalHtmlRef = useRef<string | null>(null);
   const editHook = useIframeEdit(iframeRef);
+  /** Stabil reference — editHook-objektet er nyt hver render og må ikke invalider writeHtmlToIframe. */
+  const editHookRef = useRef(editHook);
+  editHookRef.current = editHook;
   /** Seneste HTML fra props — læses i throttled interval under streaming */
   const pendingHtmlRef = useRef<string | null>(null);
   const streamFlushIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const lastStreamWrittenRef = useRef<string | null>(null);
+  const lastCommittedHtmlRef = useRef<string | null>(null);
 
   const [skeletonProgress, setSkeletonProgress] = useState(0);
   const progressTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -454,21 +459,24 @@ ${t}
     }
   }, [roomId, title, context, workspaceDomain]);
 
-  const writeHtmlToIframe = useCallback(
-    (rawHtml: string) => {
-      if (!iframeRef.current) return;
-      const doc = iframeRef.current.contentDocument;
-      if (!doc) return;
-      originalHtmlRef.current = rawHtml;
-      editHook.disable();
-      setIsEditMode(false);
-      fillPendingRef.current = false;
-      doc.open();
-      doc.write(buildDocument(rawHtml));
-      doc.close();
-    },
-    [editHook],
-  );
+  const writeHtmlToIframe = useCallback((rawHtml: string) => {
+    if (!iframeRef.current) return;
+    const doc = iframeRef.current.contentDocument;
+    if (!doc) return;
+    originalHtmlRef.current = rawHtml;
+    editHookRef.current.disable();
+    setIsEditMode(false);
+    fillPendingRef.current = false;
+    doc.open();
+    doc.write(buildDocument(rawHtml));
+    doc.close();
+  }, []);
+
+  useEffect(() => {
+    if (isStreaming) {
+      lastStreamWrittenRef.current = null;
+    }
+  }, [isStreaming]);
 
   // Under streaming: throttled iframe-opdateringer (undgår blink ved hver chunk)
   useEffect(() => {
@@ -482,7 +490,10 @@ ${t}
 
     const tick = () => {
       const h = pendingHtmlRef.current;
-      if (h && isHtmlRenderable(h)) writeHtmlToIframe(h);
+      if (!h || !isHtmlRenderable(h)) return;
+      if (h === lastStreamWrittenRef.current) return;
+      lastStreamWrittenRef.current = h;
+      writeHtmlToIframe(h);
     };
 
     tick();
@@ -500,6 +511,10 @@ ${t}
   useEffect(() => {
     if (isStreaming) return;
     if (!html || !renderable || !iframeRef.current) return;
+    if (lastCommittedHtmlRef.current === html) {
+      return;
+    }
+    lastCommittedHtmlRef.current = html;
     writeHtmlToIframe(html);
 
     setTimeout(() => {

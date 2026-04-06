@@ -13,6 +13,35 @@ export type SessionEvalStreamDiagnostic =
 
 export type SessionEvalVizSource = "local_stream" | "sse_peer";
 
+/** Manuel facit pr. visualisering — dine tre spor (inkrementel vs ny, indhold vs. tale, legacy). */
+export type SessionEvalExpectedIntent = "incremental" | "new_viz" | "unsure";
+
+export type SessionEvalLegacyHypothesis =
+  | "previous_html"
+  | "transcript_window"
+  | "room_reload"
+  | "other";
+
+export interface SessionEvalVizFacit {
+  /** P1: hvad du forventede */
+  expectedIntent?: SessionEvalExpectedIntent;
+  /** P1: hvad der skete / observation */
+  actualIntentNotes?: string;
+  /** P1: om disambiguation-dialog blev vist */
+  disambiguationShown?: boolean;
+  disambiguationNotes?: string;
+  /** P2: hvad transskriptet ifølge dig skulle afspejles */
+  transcriptClaims?: string;
+  /** P2: hvad figuren faktisk viser */
+  figureObserved?: string;
+  /** P3: fri tekst om legacy / gammelt indhold */
+  legacySuspicion?: string;
+  legacyHypothesis?: SessionEvalLegacyHypothesis;
+  /** P3: kort uddrag du mener var “sandheden” for denne viz */
+  transcriptSnippetUser?: string;
+  severity?: "p0" | "p1" | "p2" | "p3";
+}
+
 /** Én visualiseringshændelse med klassifikations-metadata (fra server debug). */
 export interface SessionEvalVisualizationEvent {
   kind: "visualization";
@@ -23,6 +52,8 @@ export interface SessionEvalVisualizationEvent {
   htmlChars: number;
   /** Reduceret debug — ingen fuld systemprompt. */
   debug: ReturnType<typeof sanitizeDebugForExport>;
+  /** Udfyldes ved eksport fra session-eval UI (valgfrit). */
+  facit?: SessionEvalVizFacit;
 }
 
 export interface SessionEvalSkippedEvent {
@@ -59,7 +90,8 @@ export type SessionEvalEvent =
   | SessionEvalIntentDecisionEvent;
 
 export interface SessionEvalReport {
-  schemaVersion: 1;
+  /** 2 = understøtter `facit` på visualization-events + uændret resten. */
+  schemaVersion: 1 | 2;
   exportedAt: string;
   session: {
     roomId: string;
@@ -123,6 +155,30 @@ export function sanitizeDebugForExport(
   return out;
 }
 
+function facitHasContent(f: SessionEvalVizFacit | undefined): boolean {
+  if (!f) return false;
+  return Object.values(f).some((v) => {
+    if (v === undefined || v === null) return false;
+    if (typeof v === "boolean") return true;
+    if (typeof v === "string") return v.trim().length > 0;
+    return true;
+  });
+}
+
+/** Tilføj/redigér facit pr. versionsnummer før eksport. */
+export function mergeFacitIntoEvents(
+  events: SessionEvalEvent[],
+  facitByVersion: Record<number, SessionEvalVizFacit>,
+): SessionEvalEvent[] {
+  return events.map((e) => {
+    if (e.kind !== "visualization") return e;
+    const patch = facitByVersion[e.version];
+    if (!patch || !facitHasContent(patch)) return e;
+    const merged: SessionEvalVizFacit = { ...e.facit, ...patch };
+    return { ...e, facit: merged };
+  });
+}
+
 export function buildSessionEvalReport(params: {
   roomId: string;
   meetingTitle: string;
@@ -141,8 +197,12 @@ export function buildSessionEvalReport(params: {
     (e) => e.kind === "stream_error" || e.kind === "request_error",
   ).length;
 
+  const hasFacit = params.events.some(
+    (e) => e.kind === "visualization" && facitHasContent(e.facit),
+  );
+
   return {
-    schemaVersion: 1,
+    schemaVersion: hasFacit ? 2 : 1,
     exportedAt: new Date(now).toISOString(),
     session: {
       roomId: params.roomId,

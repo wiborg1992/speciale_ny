@@ -54,195 +54,28 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
-import { IframeRenderer } from "@/components/IframeRenderer";
+import { SessionEvalSheet } from "@/components/SessionEvalSheet";
 import { toast } from "@/hooks/use-toast";
 
-// ─── Types ───────────────────────────────────────────────────────────────────
-
-type InputTab = "mic" | "paste";
-type OutputTab = "viz" | "actions" | "transcript";
-
-interface VizVersion {
-  version: number;
-  name: string;
-  html: string;
-  timestamp: number;
-  /** Snapshot af server debug for netop denne version (til DBG-panel per v). */
-  debugSnapshot?: VizDebugInfo | null;
-}
-
-const VIZ_TYPES = [
-  { value: "auto", label: "Auto-detect" },
-  { value: "hmi", label: "HMI / SCADA" },
-  { value: "journey", label: "User Journey" },
-  { value: "persona", label: "Persona / Research" },
-  { value: "blueprint", label: "Service Blueprint" },
-  { value: "comparison", label: "Comparison / Evaluation" },
-  { value: "designsystem", label: "Design System" },
-  { value: "workflow", label: "Workflow / Process" },
-  { value: "product", label: "Product / Hardware" },
-  { value: "requirements", label: "Requirements" },
-  { value: "management", label: "Management Overview" },
-  { value: "timeline", label: "Timeline / Roadmap" },
-  { value: "stakeholders", label: "Stakeholder Map" },
-  { value: "kanban", label: "Kanban / Tasks" },
-  { value: "decisions", label: "Decision Log" },
-];
-
-const VIZ_MODELS = [
-  { value: "haiku", label: "Haiku (fast)" },
-  { value: "sonnet", label: "Sonnet (balanced)" },
-  { value: "opus", label: "Opus (best)" },
-  { value: "gemini-flash", label: "Gemini Flash" },
-  { value: "gemini-pro", label: "Gemini Pro" },
-];
-
-/** Styrer system-prompt og branding (Grundfos vs Gabriel vs neutral). */
-const WORKSPACE_DOMAINS = [
-  { value: "grundfos", label: "Grundfos" },
-  { value: "gabriel", label: "Gabriel (data)" },
-  { value: "generic", label: "Generic" },
-] as const;
-
-/** Kommasepareret — gemmes i localStorage; bruges som hurtigvalg for [Navn]: i transskriptet. */
-const WORKSHOP_ROSTER_DEFAULT = "Jesper,Klaus,Maria,Anna,Facilitator";
-
-function extractVizName(html: string): string | null {
-  const div = document.createElement("div");
-  div.innerHTML = html;
-  const h1 = div.querySelector("h1");
-  if (h1 && h1.textContent && h1.textContent.trim().length > 2)
-    return h1.textContent.trim().slice(0, 42);
-  const h2 = div.querySelector("h2");
-  if (h2 && h2.textContent && h2.textContent.trim().length > 2)
-    return h2.textContent.trim().slice(0, 42);
-  return null;
-}
-
-const MAX_VIZ_HISTORY = 100;
-const MAX_PASTE_HISTORY = 25;
-
-interface PasteHistoryEntry {
-  id: string;
-  savedAt: number;
-  text: string;
-}
-
-/** Svar fra GET /api/meetings/:roomId (Drizzle → JSON). */
-interface PersistedMeetingApiPayload {
-  meeting: { roomId: string; title: string | null };
-  segments: Array<{
-    segmentId: string;
-    speakerName: string;
-    text: string;
-    timestamp: string;
-    isFinal: boolean;
-  }>;
-  visualizations: Array<{
-    version: number;
-    html: string;
-    family: string | null;
-    wordCount: number;
-    createdAt: string;
-  }>;
-}
-const BASE = import.meta.env.BASE_URL;
-
-const SPEAKER_COLORS = [
-  {
-    bg: "bg-blue-500/15",
-    border: "border-blue-500/30",
-    text: "text-blue-300",
-    dot: "bg-blue-400",
-  },
-  {
-    bg: "bg-emerald-500/15",
-    border: "border-emerald-500/30",
-    text: "text-emerald-300",
-    dot: "bg-emerald-400",
-  },
-  {
-    bg: "bg-amber-500/15",
-    border: "border-amber-500/30",
-    text: "text-amber-300",
-    dot: "bg-amber-400",
-  },
-  {
-    bg: "bg-violet-500/15",
-    border: "border-violet-500/30",
-    text: "text-violet-300",
-    dot: "bg-violet-400",
-  },
-  {
-    bg: "bg-rose-500/15",
-    border: "border-rose-500/30",
-    text: "text-rose-300",
-    dot: "bg-rose-400",
-  },
-  {
-    bg: "bg-cyan-500/15",
-    border: "border-cyan-500/30",
-    text: "text-cyan-300",
-    dot: "bg-cyan-400",
-  },
-  {
-    bg: "bg-orange-500/15",
-    border: "border-orange-500/30",
-    text: "text-orange-300",
-    dot: "bg-orange-400",
-  },
-  {
-    bg: "bg-pink-500/15",
-    border: "border-pink-500/30",
-    text: "text-pink-300",
-    dot: "bg-pink-400",
-  },
-  {
-    bg: "bg-lime-500/15",
-    border: "border-lime-500/30",
-    text: "text-lime-300",
-    dot: "bg-lime-400",
-  },
-  {
-    bg: "bg-indigo-500/15",
-    border: "border-indigo-500/30",
-    text: "text-indigo-300",
-    dot: "bg-indigo-400",
-  },
-];
-
-function getSpeakerColor(
-  speakerName: string,
-  speakerMap: Map<string, number>,
-): (typeof SPEAKER_COLORS)[number] {
-  if (!speakerMap.has(speakerName)) {
-    speakerMap.set(speakerName, speakerMap.size);
-  }
-  const idx = speakerMap.get(speakerName)! % SPEAKER_COLORS.length;
-  return SPEAKER_COLORS[idx];
-}
-
-function cloneVizDebug(
-  info: VizDebugInfo | null | undefined,
-): VizDebugInfo | null {
-  if (!info) return null;
-  try {
-    return structuredClone(info) as VizDebugInfo;
-  } catch {
-    try {
-      return JSON.parse(JSON.stringify(info)) as VizDebugInfo;
-    } catch {
-      return { ...info };
-    }
-  }
-}
+import type {
+  InputTab,
+  OutputTab,
+  VizVersion,
+  PasteHistoryEntry,
+  PersistedMeetingApiPayload,
+} from "./room/types";
+import {
+  VIZ_TYPES,
+  VIZ_MODELS,
+  WORKSPACE_DOMAINS,
+  WORKSHOP_ROSTER_DEFAULT,
+  MAX_VIZ_HISTORY,
+  MAX_PASTE_HISTORY,
+  BASE,
+} from "./room/constants";
+import { getSpeakerColor } from "./room/speaker-colors";
+import { extractVizName, cloneVizDebug } from "./room/viz-helpers";
+import { RoomOutputPanels } from "./room/RoomOutputPanels";
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
@@ -566,15 +399,13 @@ export default function Room() {
 
   const sessionStartedAtRef = useRef<number>(Date.now());
 
-  const sessionEval = useSessionEvalLog({
-    roomId,
-    meetingTitle,
-    workspaceDomain,
-    sessionStartedAtRef,
-    getTranscriptWordCount: getEvalWordCount,
-    getSegmentCount: () => segments.length,
-    getParticipantNames: () => [...new Set(segments.map((s) => s.speakerName))],
-  });
+  /** Stabil kontekst-streng til iframe (undgår unødige fillLazyTabs-identitetsskift). */
+  const meetingContextForIframe = useMemo(
+    () => getMeetingContext(),
+    [getMeetingContext],
+  );
+
+  const sessionEval = useSessionEvalLog();
 
   useEffect(() => {
     sessionStartedAtRef.current = Date.now();
@@ -2738,264 +2569,40 @@ export default function Room() {
               </div>
             )}
 
-            {/* Content area */}
-            <div className="flex-1 min-h-0 overflow-hidden">
-              {outputTab === "viz" && (
-                <div className="h-full p-4">
-                  <IframeRenderer
-                    html={activeHtml}
-                    isStreaming={isGenerating}
-                    className="glow-border h-full"
-                    roomId={roomId}
-                    title={meetingTitle || null}
-                    context={getMeetingContext()}
-                    workspaceDomain={workspaceDomain}
-                  />
-                </div>
-              )}
-
-              {outputTab === "transcript" && (
-                <div className="h-full overflow-y-auto p-4">
-                  {segments.length === 0 && !interimText ? (
-                    <div className="flex items-center justify-center h-full">
-                      <div className="text-center space-y-4 text-muted-foreground max-w-xs">
-                        <FileText className="w-12 h-12 mx-auto opacity-20" />
-                        <div className="space-y-1">
-                          <p className="text-sm font-display">Transcript Log</p>
-                          <p className="text-xs">
-                            Start recording to build the meeting transcript. All
-                            speech will be logged here with timestamps.
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="space-y-0.5">
-                      <div className="flex items-center justify-between mb-3 pb-2 border-b border-border">
-                        <div className="text-xs font-mono text-muted-foreground">
-                          {segments.length} segment
-                          {segments.length !== 1 ? "s" : ""} ·{" "}
-                          {currentWordCount} words ·{" "}
-                          {
-                            [...new Set(segments.map((s) => s.speakerName))]
-                              .length
-                          }{" "}
-                          speaker
-                          {[...new Set(segments.map((s) => s.speakerName))]
-                            .length !== 1
-                            ? "s"
-                            : ""}
-                        </div>
-                        {segments.length > 0 && (
-                          <div className="text-[10px] font-mono text-muted-foreground/60">
-                            {format(new Date(segments[0].timestamp), "HH:mm")} —{" "}
-                            {format(
-                              new Date(segments[segments.length - 1].timestamp),
-                              "HH:mm",
-                            )}
-                          </div>
-                        )}
-                      </div>
-                      {segments.map((seg, i) => {
-                        const showSpeaker =
-                          i === 0 ||
-                          segments[i - 1].speakerName !== seg.speakerName;
-                        const colors = getSpeakerColor(
-                          seg.speakerName,
-                          speakerColorMap,
-                        );
-                        return (
-                          <div
-                            key={seg.id}
-                            className="group flex items-start gap-3 py-1.5 px-2 rounded hover:bg-card/40 transition-colors"
-                          >
-                            <span className="shrink-0 text-[10px] font-mono text-muted-foreground/60 pt-0.5 w-14 text-right">
-                              {format(new Date(seg.timestamp), "HH:mm:ss")}
-                            </span>
-                            <span
-                              className={cn(
-                                "shrink-0 w-2 h-2 rounded-full mt-1.5",
-                                colors.dot,
-                              )}
-                            />
-                            <div className="flex-1 min-w-0">
-                              {showSpeaker && (
-                                <span
-                                  className={cn(
-                                    "text-[10px] font-mono font-bold uppercase tracking-wider mr-2",
-                                    colors.text,
-                                  )}
-                                >
-                                  {seg.speakerName}
-                                </span>
-                              )}
-                              <span className="text-sm text-foreground/90 leading-relaxed">
-                                {seg.text}
-                              </span>
-                            </div>
-                          </div>
-                        );
-                      })}
-                      {interimText && (
-                        <div className="group flex items-start gap-3 py-1.5 px-2 rounded bg-primary/5 border border-primary/15">
-                          <span className="shrink-0 text-[10px] font-mono text-primary/70 pt-0.5 w-14 text-right">
-                            live
-                          </span>
-                          <span className="shrink-0 w-2 h-2 rounded-full mt-1.5 bg-primary/60 animate-pulse" />
-                          <div className="flex-1 min-w-0">
-                            <span className="text-[10px] font-mono font-bold uppercase tracking-wider mr-2 text-primary/90">
-                              IN PROGRESS
-                            </span>
-                            <span className="text-sm text-foreground/90 leading-relaxed italic">
-                              {interimText}
-                            </span>
-                            <span className="inline-block w-1 h-4 ml-1 bg-primary/50 animate-pulse align-middle" />
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {outputTab === "actions" && (
-                <div className="h-full p-4">
-                  {isLoadingActions && !actionsHtml && (
-                    <div className="flex items-center justify-center h-full">
-                      <div className="text-center space-y-3 text-muted-foreground">
-                        <RefreshCcw className="w-8 h-8 mx-auto animate-spin opacity-50" />
-                        <p className="text-xs font-mono">
-                          Claude is analyzing the meeting…
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                  {!isLoadingActions && !actionsHtml && (
-                    <div className="flex items-center justify-center h-full">
-                      <div className="text-center space-y-4 text-muted-foreground max-w-xs">
-                        <ClipboardList className="w-12 h-12 mx-auto opacity-20" />
-                        <div className="space-y-1">
-                          <p className="text-sm font-display">
-                            Decisions & Actions
-                          </p>
-                          <p className="text-xs">
-                            Click Extract to analyze the transcript for key
-                            decisions and action items.
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                  {actionsHtml && (
-                    <IframeRenderer
-                      html={actionsHtml}
-                      isStreaming={isLoadingActions}
-                      className="h-full"
-                      roomId={roomId}
-                      title={meetingTitle || null}
-                    />
-                  )}
-                </div>
-              )}
-            </div>
+            <RoomOutputPanels
+              outputTab={outputTab}
+              activeHtml={activeHtml}
+              isGenerating={isGenerating}
+              roomId={roomId}
+              meetingTitle={meetingTitle}
+              meetingContextForIframe={meetingContextForIframe}
+              workspaceDomain={workspaceDomain}
+              segments={segments}
+              interimText={interimText}
+              currentWordCount={currentWordCount}
+              speakerColorMap={speakerColorMap}
+              actionsHtml={actionsHtml}
+              isLoadingActions={isLoadingActions}
+            />
           </div>
         </main>
       </div>
 
-      <Sheet open={showSessionEval} onOpenChange={setShowSessionEval}>
-        <SheetContent
-          side="right"
-          className="w-full sm:max-w-lg overflow-y-auto"
-        >
-          <SheetHeader>
-            <SheetTitle className="font-display">Session-evaluering</SheetTitle>
-            <SheetDescription>
-              Log over visualiseringer (klassifikation fra server), sprunget
-              over og fejl. Download JSON til facit, forbedringer eller speciale
-              — fulde prompts er ikke med i eksporten.
-            </SheetDescription>
-          </SheetHeader>
-          <div className="mt-6 space-y-4 text-sm">
-            <p className="text-xs font-mono text-muted-foreground">
-              <span className="text-foreground/90">
-                {sessionEval.eventCount}
-              </span>{" "}
-              hændelse(r) · rum start{" "}
-              {format(
-                new Date(sessionStartedAtRef.current),
-                "yyyy-MM-dd HH:mm",
-              )}
-            </p>
-            <div className="space-y-1.5">
-              <label
-                htmlFor="session-eval-notes"
-                className="text-xs font-mono text-muted-foreground"
-              >
-                Din kommentar / facit (valgfri)
-              </label>
-              <textarea
-                id="session-eval-notes"
-                className="w-full min-h-[120px] rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
-                value={sessionEval.reviewerNotes}
-                onChange={(e) => sessionEval.setReviewerNotes(e.target.value)}
-                placeholder="Fx: ved 14:02 skulle typen være workflow_process — noter korrekt familie til test-suite…"
-              />
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <Button
-                type="button"
-                size="sm"
-                onClick={() => sessionEval.exportJson()}
-              >
-                <Download className="w-3.5 h-3.5 mr-1.5" />
-                Download JSON
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                onClick={() => {
-                  try {
-                    const roomIdSafe = roomId ?? "room";
-                    const text = JSON.stringify(sessionEval.events, null, 2);
-                    void navigator.clipboard.writeText(text);
-                    toast({
-                      title: "Kopieret",
-                      description:
-                        "Hændelseslisten er i udklipsholderen (JSON).",
-                    });
-                  } catch {
-                    toast({
-                      title: "Kunne ikke kopiere",
-                      description: "Brug Download JSON i stedet.",
-                      variant: "destructive",
-                    });
-                  }
-                }}
-              >
-                Kopiér events
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant="ghost"
-                className="text-muted-foreground"
-                onClick={() => {
-                  if (sessionEval.eventCount === 0) return;
-                  if (
-                    window.confirm(
-                      "Ryd alle hændelser i denne session fra loggen?",
-                    )
-                  )
-                    sessionEval.clearLog();
-                }}
-              >
-                Ryd log
-              </Button>
-            </div>
-          </div>
-        </SheetContent>
-      </Sheet>
+      <SessionEvalSheet
+        open={showSessionEval}
+        onOpenChange={setShowSessionEval}
+        events={sessionEval.events}
+        roomId={roomId}
+        meetingTitle={meetingTitle}
+        workspaceDomain={workspaceDomain}
+        sessionStartedAtRef={sessionStartedAtRef}
+        getTranscriptWordCount={getEvalWordCount}
+        getSegmentCount={() => segments.length}
+        getParticipantNames={() => [
+          ...new Set(segments.map((s) => s.speakerName)),
+        ]}
+        onClearLog={sessionEval.clearLog}
+      />
     </>
   );
 }
