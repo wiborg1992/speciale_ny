@@ -562,7 +562,8 @@ router.post("/visualize", async (req, res, next): Promise<void> => {
       res.end();
     }
 
-    if (!vizQuality.ok) {
+    // Bypass word-gate når en sketch er vedhæftet — skitsen er indholdet
+    if (!vizQuality.ok && !sketchId) {
       sendSkipped(vizQuality.reason, {
         wordCount: vizQuality.wordCount,
         minWords: MIN_WORDS_FOR_VISUALIZATION,
@@ -586,6 +587,7 @@ router.post("/visualize", async (req, res, next): Promise<void> => {
     // visualisering at opdatere — generér ikke generisk HTML, vent på mere indhold.
     // Bypasses hvis: bruger har valgt type, refinement er detekteret, focusSegment.
     if (
+      !sketchId &&
       !userPickedType &&
       !refinementDirective &&
       !focusSegment &&
