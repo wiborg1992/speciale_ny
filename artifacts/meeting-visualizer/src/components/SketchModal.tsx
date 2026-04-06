@@ -54,19 +54,46 @@ export const SketchModal = forwardRef<SketchModalHandle, SketchModalProps>(
       doc.close();
     }, [backgroundHtml]);
 
-    // Forward hjul-scroll-events til baggrundsiframen — bruges til at scrolle visualiseringen
-    // (iframen har pointer-events:none så events rammer Excalidraw canvassen i stedet)
+    // Forward hjul-scroll-events til baggrundsiframen (capture-fase — fanger events
+    // FØR Excalidraw's canvas-listener kan stopPropagation/preventDefault dem)
     useEffect(() => {
+      if (!open || !isAnnotationMode) return;
       const container = canvasContainerRef.current;
-      if (!container || !isAnnotationMode) return;
+      if (!container) return;
       const handleWheel = (e: WheelEvent) => {
         const iframe = bgIframeRef.current;
         if (!iframe?.contentWindow) return;
         iframe.contentWindow.scrollBy({ top: e.deltaY, left: e.deltaX, behavior: "instant" });
       };
-      container.addEventListener("wheel", handleWheel, { passive: true });
-      return () => container.removeEventListener("wheel", handleWheel);
-    }, [isAnnotationMode]);
+      // capture:true — kører i capture-fasen, inden Excalidraw kan intercepte event
+      container.addEventListener("wheel", handleWheel, { passive: true, capture: true });
+      return () => container.removeEventListener("wheel", handleWheel, { capture: true });
+    }, [open, isAnnotationMode]);
+
+    // MutationObserver: repositionér Excalidraw's toolbar til venstre side via JS
+    // (CSS-overrides er ikke pålidelige pga. Excalidraw's egne inline styles)
+    const annotationWrapperRef = useRef<HTMLDivElement | null>(null);
+    useEffect(() => {
+      if (!open || !isAnnotationMode) return;
+      const wrapper = annotationWrapperRef.current;
+      if (!wrapper) return;
+
+      const applyToolbarStyle = () => {
+        const toolbar = wrapper.querySelector<HTMLElement>(".App-toolbar");
+        if (!toolbar) return;
+        toolbar.style.cssText += ";position:absolute!important;left:12px!important;top:50%!important;transform:translateY(-50%)!important;width:auto!important;pointer-events:all!important;z-index:20!important;";
+        const content = toolbar.querySelector<HTMLElement>(".App-toolbar-content");
+        if (content) {
+          content.style.cssText += ";flex-direction:column!important;gap:2px!important;justify-content:center!important;";
+        }
+      };
+
+      // Første kørsel + observer for når Excalidraw dynamisk opdaterer DOM
+      applyToolbarStyle();
+      const observer = new MutationObserver(applyToolbarStyle);
+      observer.observe(wrapper, { childList: true, subtree: true, attributes: true, attributeFilter: ["style", "class"] });
+      return () => observer.disconnect();
+    }, [open, isAnnotationMode]);
 
     // I annotation-mode: Excalidraw starter tom (baggrundsbilledet er i iframen, ikke et element)
     // I normal mode: genindlæs tidligere scene-elementer
@@ -307,17 +334,19 @@ export const SketchModal = forwardRef<SketchModalHandle, SketchModalProps>(
               )}
 
               {/* Excalidraw canvas — transparent i annotation-mode, normal i sketch-mode */}
-              <Suspense
-                fallback={
-                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-zinc-950">
-                    <Loader2 className="w-8 h-8 animate-spin text-zinc-500" />
-                    <p className="text-zinc-500 text-sm font-mono">Indlæser canvas…</p>
-                  </div>
-                }
+              {/* Wrapper-div er UDENFOR Suspense så ref sættes med det samme (MutationObserver kan lytte) */}
+              <div
+                ref={isAnnotationMode ? annotationWrapperRef : undefined}
+                className={isAnnotationMode ? "annotation-excalidraw" : undefined}
+                style={{ position: "absolute", inset: 0, zIndex: 1, background: "transparent" }}
               >
-                <div
-                  className={isAnnotationMode ? "annotation-excalidraw" : undefined}
-                  style={{ position: "absolute", inset: 0, zIndex: 1, background: "transparent" }}
+                <Suspense
+                  fallback={
+                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-zinc-950">
+                      <Loader2 className="w-8 h-8 animate-spin text-zinc-500" />
+                      <p className="text-zinc-500 text-sm font-mono">Indlæser canvas…</p>
+                    </div>
+                  }
                 >
                   <Excalidraw
                     excalidrawAPI={handleApiReady}
@@ -332,8 +361,8 @@ export const SketchModal = forwardRef<SketchModalHandle, SketchModalProps>(
                       },
                     }}
                   />
-                </div>
-              </Suspense>
+                </Suspense>
+              </div>
             </div>
           </motion.div>
         )}
