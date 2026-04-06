@@ -6,6 +6,7 @@ import {
   deleteMeeting,
   updateMeetingTitle,
   clearMeetingTranscript,
+  getOrCreateMeeting,
 } from "../lib/meeting-store.js";
 import { clearRoomSegments, broadcastEvent } from "../lib/rooms.js";
 
@@ -56,6 +57,18 @@ router.get("/meetings/:roomId", async (req, res): Promise<void> => {
   } catch (err) {
     console.error("Failed to load meeting:", err);
     res.status(500).json({ error: "Failed to load meeting" });
+  }
+});
+
+/** POST /meetings/:roomId/ensure — opretter roomen i DB hvis den ikke eksisterer */
+router.post("/meetings/:roomId/ensure", async (req, res): Promise<void> => {
+  try {
+    const { roomId } = req.params;
+    await getOrCreateMeeting(roomId);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("Failed to ensure meeting:", err);
+    res.status(500).json({ error: "Failed to ensure meeting" });
   }
 });
 

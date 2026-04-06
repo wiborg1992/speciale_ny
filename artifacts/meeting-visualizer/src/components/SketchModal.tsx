@@ -23,7 +23,7 @@ export interface SketchModalHandle {
 interface SketchModalProps {
   open: boolean;
   onClose: () => void;
-  onSave: (result: { pngBase64: string; previewDataUrl: string; elementCount: number }) => void;
+  onSave: (result: { pngBase64: string; sceneJson: string; previewDataUrl: string; elementCount: number }) => void;
   title?: string;
 }
 
@@ -107,6 +107,7 @@ export const SketchModal = forwardRef<SketchModalHandle, SketchModalProps>(
       }
       onSave({
         pngBase64: result.pngBase64,
+        sceneJson: result.sceneJson,
         previewDataUrl: result.previewDataUrl,
         elementCount: count,
       });

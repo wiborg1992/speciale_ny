@@ -657,7 +657,7 @@ export default function Room() {
 
   // Gem sketch: PUTs til backend, gemmer preview og sketchId i state
   const handleSaveSketch = useCallback(
-    async (result: { pngBase64: string; previewDataUrl: string; elementCount: number }) => {
+    async (result: { pngBase64: string; sceneJson: string; previewDataUrl: string; elementCount: number }) => {
       setSketchPreviewDataUrl(result.previewDataUrl);
       setSketchElementCount(result.elementCount);
       setSketchModalOpen(false);
@@ -665,12 +665,15 @@ export default function Room() {
       if (roomId) {
         try {
           const BASE = import.meta.env.BASE_URL;
+          // Opret room i DB hvis den ikke eksisterer endnu
+          await fetch(`${BASE}api/meetings/${roomId}/ensure`, { method: "POST" });
+          // Upload sketch med korrekte feltnavne
           const res = await fetch(`${BASE}api/meetings/${roomId}/sketch`, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              pngBase64: result.pngBase64,
-              elementCount: result.elementCount,
+              previewPngBase64: result.pngBase64,
+              sceneJson: result.sceneJson,
             }),
           });
           if (res.ok) {
@@ -681,6 +684,8 @@ export default function Room() {
               elementCount: result.elementCount,
               bytes: Math.round(result.pngBase64.length * 0.75),
             });
+          } else {
+            console.error("Sketch upload failed:", res.status, await res.text());
           }
         } catch (err) {
           console.error("Failed to upload sketch", err);
@@ -1093,11 +1098,14 @@ export default function Room() {
 
   const handleGenerate = useCallback(
     (auto = false) => {
-      const transcript = getActiveTranscript();
+      const rawTranscript = getActiveTranscript();
+      // Hvis en skitse er vedhæftet og intet transskript, brug placeholder-tekst
+      const transcript = !rawTranscript && sketchId ? "Visualiser skitsen." : rawTranscript;
       if (!transcript) return;
 
       const userPickedType = vizType !== "auto";
-      if (!passesVisualizationWordGate(transcript, userPickedType)) {
+      // Bypass word-gate når en skitse er vedhæftet — skitsen er indholdet
+      if (!sketchId && !passesVisualizationWordGate(transcript, userPickedType)) {
         if (!auto) {
           toast({
             title: "Not enough text to visualize",

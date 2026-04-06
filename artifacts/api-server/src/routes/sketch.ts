@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { z } from "zod";
-import { saveSketch } from "../lib/meeting-store.js";
+import { saveSketch, getOrCreateMeeting } from "../lib/meeting-store.js";
 
 const router: IRouter = Router();
 
@@ -29,6 +29,9 @@ router.put("/meetings/:roomId/sketch", async (req, res): Promise<void> => {
     res.status(413).json({ error: "Skitse PNG er for stor (max ~2 MB base64)." });
     return;
   }
+
+  // Opret room i DB hvis den ikke eksisterer endnu (sketch kan uploades før første segment)
+  await getOrCreateMeeting(roomId);
 
   const sketchId = await saveSketch(roomId, sceneJson, previewPngBase64);
   if (!sketchId) {
