@@ -70,29 +70,108 @@ export const SketchModal = forwardRef<SketchModalHandle, SketchModalProps>(
       return () => container.removeEventListener("wheel", handleWheel, { capture: true });
     }, [open, isAnnotationMode]);
 
-    // MutationObserver: repositionér Excalidraw's toolbar til venstre side via JS
-    // (CSS-overrides er ikke pålidelige pga. Excalidraw's egne inline styles)
+    // MutationObserver: gør Excalidraw toolbar draggable (click-and-drag position)
     const annotationWrapperRef = useRef<HTMLDivElement | null>(null);
     useEffect(() => {
       if (!open || !isAnnotationMode) return;
       const wrapper = annotationWrapperRef.current;
+      const container = canvasContainerRef.current;
       if (!wrapper) return;
 
-      const applyToolbarStyle = () => {
+      let cleanupDrag: (() => void) | null = null;
+
+      const setupDraggableToolbar = () => {
         const toolbar = wrapper.querySelector<HTMLElement>(".App-toolbar");
-        if (!toolbar) return;
-        toolbar.style.cssText += ";position:absolute!important;left:12px!important;top:50%!important;transform:translateY(-50%)!important;width:auto!important;pointer-events:all!important;z-index:20!important;";
+        if (!toolbar || toolbar.dataset.draggable === "true") return;
+        toolbar.dataset.draggable = "true";
+
+        // Gør toolbar-content vertikal (lodret palette)
         const content = toolbar.querySelector<HTMLElement>(".App-toolbar-content");
         if (content) {
-          content.style.cssText += ";flex-direction:column!important;gap:2px!important;justify-content:center!important;";
+          content.style.setProperty("flex-direction", "column", "important");
+          content.style.setProperty("gap", "2px", "important");
+          content.style.setProperty("justify-content", "center", "important");
         }
+
+        // Start-position: venstre side, vertikal center
+        toolbar.style.setProperty("position", "absolute", "important");
+        toolbar.style.setProperty("width", "auto", "important");
+        toolbar.style.setProperty("pointer-events", "all", "important");
+        toolbar.style.setProperty("z-index", "20", "important");
+        toolbar.style.setProperty("cursor", "grab", "important");
+        toolbar.style.setProperty("user-select", "none", "important");
+        toolbar.style.setProperty("touch-action", "none", "important");
+
+        // Sæt startposition — venstre side, lodret centreret
+        const resolveInitialPosition = () => {
+          const containerH = container?.clientHeight ?? wrapper.clientHeight ?? 600;
+          const toolbarH = toolbar.offsetHeight || 200;
+          toolbar.style.setProperty("left", "12px", "important");
+          toolbar.style.setProperty("top", `${Math.max(8, Math.round((containerH - toolbarH) / 2))}px`, "important");
+          toolbar.style.removeProperty("transform");
+          toolbar.style.removeProperty("bottom");
+        };
+        resolveInitialPosition();
+
+        // Drag logic — min. 4px bevægelse aktiverer drag (ellers er det et klik på et ikon)
+        let isPotentialDrag = false;
+        let isDragging = false;
+        let startX = 0, startY = 0, startLeft = 0, startTop = 0;
+
+        const onMouseDown = (e: MouseEvent) => {
+          isPotentialDrag = true;
+          isDragging = false;
+          startX = e.clientX;
+          startY = e.clientY;
+          startLeft = parseInt(toolbar.style.left, 10) || 12;
+          startTop = parseInt(toolbar.style.top, 10) || 0;
+        };
+
+        const onMouseMove = (e: MouseEvent) => {
+          if (!isPotentialDrag) return;
+          const dx = e.clientX - startX;
+          const dy = e.clientY - startY;
+          if (!isDragging && Math.sqrt(dx * dx + dy * dy) > 4) {
+            isDragging = true;
+            toolbar.style.setProperty("cursor", "grabbing", "important");
+          }
+          if (isDragging) {
+            toolbar.style.setProperty("left", `${startLeft + dx}px`, "important");
+            toolbar.style.setProperty("top", `${startTop + dy}px`, "important");
+            e.preventDefault();
+          }
+        };
+
+        const onMouseUp = () => {
+          isPotentialDrag = false;
+          isDragging = false;
+          toolbar.style.setProperty("cursor", "grab", "important");
+        };
+
+        toolbar.addEventListener("mousedown", onMouseDown);
+        window.addEventListener("mousemove", onMouseMove);
+        window.addEventListener("mouseup", onMouseUp);
+
+        cleanupDrag = () => {
+          toolbar.removeEventListener("mousedown", onMouseDown);
+          window.removeEventListener("mousemove", onMouseMove);
+          window.removeEventListener("mouseup", onMouseUp);
+        };
       };
 
-      // Første kørsel + observer for når Excalidraw dynamisk opdaterer DOM
-      applyToolbarStyle();
-      const observer = new MutationObserver(applyToolbarStyle);
-      observer.observe(wrapper, { childList: true, subtree: true, attributes: true, attributeFilter: ["style", "class"] });
-      return () => observer.disconnect();
+      // Kør med det samme + observer for når Excalidraw renderes (lazy-load)
+      setupDraggableToolbar();
+      const observer = new MutationObserver(setupDraggableToolbar);
+      observer.observe(wrapper, { childList: true, subtree: true });
+
+      return () => {
+        observer.disconnect();
+        cleanupDrag?.();
+        // Nulstil draggable-flag så næste åbning sætter op fra bunden
+        wrapper.querySelectorAll<HTMLElement>("[data-draggable]").forEach((el) => {
+          delete el.dataset.draggable;
+        });
+      };
     }, [open, isAnnotationMode]);
 
     // I annotation-mode: Excalidraw starter tom (baggrundsbilledet er i iframen, ikke et element)
