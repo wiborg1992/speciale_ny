@@ -652,6 +652,9 @@ export default function Room() {
     if (sseViz.html && !isGenerating) {
       setDisplayHtml(sseViz.html);
       addVizVersion(sseViz.html, null, "sse_peer");
+      // Auto-upgrade model præcis som ved lokal streaming — en eksisterende viz
+      // er forudsætning for annotation, så vi bør aldrig annotere med haiku
+      setVizModel((prev) => (prev === "haiku" ? "opus" : prev));
     }
   }, [sseViz.html, isGenerating, addVizVersion]);
 
@@ -1186,7 +1189,12 @@ export default function Room() {
           freshStart,
           workspaceDomain,
           ...(sketchId ? { sketchId } : {}),
-          ...(isAnnotationTrigger ? { forceVisualize: true, isAnnotation: true } : {}),
+          // Annotation-trigger: bypass disambiguation-dialog (altid "refine") + ord-gate
+          ...(isAnnotationTrigger ? {
+            forceVisualize: true,
+            isAnnotation: true,
+            userVizIntent: "refine" as const,
+          } : {}),
         },
         {
           onSessionDiagnostic: sessionEval.onStreamDiagnostic,

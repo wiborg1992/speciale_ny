@@ -1,0 +1,231 @@
+{
+  "schemaVersion": 1,
+  "exportedAt": "2026-04-06T19:51:13.102Z",
+  "session": {
+    "roomId": "ZMK2KR",
+    "meetingTitle": "",
+    "workspaceDomain": "grundfos",
+    "sessionStartedAt": "2026-04-06T19:44:07.080Z",
+    "sessionEndedAt": "2026-04-06T19:51:13.102Z"
+  },
+  "summary": {
+    "transcriptWordCountApprox": 0,
+    "segmentCount": 0,
+    "participantNames": [],
+    "visualizationEventCount": 3,
+    "skippedCount": 0,
+    "errorCount": 0
+  },
+  "reviewerNotes": "",
+  "events": [
+    {
+      "kind": "visualization",
+      "at": "2026-04-06T19:44:08.585Z",
+      "source": "sse_peer",
+      "version": 1,
+      "vizName": "Pump Workflow System",
+      "htmlChars": 15426,
+      "debug": null
+    },
+    {
+      "kind": "sketch_used",
+      "at": "2026-04-06T19:48:30.350Z",
+      "sketchId": "2c5296aa-7dfe-4fa1-bf52-9f63deb2774d",
+      "elementCount": 6,
+      "bytes": 380649
+    },
+    {
+      "kind": "intent_decision",
+      "at": "2026-04-06T19:48:39.191Z",
+      "disambiguationReason": "ambiguous_with_previous_viz",
+      "defaultChoice": "refine",
+      "actualChoice": "refine",
+      "detectedFamily": "generic",
+      "currentFamily": "generic",
+      "scores": [
+        {
+          "family": "hmi_interface",
+          "score": 0
+        },
+        {
+          "family": "user_journey",
+          "score": 0
+        },
+        {
+          "family": "workflow_process",
+          "score": 0
+        },
+        {
+          "family": "physical_product",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "kind": "visualization",
+      "at": "2026-04-06T19:49:13.967Z",
+      "source": "local_stream",
+      "version": 5,
+      "vizName": "Pump Workflow System",
+      "htmlChars": 16696,
+      "debug": {
+        "timestamp": "2026-04-06T19:48:39.384Z",
+        "resolvedFamily": "generic",
+        "userPickedType": false,
+        "vizType": "auto",
+        "vizModel": "haiku",
+        "isIncremental": true,
+        "isRefinement": false,
+        "refinementDirective": null,
+        "hasPreviousHtml": true,
+        "focusSegment": null,
+        "workspaceDomain": "grundfos",
+        "transcriptTotalWords": 10,
+        "roomId": "ZMK2KR",
+        "performanceMs": 34721,
+        "classification": {
+          "inputMode": "tail",
+          "inputWords": 10,
+          "totalWords": 10,
+          "inputText": "Anvend annotationerne på den eksisterende visualisering og opdater den tilsvarende.",
+          "family": "generic",
+          "topic": "General visualization",
+          "lead": 0,
+          "ambiguous": true,
+          "topScores": [
+            {
+              "id": "hmi_interface",
+              "label": "HMI / SCADA interface",
+              "score": 0
+            },
+            {
+              "id": "user_journey",
+              "label": "User journey / experience map",
+              "score": 0
+            },
+            {
+              "id": "workflow_process",
+              "label": "Process / workflow / flowchart",
+              "score": 0
+            },
+            {
+              "id": "physical_product",
+              "label": "Physical product / pump hardware",
+              "score": 0
+            },
+            {
+              "id": "requirements_matrix",
+              "label": "Requirements / traceability",
+              "score": 0
+            },
+            {
+              "id": "engagement_analytics",
+              "label": "Engagement analytics / traffic dashboard",
+              "score": 0
+            }
+          ]
+        }
+      }
+    },
+    {
+      "kind": "sketch_used",
+      "at": "2026-04-06T19:50:09.495Z",
+      "sketchId": "c1abec0c-8c0f-4ab4-9667-e3402867d436",
+      "elementCount": 3,
+      "bytes": 423210
+    },
+    {
+      "kind": "intent_decision",
+      "at": "2026-04-06T19:50:11.184Z",
+      "disambiguationReason": "ambiguous_with_previous_viz",
+      "defaultChoice": "refine",
+      "actualChoice": "refine",
+      "detectedFamily": "generic",
+      "currentFamily": "generic",
+      "scores": [
+        {
+          "family": "hmi_interface",
+          "score": 0
+        },
+        {
+          "family": "user_journey",
+          "score": 0
+        },
+        {
+          "family": "workflow_process",
+          "score": 0
+        },
+        {
+          "family": "physical_product",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "kind": "visualization",
+      "at": "2026-04-06T19:50:51.590Z",
+      "source": "local_stream",
+      "version": 6,
+      "vizName": "Process Transformation Journey",
+      "htmlChars": 11346,
+      "debug": {
+        "timestamp": "2026-04-06T19:50:11.369Z",
+        "resolvedFamily": "generic",
+        "userPickedType": false,
+        "vizType": "auto",
+        "vizModel": "opus",
+        "isIncremental": true,
+        "isRefinement": false,
+        "refinementDirective": null,
+        "hasPreviousHtml": true,
+        "focusSegment": null,
+        "workspaceDomain": "grundfos",
+        "transcriptTotalWords": 10,
+        "roomId": "ZMK2KR",
+        "performanceMs": 40350,
+        "classification": {
+          "inputMode": "tail",
+          "inputWords": 10,
+          "totalWords": 10,
+          "inputText": "Anvend annotationerne på den eksisterende visualisering og opdater den tilsvarende.",
+          "family": "generic",
+          "topic": "General visualization",
+          "lead": 0,
+          "ambiguous": true,
+          "topScores": [
+            {
+              "id": "hmi_interface",
+              "label": "HMI / SCADA interface",
+              "score": 0
+            },
+            {
+              "id": "user_journey",
+              "label": "User journey / experience map",
+              "score": 0
+            },
+            {
+              "id": "workflow_process",
+              "label": "Process / workflow / flowchart",
+              "score": 0
+            },
+            {
+              "id": "physical_product",
+              "label": "Physical product / pump hardware",
+              "score": 0
+            },
+            {
+              "id": "requirements_matrix",
+              "label": "Requirements / traceability",
+              "score": 0
+            },
+            {
+              "id": "engagement_analytics",
+              "label": "Engagement analytics / traffic dashboard",
+              "score": 0
+            }
+          ]
+        }
+      }
+    }
+  ]
+}
