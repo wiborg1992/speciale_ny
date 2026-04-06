@@ -137,6 +137,9 @@ export default function Room() {
   const [sketchSceneJson, setSketchSceneJson] = useState<string | null>(() =>
     roomId ? sessionStorage.getItem(`sketch_scene_${roomId}`) : null,
   );
+  // Annotation-mode: brugeren tegner oven på en eksisterende visualisering
+  const [annotateImageDataUrl, setAnnotateImageDataUrl] = useState<string | null>(null);
+  const [isAnnotationSketch, setIsAnnotationSketch] = useState(false);
 
   // Fixation-breaker: antal inkrementelle forbedringer i træk
   const [consecutiveRefinements, setConsecutiveRefinements] = useState(0);
@@ -665,9 +668,13 @@ export default function Room() {
     }
   }, []); // kun ved mount
 
+  // Bruges til at sende annotation-sketchId direkte til generate() efter upload (undgår stale closure i handleGenerate)
+  const pendingAnnotationSketchIdRef = useRef<string | null>(null);
+
   // Gem sketch: PUTs til backend, gemmer preview og sketchId i state
   const handleSaveSketch = useCallback(
     async (result: { pngBase64: string; sceneJson: string; previewDataUrl: string; elementCount: number }) => {
+      const wasAnnotation = isAnnotationSketch;
       setSketchPreviewDataUrl(result.previewDataUrl);
       setSketchElementCount(result.elementCount);
       setSketchSceneJson(result.sceneJson);
@@ -703,6 +710,10 @@ export default function Room() {
               elementCount: result.elementCount,
               bytes: Math.round(result.pngBase64.length * 0.75),
             });
+            // Annotation-mode: gem sketchId i ref så useEffect kan auto-generere
+            if (wasAnnotation) {
+              pendingAnnotationSketchIdRef.current = json.sketchId;
+            }
           } else {
             console.error("Sketch upload failed:", res.status, await res.text());
           }
@@ -711,8 +722,22 @@ export default function Room() {
         }
       }
     },
-    [roomId, sessionEval.recordSketchUsed],
+    [roomId, sessionEval.recordSketchUsed, isAnnotationSketch],
   );
+
+  // Annotation-mode: brugeren klikker "Tegn på" på en visualisering → åbn sketch-modal med screenshot som baggrund
+  const handleVizAnnotate = useCallback((screenshotDataUrl: string) => {
+    setAnnotateImageDataUrl(screenshotDataUrl || null);
+    setIsAnnotationSketch(true);
+    setSketchModalOpen(true);
+  }, []);
+
+  // Nulstil annotation-mode når sketch-modal lukkes uden at gemme
+  const handleSketchModalClose = useCallback(() => {
+    setSketchModalOpen(false);
+    setAnnotateImageDataUrl(null);
+    setIsAnnotationSketch(false);
+  }, []);
 
   // Track consecutive inkrementelle forbedringer til fixation-breaker
   useEffect(() => {
@@ -1118,8 +1143,13 @@ export default function Room() {
   const handleGenerate = useCallback(
     (auto = false) => {
       const rawTranscript = getActiveTranscript();
-      // Hvis en skitse er vedhæftet og intet transskript, brug placeholder-tekst
-      const transcript = !rawTranscript && sketchId ? "Visualiser skitsen." : rawTranscript;
+      // Annotation-mode: brugerens tegning viser ønskede ændringer til visualiseringen
+      // Normal sketch-mode: ingen transskript → brug placeholder
+      const transcript = !rawTranscript && sketchId
+        ? (isAnnotationSketch
+            ? "Anvend annotationerne på den eksisterende visualisering og opdater den tilsvarende."
+            : "Visualiser skitsen.")
+        : rawTranscript;
       if (!transcript) return;
 
       const userPickedType = vizType !== "auto";
@@ -1176,6 +1206,7 @@ export default function Room() {
       workspaceDomain,
       inputTab,
       sketchId,
+      isAnnotationSketch,
       appendPasteHistoryIfNeeded,
       sessionEval.onStreamDiagnostic,
       stopRecording,
@@ -1236,6 +1267,24 @@ export default function Room() {
   useEffect(() => {
     handleGenerateRef.current = handleGenerate;
   }, [handleGenerate]);
+
+  // Auto-generer visualisering efter annotation-sketch er uploadet
+  useEffect(() => {
+    const pendingId = pendingAnnotationSketchIdRef.current;
+    if (pendingId && sketchId === pendingId) {
+      pendingAnnotationSketchIdRef.current = null;
+      setOutputTab("viz");
+      const t = setTimeout(() => {
+        handleGenerateRef.current(false);
+        // Nulstil annotation-mode så næste manuelle Visualisér ikke bruger annotation-transcriptet
+        setIsAnnotationSketch(false);
+        setAnnotateImageDataUrl(null);
+      }, 100);
+      return () => clearTimeout(t);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sketchId]);
+
   // Spejler pendingIntent-state så interval-callback kan læse den uden stale closure
   const pendingIntentRef = useRef<typeof pendingIntent>(null);
   useEffect(() => {
@@ -1397,10 +1446,11 @@ export default function Room() {
       {/* ── Fullscreen sketch canvas modal ──────────────────────────────────── */}
       <SketchModal
         open={sketchModalOpen}
-        onClose={() => setSketchModalOpen(false)}
+        onClose={handleSketchModalClose}
         onSave={handleSaveSketch}
-        initialSceneJson={sketchSceneJson}
-        title="Tegn en layoutskitse til din session"
+        initialSceneJson={isAnnotationSketch ? null : sketchSceneJson}
+        backgroundImageDataUrl={annotateImageDataUrl}
+        isAnnotationMode={isAnnotationSketch}
       />
 
       {/* ── Fixation-breaker inspiration popup (3+ inkrementelle forbedringer) ── */}
@@ -2206,7 +2256,7 @@ export default function Room() {
               <SketchTab
                 previewDataUrl={sketchPreviewDataUrl}
                 elementCount={sketchElementCount}
-                onOpenCanvas={() => setSketchModalOpen(true)}
+                onOpenCanvas={() => { setIsAnnotationSketch(false); setAnnotateImageDataUrl(null); setSketchModalOpen(true); }}
                 isGenerating={isGenerating}
                 onVisualize={() => {
                   handleGenerate(false);
@@ -3034,6 +3084,7 @@ export default function Room() {
               reasoningText={reasoningText}
               isLoadingActions={isLoadingActions}
               debugInfo={displayDebug}
+              onAnnotate={handleVizAnnotate}
             />
           </div>
         </main>

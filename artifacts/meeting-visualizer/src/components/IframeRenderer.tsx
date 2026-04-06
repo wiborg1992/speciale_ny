@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { cn } from "@/lib/utils";
-import { Minimize2, Maximize2, Pencil, RotateCcw } from "lucide-react";
+import { Minimize2, Maximize2, Pencil, RotateCcw, PenLine } from "lucide-react";
 import { Button } from "./ui/button";
 import { useIframeEdit } from "@/hooks/use-iframe-edit";
 
@@ -329,6 +329,8 @@ interface IframeRendererProps {
   context?: string | null;
   /** grundfos | gabriel | generic — passed to lazy tab fill API */
   workspaceDomain?: string | null;
+  /** Kaldes med screenshot af visualiseringen når brugeren klikker "Tegn på" */
+  onAnnotate?: (screenshotDataUrl: string) => void;
 }
 
 export function IframeRenderer({
@@ -339,10 +341,12 @@ export function IframeRenderer({
   title,
   context,
   workspaceDomain,
+  onAnnotate,
 }: IframeRendererProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
+  const [isCapturing, setIsCapturing] = useState(false);
   const fillPendingRef = useRef(false);
   const originalHtmlRef = useRef<string | null>(null);
   const editHook = useIframeEdit(iframeRef);
@@ -556,6 +560,30 @@ ${t}
     }
   }, [isStreaming, fillLazyTabs, editHook]);
 
+  const handleAnnotate = useCallback(async () => {
+    if (!onAnnotate || !iframeRef.current) return;
+    const iframeBody = iframeRef.current.contentDocument?.body;
+    if (!iframeBody) return;
+    setIsCapturing(true);
+    try {
+      const html2canvas = (await import("html2canvas")).default;
+      const canvas = await html2canvas(iframeBody, {
+        allowTaint: true,
+        useCORS: true,
+        backgroundColor: "#0d1421",
+        scale: Math.min(1, 1200 / (iframeBody.scrollWidth || 1200)),
+        logging: false,
+      });
+      const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
+      onAnnotate(dataUrl);
+    } catch {
+      // Fallback: send without screenshot — modal åbner stadig
+      onAnnotate("");
+    } finally {
+      setIsCapturing(false);
+    }
+  }, [onAnnotate]);
+
   const isEmpty = !html || html.trim() === "";
 
   return (
@@ -567,6 +595,20 @@ ${t}
     )}>
       {!isEmpty && !showSkeleton && (
         <div className="absolute top-3 right-3 z-20 flex items-center gap-1.5">
+          {onAnnotate && (
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={isCapturing || isStreaming}
+              className="h-7 gap-1.5 text-[10px] font-mono uppercase tracking-wider bg-background/90 border-primary/40 text-primary hover:text-primary-foreground hover:bg-primary backdrop-blur-sm"
+              onClick={handleAnnotate}
+              title="Åbn Excalidraw med visualiseringen som baggrund — tegn ændringer og annotationer"
+            >
+              <PenLine className="h-3 w-3" />
+              {isCapturing ? "Fanger…" : "Tegn på"}
+            </Button>
+          )}
+
           <Button
             variant={isEditMode ? "default" : "outline"}
             size="sm"

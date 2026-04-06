@@ -24,6 +24,7 @@ interface RoomOutputPanelsProps {
   reasoningText: string;
   isLoadingActions: boolean;
   debugInfo: VizDebugInfo | null | undefined;
+  onAnnotate?: (screenshotDataUrl: string) => void;
 }
 
 // ── Technical Reasoning: one step in the thinking timeline ──────────────────
@@ -185,6 +186,7 @@ export function RoomOutputPanels({
   reasoningText,
   isLoadingActions,
   debugInfo,
+  onAnnotate,
 }: RoomOutputPanelsProps) {
   return (
     <div className="flex-1 min-h-0 overflow-hidden">
@@ -198,6 +200,7 @@ export function RoomOutputPanels({
             title={meetingTitle || null}
             context={meetingContextForIframe}
             workspaceDomain={workspaceDomain}
+            onAnnotate={onAnnotate}
           />
         </div>
       )}
