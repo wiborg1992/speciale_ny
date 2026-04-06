@@ -1,7 +1,7 @@
 import type { VizDebugInfo } from "@/types/viz-debug";
 
 export type InputTab = "mic" | "paste";
-export type OutputTab = "viz" | "actions" | "transcript";
+export type OutputTab = "viz" | "actions" | "technical" | "transcript";
 
 export interface VizVersion {
   version: number;

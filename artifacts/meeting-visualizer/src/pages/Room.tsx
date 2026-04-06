@@ -24,6 +24,7 @@ import {
   X,
   NotebookText,
   Square,
+  BrainCircuit,
 } from "lucide-react";
 import { format } from "date-fns";
 import { v4 as uuidv4 } from "uuid";
@@ -2277,7 +2278,7 @@ export default function Room() {
             <div className="shrink-0 flex items-center justify-between px-4 border-b border-border bg-card/30">
               {/* Tabs */}
               <div className="flex">
-                {(["viz", "transcript", "actions"] as OutputTab[]).map(
+                {(["viz", "transcript", "actions", "technical"] as OutputTab[]).map(
                   (tab) => (
                     <button
                       key={tab}
@@ -2305,6 +2306,12 @@ export default function Room() {
                         <>
                           <Sparkles className="w-3.5 h-3.5" />
                           Forklaring
+                        </>
+                      )}
+                      {tab === "technical" && (
+                        <>
+                          <BrainCircuit className="w-3.5 h-3.5" />
+                          Technical Reasoning
                         </>
                       )}
                     </button>
@@ -2788,6 +2795,7 @@ export default function Room() {
               speakerColorMap={speakerColorMap}
               reasoningText={reasoningText}
               isLoadingActions={isLoadingActions}
+              debugInfo={displayDebug}
             />
           </div>
         </main>
