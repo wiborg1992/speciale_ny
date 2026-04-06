@@ -43,7 +43,7 @@ export const SketchModal = forwardRef<SketchModalHandle, SketchModalProps>(
       : "Tegn en skitse til din session"
     );
 
-    // Skriv HTML til baggrundsiframen hver gang backgroundHtml ændres
+    // Skriv HTML til baggrundsiframen + injicér scroll-CSS så content altid kan scrolles
     useEffect(() => {
       const iframe = bgIframeRef.current;
       if (!iframe || !backgroundHtml) return;
@@ -52,22 +52,24 @@ export const SketchModal = forwardRef<SketchModalHandle, SketchModalProps>(
       doc.open();
       doc.write(backgroundHtml);
       doc.close();
+      // AI-genereret HTML kan have overflow:hidden på body/html — tving scrollability
+      const style = doc.createElement("style");
+      style.textContent = "html,body{overflow:auto!important;height:auto!important;min-height:100%!important;}";
+      (doc.head ?? doc.documentElement).appendChild(style);
     }, [backgroundHtml]);
 
-    // Forward hjul-scroll-events til baggrundsiframen (capture-fase — fanger events
-    // FØR Excalidraw's canvas-listener kan stopPropagation/preventDefault dem)
+    // Scroll-forwarding — lyt på window i capture-fasen (allerførst i event-propagation)
+    // Excalidraw kan IKKE blokere dette med stopPropagation/stopImmediatePropagation
+    // fordi vores listener er på window og registreres inden Excalidraw's listeners
     useEffect(() => {
       if (!open || !isAnnotationMode) return;
-      const container = canvasContainerRef.current;
-      if (!container) return;
       const handleWheel = (e: WheelEvent) => {
         const iframe = bgIframeRef.current;
         if (!iframe?.contentWindow) return;
         iframe.contentWindow.scrollBy({ top: e.deltaY, left: e.deltaX, behavior: "instant" });
       };
-      // capture:true — kører i capture-fasen, inden Excalidraw kan intercepte event
-      container.addEventListener("wheel", handleWheel, { passive: true, capture: true });
-      return () => container.removeEventListener("wheel", handleWheel, { capture: true });
+      window.addEventListener("wheel", handleWheel, { passive: true, capture: true });
+      return () => window.removeEventListener("wheel", handleWheel, { capture: true });
     }, [open, isAnnotationMode]);
 
     // MutationObserver: gør Excalidraw toolbar draggable (click-and-drag position)
