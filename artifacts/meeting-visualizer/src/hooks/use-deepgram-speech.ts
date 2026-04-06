@@ -278,5 +278,12 @@ export function useDeepgramSpeech({
     }
   }, [startRecording, stopRecording]);
 
-  return { isRecording, interimText, error, toggleRecording, detectedSpeakers };
+  return {
+    isRecording,
+    interimText,
+    error,
+    toggleRecording,
+    stopRecording,
+    detectedSpeakers,
+  };
 }

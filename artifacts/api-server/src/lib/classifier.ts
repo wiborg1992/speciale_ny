@@ -14,6 +14,7 @@ export type VizFamily =
   | "physical_product"
   | "requirements_matrix"
   | "management_summary"
+  | "engagement_analytics"
   | "persona_research"
   | "service_blueprint"
   | "comparison_evaluation"
@@ -48,6 +49,7 @@ const FAMILY_PRIORITY_ORDER: VizFamily[] = [
   "requirements_matrix",
   "comparison_evaluation",
   "design_system",
+  "engagement_analytics",
   "management_summary",
   "generic",
 ];
@@ -361,6 +363,48 @@ const VIZ_FAMILY_SIGNALS: Array<{
     ],
   },
   {
+    id: "engagement_analytics",
+    label: "Engagement analytics / traffic dashboard",
+    terms: [
+      ["engagement analytics", 40],
+      ["engagement data", 38],
+      ["pageviews", 36],
+      ["page views", 34],
+      ["bounce rate", 36],
+      ["bounce-rate", 34],
+      ["engaged time", 36],
+      ["concurrent users", 38],
+      ["concurrents", 32],
+      ["unique visitors", 36],
+      ["unikt besøgende", 36],
+      ["realtime analytics", 40],
+      ["real-time analytics", 38],
+      ["real time analytics", 36],
+      ["trafikdata", 36],
+      ["trafik analyse", 36],
+      ["trafikanalyse", 36],
+      ["trafikkilder", 34],
+      ["trafik kilde", 32],
+      ["trafik rapport", 34],
+      ["trafikrapport", 36],
+      ["visitor frequency", 36],
+      ["besøgsfrekvens", 34],
+      ["device split", 36],
+      ["mobile vs desktop", 34],
+      ["traffic sources", 36],
+      ["traffic by source", 38],
+      ["referrers", 32],
+      ["referrer", 28],
+      ["social reach", 30],
+      ["chartbeat", 38],
+      ["google analytics", 34],
+      ["sessions", 22],
+      ["session data", 30],
+      ["abonnenter", 28],
+      ["subscribers", 26],
+    ],
+  },
+  {
     id: "management_summary",
     label: "Management / timeline / roadmap",
     terms: [
@@ -670,6 +714,7 @@ export const VIZ_FAMILY_LABEL: Record<VizFamily, string> = {
   physical_product: "Physical Product / Pump Hardware",
   requirements_matrix: "Requirements Matrix",
   management_summary: "Management Summary / Timeline",
+  engagement_analytics: "Engagement Analytics Dashboard",
   persona_research: "Persona / Research Insights",
   service_blueprint: "Service Blueprint / Experience Architecture",
   comparison_evaluation: "Comparison / Evaluation Matrix",
@@ -1656,7 +1701,59 @@ const TOPIC_SHIFT_GABRIEL_OVERRIDES: Array<{
   { pattern: "lad os skifte emne", target: "generic" },
   { pattern: "start forfra med visualisering", target: "generic" },
   { pattern: "ny session om", target: "generic" },
+  // Engagement analytics
+  { pattern: "engagement data", target: "engagement_analytics" },
+  { pattern: "trafikdata", target: "engagement_analytics" },
+  { pattern: "trafikrapport", target: "engagement_analytics" },
+  { pattern: "trafik rapport", target: "engagement_analytics" },
+  { pattern: "trafik analyse", target: "engagement_analytics" },
+  { pattern: "trafikanalyse", target: "engagement_analytics" },
+  { pattern: "concurrent users", target: "engagement_analytics" },
+  { pattern: "pageviews", target: "engagement_analytics" },
+  { pattern: "bounce rate", target: "engagement_analytics" },
+  { pattern: "engaged time", target: "engagement_analytics" },
+  { pattern: "visitor frequency", target: "engagement_analytics" },
+  { pattern: "realtime analytics", target: "engagement_analytics" },
+  { pattern: "real-time analytics", target: "engagement_analytics" },
+  { pattern: "trafikkilder", target: "engagement_analytics" },
+  { pattern: "device split", target: "engagement_analytics" },
+  { pattern: "unique visitors", target: "engagement_analytics" },
+  { pattern: "unikt besøgende", target: "engagement_analytics" },
 ];
+
+/** Ekstra score i seneste zone (3000 tegn) for Gabriel — engagement analytics boost. */
+function gabrielRecentEngagementBoost(recentNorm: string): number {
+  let b = 0;
+  const terms: Array<[string, number]> = [
+    ["engagement", 46],
+    ["pageviews", 44],
+    ["bounce rate", 42],
+    ["trafikdata", 44],
+    ["trafik analyse", 44],
+    ["trafikanalyse", 44],
+    ["concurrent users", 46],
+    ["concurrents", 38],
+    ["engaged time", 44],
+    ["visitor frequency", 42],
+    ["trafikkilder", 42],
+    ["trafik kilde", 40],
+    ["device split", 40],
+    ["realtime analytics", 44],
+    ["real-time analytics", 42],
+    ["abonnenter", 36],
+    ["referrers", 36],
+    ["social reach", 34],
+    ["unique visitors", 42],
+    ["unikt besøgende", 42],
+    ["chartbeat", 46],
+    ["google analytics", 40],
+    ["sessions", 28],
+  ];
+  for (const [t, w] of terms) {
+    if (recentNorm.includes(t)) b += w;
+  }
+  return Math.min(b, 150);
+}
 
 /** Ekstra score i seneste zone (3000 tegn) for Gabriel — uden at erstatte hard override. */
 function gabrielRecentDatavizBoost(recentNorm: string): number {
@@ -1830,6 +1927,13 @@ export function classifyVisualizationIntent(
       mergedMap.set(
         "management_summary",
         (mergedMap.get("management_summary") ?? 0) + gb,
+      );
+    }
+    const eb = gabrielRecentEngagementBoost(recentNorm);
+    if (eb > 0) {
+      mergedMap.set(
+        "engagement_analytics",
+        (mergedMap.get("engagement_analytics") ?? 0) + eb,
       );
     }
   }

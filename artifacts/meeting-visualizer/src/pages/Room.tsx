@@ -13,7 +13,7 @@ import {
   AlertTriangle,
   ChevronDown,
   ChevronUp,
-  ClipboardList,
+  Sparkles,
   Wand2,
   Download,
   Maximize2,
@@ -74,7 +74,11 @@ import {
   BASE,
 } from "./room/constants";
 import { getSpeakerColor } from "./room/speaker-colors";
-import { extractVizName, cloneVizDebug } from "./room/viz-helpers";
+import {
+  extractVizName,
+  cloneVizDebug,
+  slimVizTraceForReasoning,
+} from "./room/viz-helpers";
 import { RoomOutputPanels } from "./room/RoomOutputPanels";
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -147,10 +151,10 @@ export default function Room() {
   const [activeVersion, setActiveVersion] = useState(0);
   const [displayHtml, setDisplayHtml] = useState<string>("");
 
-  // Actions/decisions
-  const [actionsHtml, setActionsHtml] = useState("");
+  // Forklaring-fanen (AI reasoning som almen tekst)
+  const [reasoningText, setReasoningText] = useState("");
   const [isLoadingActions, setIsLoadingActions] = useState(false);
-  const actionsHtmlRef = useRef("");
+  const reasoningTextRef = useRef("");
 
   const transcriptRef = useRef<HTMLDivElement>(null);
 
@@ -823,6 +827,7 @@ export default function Room() {
     isRecording,
     interimText,
     toggleRecording,
+    stopRecording,
     error: speechError,
   } = transcriptionMode === "deepgram" ? deepgramSpeech : browserSpeech;
 
@@ -850,6 +855,8 @@ export default function Room() {
         }
         return;
       }
+
+      if (!auto) stopRecording();
 
       if (inputTab === "paste") appendPasteHistoryIfNeeded(transcript);
 
@@ -891,6 +898,7 @@ export default function Room() {
       inputTab,
       appendPasteHistoryIfNeeded,
       sessionEval.onStreamDiagnostic,
+      stopRecording,
     ],
   );
 
@@ -899,6 +907,7 @@ export default function Room() {
     (seg: { speakerName: string; text: string }, isFresh: boolean) => {
       const transcript = getActiveTranscript();
       if (!transcript) return;
+      stopRecording();
       const previous = !isFresh ? prevHtmlRef.current || null : null;
       generate(
         {
@@ -931,6 +940,7 @@ export default function Room() {
       generate,
       workspaceDomain,
       sessionEval.onStreamDiagnostic,
+      stopRecording,
     ],
   );
 
@@ -1005,13 +1015,15 @@ export default function Room() {
     return () => clearInterval(tick);
   }, [autoVizEnabled]);
 
-  // ── Actions / Decisions ──────────────────────────────────────────────────────
+  // ── Forklaring (AI-reasoning i almen tekst) ─────────────────────────────────
   const handleLoadActions = useCallback(async () => {
     const transcript = getActiveTranscript();
     if (!transcript) return;
     setIsLoadingActions(true);
-    actionsHtmlRef.current = "";
-    setActionsHtml("");
+    reasoningTextRef.current = "";
+    setReasoningText("");
+
+    const vizTrace = slimVizTraceForReasoning(displayDebug);
 
     try {
       const res = await fetch(`${BASE}api/actions`, {
@@ -1023,6 +1035,7 @@ export default function Room() {
           title: meetingTitle || null,
           context: getMeetingContext(),
           workspaceDomain,
+          vizTrace,
         }),
       });
       if (!res.ok || !res.body) throw new Error("Server error");
@@ -1041,16 +1054,16 @@ export default function Room() {
           try {
             const d = JSON.parse(line.slice(6));
             if (d.type === "chunk" && d.text) {
-              actionsHtmlRef.current += d.text;
-              setActionsHtml(actionsHtmlRef.current);
+              reasoningTextRef.current += d.text;
+              setReasoningText(reasoningTextRef.current);
             }
           } catch {}
         }
       }
     } catch (err) {
       console.error(err);
-      setActionsHtml(
-        "<p style='color:red'>Failed to extract actions. Please try again.</p>",
+      setReasoningText(
+        "Kunne ikke hente forklaringen. Prøv igen om lidt.",
       );
     } finally {
       setIsLoadingActions(false);
@@ -1061,10 +1074,14 @@ export default function Room() {
     meetingTitle,
     getMeetingContext,
     workspaceDomain,
+    displayDebug,
   ]);
 
-  // Auto-load actions when tab switches
   const hasLoadedActionsRef = useRef(false);
+  useEffect(() => {
+    hasLoadedActionsRef.current = false;
+  }, [activeVersion]);
+
   useEffect(() => {
     if (
       outputTab === "actions" &&
@@ -1074,7 +1091,7 @@ export default function Room() {
       hasLoadedActionsRef.current = true;
       handleLoadActions();
     }
-  }, [outputTab]);
+  }, [outputTab, handleLoadActions, getActiveTranscript]);
 
   // ── Export ───────────────────────────────────────────────────────────────────
   const handleExport = useCallback(() => {
@@ -1329,23 +1346,6 @@ export default function Room() {
               <option value="da-DK">DA-DK</option>
               <option value="en-US">EN-US</option>
             </select>
-
-            {/* Record button */}
-            <Button
-              variant={isRecording ? "destructive" : "default"}
-              className="h-8 px-4 text-xs transition-all relative overflow-hidden"
-              onClick={toggleRecording}
-            >
-              {isRecording && (
-                <span className="absolute inset-0 bg-white/10 animate-pulse" />
-              )}
-              {isRecording ? (
-                <MicOff className="w-3.5 h-3.5 mr-1.5" />
-              ) : (
-                <Mic className="w-3.5 h-3.5 mr-1.5" />
-              )}
-              {isRecording ? "Stop" : "Record"}
-            </Button>
           </div>
         </header>
 
@@ -1564,6 +1564,26 @@ export default function Room() {
                       </div>
                     </div>
                   )}
+                </div>
+
+                {/* Record — under transcript (venstre panel), før Visualize */}
+                <div className="shrink-0 px-3 pt-2 pb-2 border-t border-border flex justify-start">
+                  <Button
+                    type="button"
+                    variant={isRecording ? "destructive" : "default"}
+                    className="h-9 px-4 text-xs transition-all relative overflow-hidden"
+                    onClick={() => toggleRecording()}
+                  >
+                    {isRecording && (
+                      <span className="absolute inset-0 bg-white/10 animate-pulse" />
+                    )}
+                    {isRecording ? (
+                      <MicOff className="w-3.5 h-3.5 mr-1.5" />
+                    ) : (
+                      <Mic className="w-3.5 h-3.5 mr-1.5" />
+                    )}
+                    {isRecording ? "Stop" : "Record"}
+                  </Button>
                 </div>
 
                 {/* Visualize + Viz history — mirrors paste tab */}
@@ -2098,8 +2118,8 @@ export default function Room() {
                       )}
                       {tab === "actions" && (
                         <>
-                          <ClipboardList className="w-3.5 h-3.5" />
-                          Decisions
+                          <Sparkles className="w-3.5 h-3.5" />
+                          Forklaring
                         </>
                       )}
                     </button>
@@ -2311,12 +2331,12 @@ export default function Room() {
                     {isLoadingActions ? (
                       <>
                         <RefreshCcw className="w-3.5 h-3.5 mr-1.5 animate-spin" />
-                        Analyzing…
+                        Henter forklaring…
                       </>
                     ) : (
                       <>
                         <Play className="w-3.5 h-3.5 mr-1.5" />
-                        Extract
+                        Opdatér forklaring
                       </>
                     )}
                   </Button>
@@ -2581,7 +2601,7 @@ export default function Room() {
               interimText={interimText}
               currentWordCount={currentWordCount}
               speakerColorMap={speakerColorMap}
-              actionsHtml={actionsHtml}
+              reasoningText={reasoningText}
               isLoadingActions={isLoadingActions}
             />
           </div>

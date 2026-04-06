@@ -12,6 +12,43 @@ export function extractVizName(html: string): string | null {
   return null;
 }
 
+/** Til /api/actions: ingen prompts, ingen lang inputText — kun hvad modellen skal forklare alment. */
+export function slimVizTraceForReasoning(
+  info: VizDebugInfo | null | undefined,
+): Record<string, unknown> | null {
+  if (!info) return null;
+  const c = info.classification;
+  const base: Record<string, unknown> = {
+    vizType: info.vizType,
+    vizModel: info.vizModel,
+    resolvedFamily: info.resolvedFamily ?? undefined,
+    workspaceDomain: info.workspaceDomain ?? undefined,
+    isIncremental: info.isIncremental,
+    isRefinement: info.isRefinement,
+    hasPreviousHtml: info.hasPreviousHtml,
+    focusSegment: info.focusSegment ?? undefined,
+    refinementDirective: info.refinementDirective ?? undefined,
+    userPickedType: info.userPickedType,
+    transcriptTotalWords: info.transcriptTotalWords,
+  };
+  if (c) {
+    base.classification = {
+      family: c.family,
+      topic: c.topic,
+      ambiguous: c.ambiguous,
+      lead: c.lead,
+      inputMode: c.inputMode,
+      inputWords: c.inputWords,
+      totalWords: c.totalWords,
+      topScores: [...(c.allScores ?? [])]
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 12)
+        .map((s) => ({ family: s.family, score: s.score })),
+    };
+  }
+  return base;
+}
+
 export function cloneVizDebug(
   info: VizDebugInfo | null | undefined,
 ): VizDebugInfo | null {

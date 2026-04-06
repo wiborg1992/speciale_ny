@@ -9,6 +9,7 @@ export const VIZ_TYPES = [
   { value: "workflow", label: "Workflow / Process" },
   { value: "product", label: "Product / Hardware" },
   { value: "requirements", label: "Requirements" },
+  { value: "engagement", label: "Engagement Analytics" },
   { value: "management", label: "Management Overview" },
   { value: "timeline", label: "Timeline / Roadmap" },
   { value: "stakeholders", label: "Stakeholder Map" },
@@ -30,8 +31,7 @@ export const WORKSPACE_DOMAINS = [
   { value: "generic", label: "Generic" },
 ] as const;
 
-export const WORKSHOP_ROSTER_DEFAULT =
-  "Jesper,Klaus,Maria,Anna,Facilitator";
+export const WORKSHOP_ROSTER_DEFAULT = "Jesper,Klaus,Maria,Anna,Facilitator";
 
 export const MAX_VIZ_HISTORY = 100;
 export const MAX_PASTE_HISTORY = 25;

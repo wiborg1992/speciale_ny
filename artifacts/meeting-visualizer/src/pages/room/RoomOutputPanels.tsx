@@ -1,5 +1,5 @@
 import { format } from "date-fns";
-import { FileText, ClipboardList, RefreshCcw } from "lucide-react";
+import { FileText, Sparkles, RefreshCcw } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { IframeRenderer } from "@/components/IframeRenderer";
@@ -20,7 +20,7 @@ interface RoomOutputPanelsProps {
   interimText: string;
   currentWordCount: number;
   speakerColorMap: Map<string, number>;
-  actionsHtml: string;
+  reasoningText: string;
   isLoadingActions: boolean;
 }
 
@@ -36,7 +36,7 @@ export function RoomOutputPanels({
   interimText,
   currentWordCount,
   speakerColorMap,
-  actionsHtml,
+  reasoningText,
   isLoadingActions,
 }: RoomOutputPanelsProps) {
   return (
@@ -150,40 +150,45 @@ export function RoomOutputPanels({
       )}
 
       {outputTab === "actions" && (
-        <div className="h-full p-4">
-          {isLoadingActions && !actionsHtml && (
-            <div className="flex items-center justify-center h-full">
+        <div className="h-full p-4 min-h-0 flex flex-col">
+          {isLoadingActions && !reasoningText && (
+            <div className="flex items-center justify-center flex-1 min-h-0">
               <div className="text-center space-y-3 text-muted-foreground">
                 <RefreshCcw className="w-8 h-8 mx-auto animate-spin opacity-50" />
                 <p className="text-xs font-mono">
-                  Claude is analyzing the meeting…
+                  Skriver forklaring på dansk…
                 </p>
               </div>
             </div>
           )}
-          {!isLoadingActions && !actionsHtml && (
-            <div className="flex items-center justify-center h-full">
-              <div className="text-center space-y-4 text-muted-foreground max-w-xs">
-                <ClipboardList className="w-12 h-12 mx-auto opacity-20" />
+          {!isLoadingActions && !reasoningText && (
+            <div className="flex items-center justify-center flex-1 min-h-0">
+              <div className="text-center space-y-4 text-muted-foreground max-w-sm">
+                <Sparkles className="w-12 h-12 mx-auto opacity-20" />
                 <div className="space-y-1">
-                  <p className="text-sm font-display">Decisions & Actions</p>
-                  <p className="text-xs">
-                    Click Extract to analyze the transcript for key decisions and
-                    action items.
+                  <p className="text-sm font-display">Forklaring</p>
+                  <p className="text-xs leading-relaxed">
+                    Her får du en almen forklaring på, hvordan AI&apos;en har
+                    læst mødet og hvilke valg der typisk ligger bag den viste
+                    visualisering. Tryk{" "}
+                    <span className="text-foreground/80">Opdatér forklaring</span>{" "}
+                    ovenfor, eller åbn fanen igen efter du har genereret en ny
+                    version.
                   </p>
                 </div>
               </div>
             </div>
           )}
-          {actionsHtml && (
-            <IframeRenderer
-              html={actionsHtml}
-              isStreaming={isLoadingActions}
-              className="h-full"
-              roomId={roomId}
-              title={meetingTitle || null}
-            />
-          )}
+          {reasoningText ? (
+            <div className="flex-1 min-h-0 overflow-y-auto rounded-lg border border-border/60 bg-card/30 px-4 py-4">
+              <p className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground mb-3">
+                Sådan tænkte modellen (forenklet)
+              </p>
+              <div className="text-sm text-foreground/90 leading-relaxed whitespace-pre-wrap font-sans max-w-3xl">
+                {reasoningText}
+              </div>
+            </div>
+          ) : null}
         </div>
       )}
     </div>

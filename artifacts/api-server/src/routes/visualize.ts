@@ -4,7 +4,7 @@ import { normalizeTranscript } from "../lib/normalizer.js";
 import {
   streamVisualization,
   fillTabPanels,
-  streamActions,
+  streamReasoningNarrative,
   isHtmlQualityOk,
   type VizModel,
 } from "../lib/visualizer.js";
@@ -444,6 +444,8 @@ router.post("/visualize", async (req, res, next): Promise<void> => {
       workflow: "workflow_process",
       product: "physical_product",
       requirements: "requirements_matrix",
+      engagement: "engagement_analytics",
+      analytics: "engagement_analytics",
       management: "management_summary",
       kanban: "management_summary",
       decisions: "management_summary",
@@ -816,7 +818,9 @@ router.post("/visualize", async (req, res, next): Promise<void> => {
               (title?.trim() ? title.trim().slice(0, 84) : room.lastVizTitle);
             room.meetingEssenceBullets = computeEssenceBullets(
               classification,
-              (resolvedFamily ?? classification?.family ?? null) as VizFamily | null,
+              (resolvedFamily ??
+                classification?.family ??
+                null) as VizFamily | null,
             );
             broadcastEvent(roomId, "visualization", { html: cleanHtml, meta });
           }
@@ -954,6 +958,8 @@ const ActionsSchema = z.object({
   title: z.string().optional().nullable(),
   context: z.string().optional().nullable(),
   workspaceDomain: z.string().optional().nullable(),
+  /** Slank debug/metadata fra seneste visualisering — til almen reasoning-forklaring */
+  vizTrace: z.record(z.string(), z.unknown()).nullable().optional(),
 });
 
 router.post("/actions", async (req, res): Promise<void> => {
@@ -963,7 +969,8 @@ router.post("/actions", async (req, res): Promise<void> => {
     return;
   }
 
-  let { transcript, roomId, title, context, workspaceDomain } = parsed.data;
+  let { transcript, roomId, title, context, workspaceDomain, vizTrace } =
+    parsed.data;
 
   if (!transcript.trim() && roomId) {
     const room = getRoom(roomId);
@@ -986,21 +993,22 @@ router.post("/actions", async (req, res): Promise<void> => {
   res.flushHeaders();
 
   try {
-    for await (const chunk of streamActions(
+    for await (const chunk of streamReasoningNarrative(
       transcript,
       title,
       context,
       (c) =>
         res.write(`data: ${JSON.stringify({ type: "chunk", text: c })}\n\n`),
       workspaceDomain,
+      vizTrace ?? null,
     )) {
       // chunks written in callback above
     }
     res.write(`data: ${JSON.stringify({ type: "done" })}\n\n`);
   } catch (err) {
-    req.log.error({ err }, "actions extraction failed");
+    req.log.error({ err }, "reasoning narrative failed");
     res.write(
-      `data: ${JSON.stringify({ type: "error", error: "Failed to extract actions" })}\n\n`,
+      `data: ${JSON.stringify({ type: "error", error: "Failed to generate explanation" })}\n\n`,
     );
   }
 

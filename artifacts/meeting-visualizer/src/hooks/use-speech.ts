@@ -261,5 +261,17 @@ export function useSpeech({ onSegmentFinalized, language = "da-DK" }: UseSpeechP
     }
   }, [flushPending, acquireMicStream, releaseMicStream]);
 
-  return { isRecording, interimText, error, toggleRecording };
+  const stopRecording = useCallback(() => {
+    const recognition = recognitionRef.current;
+    if (!recognition || !isRecordingRef.current) return;
+    intentionalStopRef.current = true;
+    isRecordingRef.current = false;
+    setIsRecording(false);
+    setInterimText("");
+    releaseMicStream();
+    recognition.stop();
+    flushPending();
+  }, [flushPending, releaseMicStream]);
+
+  return { isRecording, interimText, error, toggleRecording, stopRecording };
 }
