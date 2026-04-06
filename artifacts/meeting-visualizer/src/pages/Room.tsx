@@ -1710,27 +1710,7 @@ export default function Room() {
                   )}
                 </div>
 
-                {/* Record — under transcript (venstre panel), før Visualize */}
-                <div className="shrink-0 px-3 pt-2 pb-2 border-t border-border flex justify-start">
-                  <Button
-                    type="button"
-                    variant={isRecording ? "destructive" : "default"}
-                    className="h-9 px-4 text-xs transition-all relative overflow-hidden"
-                    onClick={() => toggleRecording()}
-                  >
-                    {isRecording && (
-                      <span className="absolute inset-0 bg-white/10 animate-pulse" />
-                    )}
-                    {isRecording ? (
-                      <MicOff className="w-3.5 h-3.5 mr-1.5" />
-                    ) : (
-                      <Mic className="w-3.5 h-3.5 mr-1.5" />
-                    )}
-                    {isRecording ? "Stop" : "Record"}
-                  </Button>
-                </div>
-
-                {/* Visualize + Viz history — mirrors paste tab */}
+                {/* Record + Visualize — same row */}
                 <div className="shrink-0 px-3 pt-2 pb-2 border-t border-border flex flex-col gap-2">
                   {vizStreamError && (
                     <div className="p-2 rounded-md bg-destructive/10 border border-destructive/40 text-[11px] text-destructive-foreground flex gap-2 items-start">
@@ -1741,7 +1721,23 @@ export default function Room() {
                   <div className="flex gap-2 w-full">
                     <Button
                       type="button"
-                      variant="default"
+                      variant={isRecording ? "destructive" : "default"}
+                      className="h-9 px-4 text-xs transition-all relative overflow-hidden shrink-0"
+                      onClick={() => toggleRecording()}
+                    >
+                      {isRecording && (
+                        <span className="absolute inset-0 bg-white/10 animate-pulse" />
+                      )}
+                      {isRecording ? (
+                        <MicOff className="w-3.5 h-3.5 mr-1.5" />
+                      ) : (
+                        <Mic className="w-3.5 h-3.5 mr-1.5" />
+                      )}
+                      {isRecording ? "Stop" : "Record"}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
                       className="flex-1 min-w-0 h-9 text-xs font-mono"
                       onClick={() => {
                         handleGenerate(false);
@@ -1757,7 +1753,7 @@ export default function Room() {
                       ) : (
                         <>
                           <Wand2 className="w-3.5 h-3.5 mr-1.5" />
-                          Visualize from transcript
+                          Visualize
                         </>
                       )}
                     </Button>
@@ -1929,7 +1925,7 @@ export default function Room() {
                         ) : (
                           <>
                             <Wand2 className="w-3.5 h-3.5 mr-1.5" />
-                            Visualize from pasted text
+                            Visualize
                           </>
                         )}
                       </Button>
