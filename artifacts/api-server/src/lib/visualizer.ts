@@ -656,16 +656,20 @@ Same HTML + script as A, but add data-viz-lazy-tabs="1" to the host and make non
 The tab script above already handles lazy panels; the iframe host fills them on first open.
 
 ─── C) NAV MENUS / SIDEBARS (section switching) ───
-HTML:
-  <nav data-viz-nav>
-    <a href="#" data-viz-nav-item="overview" class="viz-nav-active">Overview</a>
-    <a href="#" data-viz-nav-item="analysis">Analysis</a>
-  </nav>
-  <section data-viz-section="overview" style="display:block">...full content...</section>
-  <section data-viz-section="analysis" style="display:none" hidden>...full content...</section>
+Wrap nav + sections together in a data-viz-nav-root so multiple nav groups on one page never interfere.
 
-Script snippet:
-  document.querySelectorAll('[data-viz-nav]').forEach(function(nav){nav.querySelectorAll('[data-viz-nav-item]').forEach(function(link){link.addEventListener('click',function(e){e.preventDefault();var id=link.getAttribute('data-viz-nav-item');nav.querySelectorAll('[data-viz-nav-item]').forEach(function(l){l.classList.toggle('viz-nav-active',l===link);});document.querySelectorAll('[data-viz-section]').forEach(function(s){var show=s.getAttribute('data-viz-section')===id;s.style.display=show?'block':'none';if(show){s.removeAttribute('hidden');}else{s.setAttribute('hidden','');}});});});});
+HTML:
+  <div data-viz-nav-root>
+    <nav data-viz-nav>
+      <a href="#" data-viz-nav-item="overview" class="viz-nav-active">Overview</a>
+      <a href="#" data-viz-nav-item="analysis">Analysis</a>
+    </nav>
+    <section data-viz-section="overview" style="display:block">...full content...</section>
+    <section data-viz-section="analysis" style="display:none" hidden>...full content...</section>
+  </div>
+
+Script snippet (sections scoped to the nearest [data-viz-nav-root], no global collision):
+  document.querySelectorAll('[data-viz-nav]').forEach(function(nav){var root=nav.closest('[data-viz-nav-root]')||nav.parentElement;nav.querySelectorAll('[data-viz-nav-item]').forEach(function(link){link.addEventListener('click',function(e){e.preventDefault();var id=link.getAttribute('data-viz-nav-item');nav.querySelectorAll('[data-viz-nav-item]').forEach(function(l){l.classList.toggle('viz-nav-active',l===link);});root.querySelectorAll('[data-viz-section]').forEach(function(s){var show=s.getAttribute('data-viz-section')===id;s.style.display=show?'block':'none';if(show){s.removeAttribute('hidden');}else{s.setAttribute('hidden','');}});});});});
 
 ─── D) FILTER CHIPS (filterable tables, card grids, lists) ───
 HTML:
