@@ -1,0 +1,21 @@
+Du rammer noget vigtigt der. Tre tekstspørgsmål i en modal er ikke sketching — det er et spørgeskema. Og jeres hele analyse viser jo netop, at sketching fungerer, fordi det er *visuelt, eksplorativt og lavt forpligtende* — ikke fordi det stiller de rigtige spørgsmål.
+
+Problemet med en ren spørgsmåls-gate er, at den beder brugeren om at *artikulere* sin intention verbalt, før de har haft mulighed for at *udforske* den. Det er præcis det, jeres analyse af vibe coding-grupperne kritiserer: at man skal formulere noget præcist, før man forstår det. Sketching virker jo netop fordi man *ikke* behøver vide, hvad man vil, for at komme i gang — forståelsen opstår gennem handlingen.
+
+Så spørgsmålet er: Hvad ville en "sketch-fase" i jeres tool faktisk betyde?
+
+Tænk på det i forhold til, hvad toolet allerede kan. I har en classifier, der bestemmer visualiseringsfamilie. I har et `vizType`-felt. I har `freshStart`. Hvad hvis intention-gaten ikke var spørgsmål, men en *visuelt eksplorativ handling*?
+
+En mulighed: I stedet for en modal med spørgsmål, viser toolet efter de første 30-60 sekunders transskription et **visuelt "retningskort"** — fx 3-4 thumbnail-previews af de visualiseringsfamilier, klassifikatoren scorer højest. Ikke færdige visualiseringer, men stiliserede wireframe-ikoner der viser "dette møde kunne blive et journey map, et requirements-dashboard eller et workflow-diagram." Deltagerne *vælger* en retning ved at klikke — eller de vælger "lad AI'en bestemme." Det valg er en designhandling, ikke en verbal formulering. Det ligner mere det, sketchgrupperne gør: de ser på muligheder, diskuterer dem, og vælger en retning *visuelt* — ikke ved at skrive et svar i et tekstfelt.
+
+Det er stadig lav kompleksitet at implementere. Klassifikatoren returnerer allerede scores for alle familier. I skal bare visualisere top-3 som valgmuligheder med et simpelt ikon og en kort beskrivelse. Det bygger på det eksisterende disambiguation-dialog-mønster, men i stedet for at spørge "hvad mente du?" spørger den "hvilken retning vil I udforske?"
+
+Det har også en stærkere akademisk begrundelse. I kan argumentere for, at toolet tilbyder det, Buxton kalder en *suggestiv* repræsentation — en visuelt antydet mulighed, der inviterer til fortolkning snarere end at kræve en præcis formulering. Det er meget tættere på skitsens funktion end et spørgeskema.
+
+Og det giver jer bedre forskningsdata. I kan se, *hvilke* retninger deltagerne vælger, om de diskuterer valget, og om deres endelige visualisering afviger fra det oprindelige valg. Det er en langt rigere datakilde end "de svarede X på spørgsmål 2."
+
+Så mit reviderede forslag til intention-gaten er: Drop de tre spørgsmål. Byg i stedet en **retningsvælger**, der viser klassifikatorens top-kandidater visuelt, lader gruppen diskutere og vælge, og først derefter genererer. Det er tættere på sketching, tættere på jeres teori, og ikke sværere at implementere.
+
+De andre tre features (fixation-breaker, alternative views, session-eval) er stadig relevante som de er. Men intention-gaten bør være visuel, ikke verbal.
+
+Hvad tænker du — giver det mere mening som "sketch-fase"?

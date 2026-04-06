@@ -1,0 +1,74 @@
+Godt spørgsmål. For at svare ordentligt skal jeg se, hvad jeres tool faktisk indeholder lige nu. Du nævnte den ligger i `C:\Users\EG\OneDrive\Skrivebord\Claude_speciale`. Lad mig kigge på den.Filerne returnerede kun metadata. Lad mig prøve at læse indholdet direkte.Lad mig læse filerne individuelt via Desktop Commander for bedre kontrol.Filerne returnerer kun metadata. Lad mig bruge en anden tilgang.Nu har jeg et grundigt billede af jeres tool. Det er et seriøst stykke software. Lad mig kortlægge, hvad det allerede gør i forhold til hypoteserne — og hvor der er huller.---
+
+## Hvad jeres tool allerede gør — og hvad der mangler
+
+Jeres Meeting AI Visualizer er faktisk allerede ganske velinformeret af lab-indsigterne, men det er implicit. Her er kortlægningen:
+
+### Hypotese 5: Kontekstens betydning ✅ Stærkest dækket
+
+Det er her toolet er mest modent. I har bygget flere lag af automatisk kontekstualisering:
+
+- **Normalizer** (`normalizer.ts`): Renser transskription for fyldord (dansk + engelsk), retter ASR-fejl, normaliserer fagtermer (CRA, SCADA, ISO-standarder, Grundfos-produkter, journey-termer). Det løser præcis det "Wicked Problem #2" I identificerede tidligt — at fejl i transskriptionen giver AI'en dårlige vilkår.
+- **Classifier** (`classifier.ts`): Scorer transskriptens tail mod vægtede keyword-signaler og bestemmer visualiseringsfamilie (HMI, user journey, workflow, requirements, management osv.) *før* AI'en kaldes. Det er en form for automatisk kontekstualisering — toolet "forstår" hvad mødet handler om, så brugeren ikke behøver formulere det.
+- **Workspace Domain** (`workspace-domain.ts`): Tilpasser hele system-prompten til domænet (Grundfos, Gabriel, generisk). CRA-kontekst, brandidentitet, visualiseringsstil — alt sammen injiceres automatisk baseret på organisatorisk kontekst.
+- **Meeting Essence** (`meeting-essence.ts`): Holder "mødehukommelse" mellem visualiseringer — hvad den forrige viz handlede om, hvilken familie den tilhørte, opsummering fra klassifikatoren. Det giver kontinuitet.
+
+**Vurdering:** Det her er solidt og direkte koblet til indsigten om, at kontekst er afgørende for kvaliteten af AI-output. Men det er primært *teknisk* kontekst (domæne, fagtermer, visualiseringstype). Det mangler *designmæssig* kontekst — intention, problemforståelse, hvad brugeren faktisk forsøger at opnå.
+
+---
+
+### Hypotese 1 og 4: Starttilgangens epistemiske konsekvenser ⚠️ Delvist dækket
+
+Her er det mest interessante — og mest ufærdige.
+
+**Hvad I allerede har:**
+- `vizType`-feltet i API'en (`auto`, `journey`, `workflow`, `product` osv.) tvinger en vis retningsangivelse.
+- `context`-feltet i `VisualizeRequest` tillader struktureret kontekst.
+- `freshStart: boolean` giver brugeren mulighed for at starte forfra i stedet for at forfine.
+- Klassifikatoren fungerer som en form for automatisk "starttilgang" — den bestemmer en retning baseret på indholdet.
+
+**Hvad der mangler — og det er kernepointen:**
+
+Toolet har ingen eksplicit *afklaringsfase* før første visualisering. Flowet er: mikrofon → transskription → klassifikation → visualisering. Det svarer til det, jeres analyse viser om vibe coding-grupperne i lab: AI'en genererer med det samme, og brugeren responderer reaktivt på det, den har lavet.
+
+Jeres analyse viser, at sketching fungerer netop fordi den *forsinker* materialiseringen og tvinger en problemafklaring først. Toolet gør det modsatte — det accelererer materialiseringen. Det er ikke nødvendigvis forkert (det er jo pointen med toolet at materialisere hurtigt), men det mangler en mekanisme, der sikrer, at *noget* afklaring er sket inden.
+
+**Konkrete designmuligheder:**
+
+1. **"Intention-gate" før første visualisering.** Før toolet genererer den første viz, kunne det præsentere brugeren for en kort struktureret afklaring: "Hvad skal denne visualisering hjælpe jer med at forstå?" / "Hvilken beslutning skal den understøtte?" / "Hvem er den primære modtager?" Det behøver ikke være tungt — tre korte spørgsmål, som klassifikatoren kan bruge til at kvalificere sit valg. Det svarer til den "front-loading" Lehmann et al. beskriver — men systematiseret.
+
+2. **"Sketch-mode" som alternativ til direkte generering.** Toolet kunne tilbyde en tilstand, hvor den første visualisering bevidst holdes lav-fidelity: wireframe-æstetik, placeholder-indhold, flere alternative layouts side om side. Det ville give brugerne noget at reagere *på* uden at det allerede føles som en færdig løsning. Først efter at brugeren har valgt retning, skifter toolet til high-fidelity.
+
+3. **Brug det `context`-felt I allerede har i API'en mere aktivt.** Det er der, men det er valgfrit og ustruktureret. Det kunne i stedet være et obligatorisk, guidet input — fx baseret på de moduler I tidligt skitserede i jeres pipeline-dokument.
+
+---
+
+### Hypotese 2: Inkrementel forbedring ⚠️ Delvist dækket (men potentielt forstærker toolet problemet)
+
+**Hvad I allerede har:**
+- **Refinement Detector** (`refinement-detector.ts`): Det er faktisk en avanceret komponent, der registrerer, når brugere siger ting som "zoom ind på", "uddyb", "tilføj en kolonne" — altså netop de inkrementelle forbedringer jeres analyse identificerer. Den detekterer det og konverterer det til et direktiv for AI'en.
+- `previousHtml` i API'en: Toolet kan bygge videre på forrige visualisering (evolutionary prototyping).
+
+**Problemet:** Refinement-detektoren er bygget til at *understøtte* inkrementel forbedring — den gør det nemmere at sige "juster lige det her." Men jeres analyse viser jo netop, at det er præcis denne adfærd, der fører til fixation. Toolet har dermed en mekanisme, der aktivt forstærker det mønster, I har identificeret som problematisk.
+
+**Konkrete designmuligheder:**
+
+1. **"Retningsskift-prompt" efter N inkrementelle forbedringer.** Hvis refinement-detektoren har registreret fx 3-4 inkrementelle forbedringer i træk, kunne toolet aktivt spørge: "I har nu forfinet den samme visualisering flere gange. Vil I se et helt alternativt bud på emnet?" Det ville svare til det, jeres analyse kalder *throwaway prototyping* — at generere og forkaste alternativer i stedet for at elaborere inden for en fastlåst ramme.
+
+2. **"Alternative views"-knap.** En funktion, der genererer 2-3 visuelt forskellige bud på samme transskript, side om side. Det tvinger en sammenligning, der ligner den vekselvirkning mellem *seeing-as* og *seeing-that*, I beskriver hos sketchgrupperne.
+
+3. **Session-evaluering som refleksionsmekanisme.** I har allerede `SessionEvalSheet` og en eval-log. Den kunne udvides med spørgsmål, der eksplicit beder brugerne reflektere over, om de har udforsket flere retninger, eller om de har forfinet ét spor — og bruge det som data i jeres forskning.
+
+---
+
+### Opsummering: Hvad der binder det hele sammen i specialet
+
+| Hypotese | Indsigt fra Lab | Hvad toolet gør | Hvad der mangler |
+|---|---|---|---|
+| H1+H4 | Starttilgangen former epistemiske betingelser | Klassifikator + domænekontekst | Eksplicit afklaringsfase / intention-gate |
+| H2 | Inkrementel forbedring dækker over kvalitativt forskellige processer | Refinement-detector understøtter forfining | Mekanisme der bryder fixation-loop |
+| H5 | Kontekst er afgørende | Normalizer + classifier + workspace-domain + meeting-essence | Designmæssig kontekst (intention, formål, modtager) |
+
+Den røde tråd er: **Toolet er stærkt på teknisk kontekstualisering, men svagt på epistemisk iscenesættelse.** Det mangler den fase, som sketching giver gratis — at brugeren tvinges til at tænke, før AI'en handler. Det er præcis den indsigt, der gør toolet til mere end en teknisk løsning: det er et designeksemplar, der *viser*, at vibe coding kræver processuel rammesætning for at fungere som inquiry.
+
+Skal jeg hjælpe med at designe en konkret "intention-gate" eller "sketch-mode"-komponent, eller vil du hellere have et argumentationsafsnit til specialet om denne kobling?
