@@ -9,10 +9,10 @@ interface Props {
   onRemove: (roomId: string) => void;
 }
 
-export function SessionTabs({ currentRoomId, sessions, onRemove }: Props) {
+export function SessionTabs({ currentRoomId, sessions = [], onRemove }: Props) {
   const [, setLocation] = useLocation();
 
-  if (sessions.length === 0) return null;
+  if (!sessions.length) return null;
 
   const handleClose = (e: React.MouseEvent, roomId: string) => {
     e.stopPropagation();

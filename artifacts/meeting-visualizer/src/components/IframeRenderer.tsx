@@ -510,7 +510,12 @@ ${t}
   // Når ikke streaming: ét fuldt skriv pr. færdig HTML (inkl. lazy tabs)
   useEffect(() => {
     if (isStreaming) return;
-    if (!html || !renderable || !iframeRef.current) return;
+    if (!html || !renderable || !iframeRef.current) {
+      if (!html) {
+        lastCommittedHtmlRef.current = null;
+      }
+      return;
+    }
     if (lastCommittedHtmlRef.current === html) {
       return;
     }
