@@ -76,13 +76,19 @@ Do **not** copy third-party analytics **brand names**, logos, or trademark UI �
 
 Do NOT default to water hydraulics, pumps, m³/h, NPSH, or Grundfos product lines unless the speakers actually discuss them.
 
-━━━ INTERACTIVITY (EMBEDDED PREVIEW — NO BACKEND) ━━━
-The HTML runs inside a sandboxed iframe with scripts enabled. Prefer lightweight interaction so stakeholders can explore the mockup:
-  • **Tabs:** Reuse the host pattern from the long system prompt: \`data-viz-host-tabs\`, \`role="tab"\` + \`data-viz-tab\`, panels \`data-viz-tab-panel\` (optional \`data-viz-lazy-tabs="1"\` for server-filled panels). Clicking tabs switches views. For **engagement dashboards** (above), period tabs MUST also drive chart + lists via **shared script state**, not CSS-only :target tricks alone.
-  • **Expand/collapse:** \`<button type="button" data-viz-toggle=".my-panel">\` — targets toggle class \`viz-open\`; style \`.my-panel { display:none }\` and \`.my-panel.viz-open { display:block }\` (or max-height) as needed.
-  • **Filter chips (tables):** Wrap controls + table in \`<div data-viz-filter-host>\`. Chips: \`<button type="button" data-viz-filter="all">\` plus one button per category value. Table rows: \`<tr data-viz-row-cat="marketing">…</tr>\` — clicking a chip shows matching rows (or all).
-  • **Native:** \`<details>\` / \`<summary>\` for accordions; CSS \`:hover\` on cards.
-  • **Charts (optional):** You may add \`<script src="https://cdn.jsdelivr.net/npm/chart.js">\` once and a short inline script with **inline data only** (no \`fetch\`, no external analytics). Use for hoverable legends / tooltips — keep bundle small.
+━━━ INTERACTIVITY — MANDATORY FULL INTERACTIVITY (EMBEDDED PREVIEW — NO BACKEND) ━━━
+The HTML runs in a sandboxed iframe with scripts enabled. Every element that LOOKS interactive MUST be interactive. No decorative dead controls. End the document with one inline <script> IIFE wiring all patterns used.
+
+MANDATORY for ALL Gabriel visualization types (not just engagement dashboards):
+  • **Tabs (all families):** Use \`data-viz-host-tabs="1"\` + \`role="tab"\` + \`data-viz-tab\` buttons + \`data-viz-tab-panel\` sections. ALL panels fully rendered. One IIFE tab script handles click → show/hide. NEVER use CSS-only radio+label tricks. For engagement dashboards, period tabs MUST also drive chart data and list numbers via shared JS state — not :target alone.
+  • **Nav menus / sidebars:** \`data-viz-nav\` on the nav, \`data-viz-nav-item="id"\` on links, \`data-viz-section="id"\` on sections. Click reveals matching section, hides others, toggles viz-nav-active class. e.preventDefault() on anchors.
+  • **Filter chips:** \`data-viz-filter-host\` wrapper, \`data-viz-filter="value"\` chips, \`data-viz-row-cat="value"\` on rows or cards. Click chip shows matching rows (or all). Clicking a source/referrer row in engagement dashboards MUST filter the content list.
+  • **Forms & save buttons:** \`<input>\`/\`<textarea>\`/\`<select>\` accept input natively. Save/apply buttons: \`data-viz-save\` attribute — on click, show "Saved ✓" with green background for 2s, then reset.
+  • **Checkboxes:** \`role="checkbox"\` + \`aria-checked="false"\` + \`data-viz-checkbox\`. Click or Space/Enter toggles aria-checked and glyph ☐↔☑.
+  • **Expand/collapse:** \`data-viz-toggle="#target-id"\` on button — click shows/hides target element.
+  • **Native collapsible:** \`<details>\`/\`<summary>\` for drill-down — no script needed.
+  • **Charts:** \`<script src="https://cdn.jsdelivr.net/npm/chart.js">\` allowed once with inline data only (no fetch). Hoverable legends and tooltips.
+  • **Hover:** cursor:pointer + :hover state on ALL clickable elements.
 
 SELECTION FALLBACK when the topic is thin: executive one-pager with 3–5 KPI cards, "Excel mirror" dashboard layout (metric grid + one hero chart), before/after comparison table, or campaign + SoMe snapshot board with a clean link row.`;
 
@@ -96,7 +102,7 @@ Infer industry, stakeholders, and metrics purely from the transcript. Do not ass
 
 Use a cohesive professional visual system derived from the discussion — avoid injecting a specific corporate brand identity unless the meeting names one.
 
-Interactivity (optional, scripts allowed in preview iframe): \`data-viz-host-tabs\` tab bars; \`data-viz-toggle\` for expand/collapse; \`data-viz-filter-host\` + \`data-viz-filter\` on buttons + \`data-viz-row-cat\` on rows for table filters; \`<details>\`; optional Chart.js from cdn.jsdelivr.net with inline data only (no fetch).`;
+⚡ MANDATORY FULL INTERACTIVITY — every element that looks interactive MUST be interactive. Use JavaScript for ALL tab bars (\`data-viz-host-tabs\` + \`role="tab"\` + \`data-viz-tab\` → \`data-viz-tab-panel\`), nav menus (\`data-viz-nav\` + \`data-viz-nav-item\` → \`data-viz-section\`), filter chips (\`data-viz-filter-host\` + \`data-viz-filter\` on buttons, \`data-viz-row-cat\` on rows), save buttons (\`data-viz-save\` → "Saved ✓" feedback), checkboxes (\`role="checkbox"\` + \`aria-checked\` + \`data-viz-checkbox\`), and toggles (\`data-viz-toggle="#id"\`). NEVER use CSS-only radio+label tab tricks. One IIFE at end of body wires all patterns. Chart.js from cdn.jsdelivr.net is allowed with inline data only (no fetch).`;
 
 const GABRIEL_BRAND_TECH = `━━━ VISUEL IDENTITET (GABRIEL-MINDED / DATA STORYTELLING) ━━━
 Roligt nordisk udtryk egnet til rapporter og analyse: varme neutrale flader, dybe grønne eller blæk accenter, høj læsbarhed på tal og akser. Grafer og tabeller først; decorative hardware undgås. Ingen tvungne pump- eller vandteknik-motiver.

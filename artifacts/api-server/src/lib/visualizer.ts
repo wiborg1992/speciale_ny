@@ -120,7 +120,7 @@ This product is Meeting AI **Visualizer**: participants expect a **designed visu
   • Include at least one strong **visual structure**: CSS Grid/Flex **cards**, **SVG** flow/timeline/journey, **table** with real columns, **dashboard** regions/KPI tiles, **HMI-style** widgets, journey **swim lanes**, or similar — filled with content *inferred from* the transcript, not copy-pasted as running speech
   • If the transcript is thin or vague: still ship a credible **prototype** with clearly labeled placeholders — it must remain visibly a UI/diagram artifact, not a note page
   • Prefer interactive-feeling layout (tabs, sections, metric tiles) over essay layout; text belongs *inside* structured components
-  • ⚡ MANDATORY INTERACTIVITY: Every visualization MUST include at least one piece of **functional JavaScript interaction** — a working tab bar, a toggle/accordion, sortable table column, or filter chips. Static decorative "tabs" with no click handler are **not acceptable**. Minimum: one <script> block handling at least one user event.
+  • ⚡ MANDATORY FULL INTERACTIVITY — ZERO DEAD ZONES: Every element that **looks** interactive MUST actually work in the browser. Concretely: (1) every tab bar switches visible content on click via JavaScript, (2) every form input accepts keystrokes and every save/apply/submit button gives visual feedback ("Saved ✓", button color change) via JS, (3) every checkbox toggles its checked state and updates any linked counter or summary, (4) every filter chip, dropdown, or search field hides/shows the rows or cards it targets, (5) every navigation item reveals the correct section. The minimum is ALL interactive-looking elements have JavaScript event handlers — not "at least one script block". Static decorative tabs, dead filter chips, or forms that do nothing on click are NEVER acceptable.
   • ALL transcript content — including spoken UI change requests, button changes, layout feedback — must be incorporated INTO the visualization as actual visual changes (new/updated components, revised labels, changed layouts), NEVER as a text note appended below.
   Dense editorial layouts (management summary, decision log) are allowed when the type calls for it — but they MUST still use **structured sections** (KPI row, timeline bar, decision **cards**, owner chips) — never a plain "notepad" aesthetic.
 
@@ -626,44 +626,96 @@ Overview / Oversigt (default first tab):
   3-4 KPI tiles, pump status map if multiple pumps, key decisions/actions from transcript.
 
 ━━━ INTERACTIVITY (embed in the HTML; no external libraries) ━━━
-The visualization must feel genuinely usable. MANDATORY real controls:
 
-A) LOGIN FLOW — when transcript mentions login screen/onboarding: generate real login + dashboard behind it.
-B) STATEFUL CONTROLS — pump panels: START/STOP buttons toggle running class, MODE selector switches visual states, ALARM ACK clears ledAlarm.
-C) HMI PRIMARY TABS + CLICKABLE PANELS — **ONLY for family hmi_interface** (Grundfos iSolutions–style dashboard with a horizontal main tab bar). **Do NOT** use this full data-viz-host-tabs shell, mandatory tab script, or iSolutions primary-tab chrome for requirements_matrix, user_journey, workflow_process, physical_product, generic, etc. — those families use (D) CSS-only tabs, static sections, or tables instead.
+GOLDEN RULE: Every element that looks interactive MUST be interactive — no dead zones, no decorative controls.
+End every visualization with a single inline <script> IIFE that wires all patterns you used.
 
-When **and only when** hmi_interface is the active visualization family, if you show a horizontal main tab strip (Overview | Settings | Drift log | Security | …), implement it as:
-<div data-viz-host-tabs="1" data-viz-lazy-tabs="1" class="(your root class)">
-  <div role="tablist" class="(tab strip class)">
-    <button type="button" role="tab" data-viz-tab="0" aria-selected="true" class="viz-tab-active (your tab class)">OVERVIEW</button>
-    <button type="button" role="tab" data-viz-tab="1" aria-selected="false" class="(your tab class)">SAFETY</button>
+─── A) TABS — USE FOR ALL VISUALIZATION FAMILIES ───
+Any tab strip (period tabs, section tabs, sub-panels) in ANY family must use JavaScript, not CSS-only radio tricks.
+
+HTML structure (use string IDs, not integers, for readability):
+  <div data-viz-host-tabs="1">
+    <div role="tablist" class="(your tab strip class)">
+      <button type="button" role="tab" data-viz-tab="overview" aria-selected="true" class="viz-tab-active (your class)">Overview</button>
+      <button type="button" role="tab" data-viz-tab="details" aria-selected="false" class="(your class)">Details</button>
+    </div>
+    <section data-viz-tab-panel="overview" style="display:block">...FULL content...</section>
+    <section data-viz-tab-panel="details" style="display:none" hidden>...FULL content...</section>
   </div>
-  <div class="(panels wrapper)">
-    <section data-viz-tab-panel="0" style="display:block">...FULL content for tab 0 only...</section>
-    <section data-viz-tab-panel="1" style="display:none" hidden data-viz-pending="1" data-viz-tab-label="Safety"><p style="color:#a8b8cc;padding:1rem">Loading...</p></section>
+
+Rules: data-viz-tab value MUST equal data-viz-tab-panel value. First panel: style="display:block", no hidden. All other panels: style="display:none" AND hidden (both). All panels FULLY rendered — no lazy placeholders for non-HMI families. Multiple tab hosts on one page are fine.
+
+Tab script (include once, handles ALL [data-viz-host-tabs] on the page):
+  <script>(function(){document.querySelectorAll('[data-viz-host-tabs]').forEach(function(host){host.querySelectorAll('[role="tab"]').forEach(function(tab){tab.addEventListener('click',function(){var id=tab.getAttribute('data-viz-tab');host.querySelectorAll('[role="tab"]').forEach(function(t){t.setAttribute('aria-selected',t===tab?'true':'false');t.classList.toggle('viz-tab-active',t===tab);});host.querySelectorAll('[data-viz-tab-panel]').forEach(function(p){var show=p.getAttribute('data-viz-tab-panel')===id;p.style.display=show?'block':'none';if(show){p.removeAttribute('hidden');}else{p.setAttribute('hidden','');}});});});});})()</script>
+
+─── B) HMI LAZY TABS (hmi_interface family only) ───
+Same HTML + script as A, but add data-viz-lazy-tabs="1" to the host and make non-first panels lazy:
+  <section data-viz-tab-panel="safety" style="display:none" hidden data-viz-pending="1" data-viz-tab-label="Safety">
+    <p style="color:#a8b8cc;padding:1rem">Loading…</p>
+  </section>
+The tab script above already handles lazy panels; the iframe host fills them on first open.
+
+─── C) NAV MENUS / SIDEBARS (section switching) ───
+HTML:
+  <nav data-viz-nav>
+    <a href="#" data-viz-nav-item="overview" class="viz-nav-active">Overview</a>
+    <a href="#" data-viz-nav-item="analysis">Analysis</a>
+  </nav>
+  <section data-viz-section="overview" style="display:block">...full content...</section>
+  <section data-viz-section="analysis" style="display:none" hidden>...full content...</section>
+
+Script snippet:
+  document.querySelectorAll('[data-viz-nav]').forEach(function(nav){nav.querySelectorAll('[data-viz-nav-item]').forEach(function(link){link.addEventListener('click',function(e){e.preventDefault();var id=link.getAttribute('data-viz-nav-item');nav.querySelectorAll('[data-viz-nav-item]').forEach(function(l){l.classList.toggle('viz-nav-active',l===link);});document.querySelectorAll('[data-viz-section]').forEach(function(s){var show=s.getAttribute('data-viz-section')===id;s.style.display=show?'block':'none';if(show){s.removeAttribute('hidden');}else{s.setAttribute('hidden','');}});});});});
+
+─── D) FILTER CHIPS (filterable tables, card grids, lists) ───
+HTML:
+  <div data-viz-filter-host>
+    <button type="button" data-viz-filter="all" class="viz-filter-active">All</button>
+    <button type="button" data-viz-filter="must">Must</button>
+    <button type="button" data-viz-filter="should">Should</button>
   </div>
-</div>
-Rules: data-viz-tab value MUST match data-viz-tab-panel. First panel: style="display:block" — NO hidden. Non-first: style="display:none" AND hidden AND data-viz-pending="1".
+  Rows/cards: <tr data-viz-row-cat="must">…</tr>   or   <div data-viz-row-cat="must">…</div>
 
-**hmi_interface only — tab switching script (mandatory; no dead clicks):** End the document with an inline <script> (no CDN) that on tab click updates aria-selected, shows the matching panel (display:block, remove hidden), and hides others. Prefer matching within each data-viz-host-tabs host. IIFE or DOMContentLoaded. Minimal pattern:
-  <script>(function(){document.querySelectorAll('[data-viz-host-tabs]').forEach(function(host){host.querySelectorAll('[data-viz-tab]').forEach(function(tab){
-    tab.addEventListener('click',function(){
-      var id=tab.getAttribute('data-viz-tab');
-      host.querySelectorAll('[data-viz-tab]').forEach(function(t){t.setAttribute('aria-selected',t===tab?'true':'false');});
-      host.querySelectorAll('[data-viz-tab-panel]').forEach(function(p){
-        p.style.display=p.getAttribute('data-viz-tab-panel')===id?'block':'none';
-        if(p.style.display==='none'){p.setAttribute('hidden','');}else{p.removeAttribute('hidden');}
-      });
-    });
-  });});})();</script>
-Alternative for hmi_interface only: button.tab-btn with data-tab="overview" plus div.tab-content#overview plus a small IIFE that toggles .active / display — same requirement: tabs MUST switch visible content in the browser.
+Script snippet:
+  document.querySelectorAll('[data-viz-filter-host]').forEach(function(host){host.querySelectorAll('[data-viz-filter]').forEach(function(chip){chip.addEventListener('click',function(){var cat=chip.getAttribute('data-viz-filter');host.querySelectorAll('[data-viz-filter]').forEach(function(c){c.classList.toggle('viz-filter-active',c===chip);});host.querySelectorAll('[data-viz-row-cat]').forEach(function(row){row.style.display=(cat==='all'||row.getAttribute('data-viz-row-cat')===cat)?'':'none';});});});});
 
-D) TABS (CSS-only): Hidden radio + labels for simple layouts — **preferred for non-hmi_interface families** when sub-sections need tab-like UI.
-E) TOGGLES: data-viz-toggle="selector" — host toggles class viz-open.
-F) COLLAPSIBLE: <details><summary> for drill-down metrics.
-G) HOVER: All cards/buttons use cursor:pointer and :hover state.
+─── E) FORMS & SAVE / APPLY BUTTONS ───
+Standard <input>, <textarea>, <select> accept user input natively — no extra JS needed.
+Save/Apply buttons MUST give visual feedback:
+  <button type="button" data-viz-save>Save</button>   (optional: data-viz-save-label="Applied ✓")
 
-SCRIPT RULES: No external scripts. No fetch/XHR. No alert()/confirm(). No eval(). Inline <script> allowed for stateful interactions.
+Script snippet:
+  document.querySelectorAll('[data-viz-save]').forEach(function(btn){btn.addEventListener('click',function(){var label=btn.getAttribute('data-viz-save-label')||'Saved \u2713';var orig=btn.textContent;var origBg=btn.style.background;btn.textContent=label;btn.style.background='#16a34a';btn.style.color='#fff';setTimeout(function(){btn.textContent=orig;btn.style.background=origBg;btn.style.color='';},2000);});});
+
+─── F) CHECKBOXES ───
+<span role="checkbox" aria-checked="false" tabindex="0" data-viz-checkbox class="(your class)">☐</span>
+
+Script snippet:
+  document.querySelectorAll('[data-viz-checkbox]').forEach(function(box){function toggle(){var checked=box.getAttribute('aria-checked')==='true';box.setAttribute('aria-checked',checked?'false':'true');box.textContent=checked?'\u2610':'\u2611';box.closest('[data-viz-check-row]')&&box.closest('[data-viz-check-row]').classList.toggle('viz-checked',!checked);}box.addEventListener('click',toggle);box.addEventListener('keydown',function(e){if(e.key===' '||e.key==='Enter'){e.preventDefault();toggle();}});});
+
+─── G) TOGGLES / EXPAND-COLLAPSE ───
+<button type="button" data-viz-toggle="#my-panel">Show details ▾</button>
+<div id="my-panel" style="display:none">...content...</div>
+
+Script snippet:
+  document.querySelectorAll('[data-viz-toggle]').forEach(function(btn){btn.addEventListener('click',function(){var target=document.querySelector(btn.getAttribute('data-viz-toggle'));if(!target)return;var open=target.style.display!=='none';target.style.display=open?'none':'block';});});
+
+─── H) COLLAPSIBLE SECTIONS ───
+<details><summary>Section title</summary>...content...</details>
+Native HTML — no script needed.
+
+─── I) STATEFUL CONTROLS (pump panels) ───
+START/STOP buttons: toggle a running CSS class on the panel and flip button text/color.
+MODE selector: onChange swaps panel visual state and updates a mode badge.
+ALARM ACK: click removes the alarm indicator class and disables the button.
+
+─── J) LOGIN FLOW ───
+When transcript mentions login/onboarding: show a login form. Clicking "Sign in" hides #login-screen, reveals #dashboard. Any password accepted in prototype mode (or validate one fixed demo credential).
+
+─── K) HOVER — always ───
+All clickable elements: cursor:pointer in CSS + :hover state (color, background, or shadow change).
+
+SCRIPT RULES: No external scripts except Chart.js (cdn.jsdelivr.net) for charts with inline data only. No fetch/XHR. No alert()/confirm(). No eval(). Combine all patterns into one IIFE at end of <body>.
 
 ━━━ DESIGN-REGLER FOR IKKE-HMI VISUALISERINGER (KRITISK) ━━━
 
