@@ -1,3 +1,4 @@
+import "@excalidraw/excalidraw/index.css";
 import { forwardRef, lazy, Suspense, useCallback, useImperativeHandle, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Loader2, PenLine, X } from "lucide-react";
@@ -151,7 +152,7 @@ export const SketchModal = forwardRef<SketchModalHandle, SketchModalProps>(
             </div>
 
             {/* Canvas */}
-            <div className="flex-1 min-h-0 relative">
+            <div className="flex-1 min-h-0 relative" style={{ height: "calc(100vh - 48px)" }}>
               <Suspense
                 fallback={
                   <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-zinc-950">
@@ -160,17 +161,19 @@ export const SketchModal = forwardRef<SketchModalHandle, SketchModalProps>(
                   </div>
                 }
               >
-                <Excalidraw
-                  excalidrawAPI={handleApiReady}
-                  theme="dark"
-                  UIOptions={{
-                    canvasActions: {
-                      saveAsImage: false,
-                      loadScene: false,
-                      export: false,
-                    },
-                  }}
-                />
+                <div style={{ width: "100%", height: "100%" }}>
+                  <Excalidraw
+                    excalidrawAPI={handleApiReady}
+                    theme="dark"
+                    UIOptions={{
+                      canvasActions: {
+                        saveAsImage: false,
+                        loadScene: false,
+                        export: false,
+                      },
+                    }}
+                  />
+                </div>
               </Suspense>
             </div>
           </motion.div>
