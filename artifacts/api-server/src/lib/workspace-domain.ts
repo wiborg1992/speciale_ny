@@ -61,11 +61,24 @@ Hybrid content is normal — include when the discussion supports it:
   • Links & references: styled <a href="…"> rows, resource lists, "see also" footers — never hallucinate domains.
   • Narrative + data: headline, short summary strip, then the quantitative core.
 
+━━━ ENGAGEMENT / REAL-TIME ANALYTICS DASHBOARD (GABRIEL) — WHEN TOPIC MATCHES ━━━
+Use this pattern when the discussion is **editorial or marketing web analytics**: live readers, concurrents, pageviews, uniques, engaged time, recirculation, traffic sources / referrers (search, social, direct, internal, e-mail), device split, article or content performance, time ranges (today / 7-day / 30-day), **engagement**, newsroom dashboards, "live" or **real-time** metrics. Matches Danish/English cues: engagement, sidevisninger, læsere, live data, realtid, henvisninger, trafik, artikler, discover, retention.
+
+**Visual language** (not dark industrial HMI): light editorial surface (#f8fafc–#faf9f7), subtle dividers, **ink or deep green** accents (Gabriel — avoid Grundfos/SCADA cyan defaults). **Three-column** layout when space allows: **left** = headline KPIs + small bars (loyalty, devices, subscribers if relevant); **center** = **stacked area or multi-series chart** over time + **ranked content list** with numeric columns (e.g. concurrents, engaged time, pageviews); **right** = traffic mix + **referrer list**. Top row may include filter chips (section, author) if the meeting mentions them. Use coherent **demo figures** when specifics are absent; one discreet "Example data" note.
+
+**Interactivity for this pattern — REQUIRED (one shared JS state, no three static snapshots):**
+  1) **Period tabs** (e.g. TODAY · 7-DAY · 30-DAY — or labels from the transcript): each tab MUST drive **the same** dataset view: update the **center chart**, **content/article table numbers**, and **right-column shares** together (\`activePeriod\` or equivalent).
+  2) Clicking a **source** or **referrer** row MUST **filter or dim** rows in the content list (and optionally sync chart emphasis). Provide a visible way to **clear** the filter (same item again or an "All" control).
+  3) One trailing inline \`<script>\` **IIFE**; **inline data only** — no \`fetch\`. Use \`data-*\` hooks or stable IDs.
+  4) If constrained by length: **reduce widgets**, never ship **non-functional** period tabs.
+
+Do **not** copy third-party analytics **brand names**, logos, or trademark UI — "editorial real-time analytics **style**" only.
+
 Do NOT default to water hydraulics, pumps, m³/h, NPSH, or Grundfos product lines unless the speakers actually discuss them.
 
 ━━━ INTERACTIVITY (EMBEDDED PREVIEW — NO BACKEND) ━━━
 The HTML runs inside a sandboxed iframe with scripts enabled. Prefer lightweight interaction so stakeholders can explore the mockup:
-  • **Tabs:** Reuse the host pattern from the long system prompt: \`data-viz-host-tabs\`, \`role="tab"\` + \`data-viz-tab\`, panels \`data-viz-tab-panel\` (optional \`data-viz-lazy-tabs="1"\` for server-filled panels). Clicking tabs switches views.
+  • **Tabs:** Reuse the host pattern from the long system prompt: \`data-viz-host-tabs\`, \`role="tab"\` + \`data-viz-tab\`, panels \`data-viz-tab-panel\` (optional \`data-viz-lazy-tabs="1"\` for server-filled panels). Clicking tabs switches views. For **engagement dashboards** (above), period tabs MUST also drive chart + lists via **shared script state**, not CSS-only :target tricks alone.
   • **Expand/collapse:** \`<button type="button" data-viz-toggle=".my-panel">\` — targets toggle class \`viz-open\`; style \`.my-panel { display:none }\` and \`.my-panel.viz-open { display:block }\` (or max-height) as needed.
   • **Filter chips (tables):** Wrap controls + table in \`<div data-viz-filter-host>\`. Chips: \`<button type="button" data-viz-filter="all">\` plus one button per category value. Table rows: \`<tr data-viz-row-cat="marketing">…</tr>\` — clicking a chip shows matching rows (or all).
   • **Native:** \`<details>\` / \`<summary>\` for accordions; CSS \`:hover\` on cards.
