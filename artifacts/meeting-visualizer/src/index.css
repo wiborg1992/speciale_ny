@@ -118,3 +118,11 @@
 .glow-border:hover::before {
   @apply opacity-100;
 }
+
+
+/* Annotation-mode Excalidraw: gør wrapper og canvas-baggrunde transparente */
+.annotation-excalidraw .excalidraw,
+.annotation-excalidraw .excalidraw .Island,
+.annotation-excalidraw .excalidraw-container {
+  background: transparent !important;
+}
