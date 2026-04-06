@@ -524,8 +524,10 @@ GRUNDFOS HARDWARE COLOURS (reference):
 
 SURROUNDING LAYOUT (for all pump/controller types):
   Top: product name hero title — Outfit 2.2rem font-weight:700 color:#002A5C
-  Spec cards: border-left:4px solid #0077C8; background:#fff; border-radius:8px; box-shadow
-  Callout annotations: SVG line from product part to label text outside the drawing
+  THE PRODUCT SVG IS THE HERO — it must fill at least 65% of viewport height, centered.
+  Below the SVG: MAXIMUM 2 compact info boxes (not cards with long text — just a short label and 1-2 key values).
+  Callout annotations: SVG <line> elements directly on the product drawing — labels embedded next to the product, NOT in separate cards.
+  DO NOT add requirements lists, specification tables, or long descriptive paragraphs. The drawing speaks for itself.
 
 ━━━ USER JOURNEY MAP — FULL VISUAL SPEC ━━━
 Visual language: Miro/Figma UX style. Light background #F7F8FA.
@@ -924,22 +926,28 @@ Show clear start → process nodes → decision points → end states.
 Use Grundfos colours, crisp lines, directional arrows, numbered steps.
 DO NOT use dark HMI style. DO NOT generate journey maps or pump hardware.`,
 
-  physical_product: `GENERATE: PHYSICAL PUMP HARDWARE ILLUSTRATION — photorealistic SVG product drawing.
+  physical_product: `GENERATE: PHYSICAL PUMP HARDWARE ILLUSTRATION — the product drawing IS the visualization.
 
-YOU WILL RECEIVE COMPLETE SVG TEMPLATES BELOW. YOUR JOB:
+LAYOUT RULE — NON-NEGOTIABLE:
+  The SVG product illustration must occupy at LEAST 65% of the viewport height and be centered.
+  Below it: MAXIMUM 2 compact info boxes — each just a short label + 1-2 key values from the transcript.
+  NO requirements lists. NO long descriptions. NO specification tables. NO more than 2 boxes.
+  If the transcript has no specific values, leave the 2 boxes very minimal or omit them entirely.
+  The product drawing speaks for itself.
+
+YOUR JOB:
 1. IDENTIFY which product is discussed (CU controller, Alpha GO circulator, CR/CRE pump, etc.)
 2. COPY the matching SVG template — it contains all gradients, shadows, filters, and structural detail
 3. ADAPT values: change display readings, model name, LED states, button labels to match the transcript
 4. EMBED the SVG inside a clean white (#F8FAFC) HTML page with:
-   - Product title: font-family Outfit, 2rem, font-weight 700, color #002A5C
-   - The SVG centered and large (at least 300px wide)
-   - 3-4 spec cards around/below the SVG with parameters from the transcript
-   - Callout annotations: SVG <line> elements from product parts to label text
+   - Product title: font-family Outfit, 2rem, font-weight 700, color #002A5C — ABOVE the SVG
+   - The SVG large and centered — at least 65% viewport height
+   - Callout annotations: SVG <line> elements directly on/around the product, label text near the product — NOT in separate cards
+   - MAXIMUM 2 compact info boxes below (short label + 1-2 values each, not long prose)
 
-CRITICAL QUALITY RULES:
+SVG QUALITY RULES:
   • NEVER simplify the SVG — keep ALL gradients, filters, shadows, highlight effects
   • NEVER replace detailed template elements with simple flat rectangles
-  • The template SVG is your MINIMUM quality bar — you may ADD detail but never remove it
   • Each LED must have a highlight dot (small white circle, opacity 0.3)
   • Each button must have a gradient face (not flat fill)
   • The enclosure must have edge highlights and shadow filters
@@ -947,6 +955,7 @@ CRITICAL QUALITY RULES:
   • If the transcript mentions specific values (flow, pressure, RPM), show them on the display
 
 DO NOT use dark HMI dashboard style. DO NOT generate journey maps or flowcharts.
+DO NOT generate 3-4 spec cards, requirement sections, or text-heavy layouts.
 The visualization MUST be dominated by the large, detailed SVG product illustration.`,
 
   requirements_matrix: `GENERATE: REQUIREMENTS TRACEABILITY MATRIX — structured table layout.
