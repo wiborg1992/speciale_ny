@@ -24,12 +24,28 @@ interface SketchModalProps {
   open: boolean;
   onClose: () => void;
   onSave: (result: { pngBase64: string; sceneJson: string; previewDataUrl: string; elementCount: number }) => void;
+  initialSceneJson?: string | null;
   title?: string;
 }
 
 export const SketchModal = forwardRef<SketchModalHandle, SketchModalProps>(
-  ({ open, onClose, onSave, title = "Tegn en skitse til din session" }, ref) => {
+  ({ open, onClose, onSave, initialSceneJson, title = "Tegn en skitse til din session" }, ref) => {
     const excalidrawApiRef = useRef<ExcalidrawAPI | null>(null);
+
+    // Parse gemte elementer til Excalidraw initialData (kun elementer, ikke appState)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const initialData: { elements: any[] } | undefined = (() => {
+      if (!initialSceneJson) return undefined;
+      try {
+        const parsed = JSON.parse(initialSceneJson) as { elements?: unknown[] };
+        if (Array.isArray(parsed.elements) && parsed.elements.length > 0) {
+          return { elements: parsed.elements };
+        }
+      } catch {
+        // ignore — start med tom canvas
+      }
+      return undefined;
+    })();
 
     const getElementCount = useCallback(() => {
       const api = excalidrawApiRef.current;
@@ -166,6 +182,7 @@ export const SketchModal = forwardRef<SketchModalHandle, SketchModalProps>(
                   <Excalidraw
                     excalidrawAPI={handleApiReady}
                     theme="dark"
+                    initialData={initialData}
                     UIOptions={{
                       canvasActions: {
                         saveAsImage: false,

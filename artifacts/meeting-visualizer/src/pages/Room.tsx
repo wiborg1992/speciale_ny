@@ -124,9 +124,19 @@ export default function Room() {
 
   // Sketch modal + sketch state
   const [sketchModalOpen, setSketchModalOpen] = useState(false);
-  const [sketchId, setSketchId] = useState<string | null>(null);
-  const [sketchPreviewDataUrl, setSketchPreviewDataUrl] = useState<string | null>(null);
-  const [sketchElementCount, setSketchElementCount] = useState(0);
+  const [sketchId, setSketchId] = useState<string | null>(() =>
+    roomId ? sessionStorage.getItem(`sketch_id_${roomId}`) : null,
+  );
+  const [sketchPreviewDataUrl, setSketchPreviewDataUrl] = useState<string | null>(() =>
+    roomId ? sessionStorage.getItem(`sketch_preview_${roomId}`) : null,
+  );
+  const [sketchElementCount, setSketchElementCount] = useState(() => {
+    const v = roomId ? sessionStorage.getItem(`sketch_count_${roomId}`) : null;
+    return v ? parseInt(v, 10) : 0;
+  });
+  const [sketchSceneJson, setSketchSceneJson] = useState<string | null>(() =>
+    roomId ? sessionStorage.getItem(`sketch_scene_${roomId}`) : null,
+  );
 
   // Fixation-breaker: antal inkrementelle forbedringer i træk
   const [consecutiveRefinements, setConsecutiveRefinements] = useState(0);
@@ -660,7 +670,15 @@ export default function Room() {
     async (result: { pngBase64: string; sceneJson: string; previewDataUrl: string; elementCount: number }) => {
       setSketchPreviewDataUrl(result.previewDataUrl);
       setSketchElementCount(result.elementCount);
+      setSketchSceneJson(result.sceneJson);
       setSketchModalOpen(false);
+
+      // Gem i sessionStorage så "Rediger canvas" gendanner skitsen ved reload
+      if (roomId) {
+        sessionStorage.setItem(`sketch_preview_${roomId}`, result.previewDataUrl);
+        sessionStorage.setItem(`sketch_count_${roomId}`, String(result.elementCount));
+        sessionStorage.setItem(`sketch_scene_${roomId}`, result.sceneJson);
+      }
 
       if (roomId) {
         try {
@@ -679,6 +697,7 @@ export default function Room() {
           if (res.ok) {
             const json = (await res.json()) as { sketchId: string };
             setSketchId(json.sketchId);
+            sessionStorage.setItem(`sketch_id_${roomId}`, json.sketchId);
             sessionEval.recordSketchUsed({
               sketchId: json.sketchId,
               elementCount: result.elementCount,
@@ -1380,6 +1399,7 @@ export default function Room() {
         open={sketchModalOpen}
         onClose={() => setSketchModalOpen(false)}
         onSave={handleSaveSketch}
+        initialSceneJson={sketchSceneJson}
         title="Tegn en layoutskitse til din session"
       />
 
@@ -2196,6 +2216,13 @@ export default function Room() {
                   setSketchId(null);
                   setSketchPreviewDataUrl(null);
                   setSketchElementCount(0);
+                  setSketchSceneJson(null);
+                  if (roomId) {
+                    sessionStorage.removeItem(`sketch_id_${roomId}`);
+                    sessionStorage.removeItem(`sketch_preview_${roomId}`);
+                    sessionStorage.removeItem(`sketch_count_${roomId}`);
+                    sessionStorage.removeItem(`sketch_scene_${roomId}`);
+                  }
                 }}
               />
             )}
