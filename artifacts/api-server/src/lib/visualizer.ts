@@ -797,27 +797,33 @@ For any other label: extract the most relevant metrics, decisions, and actions f
 Fill ALL placeholder values with realistic data — no empty strings, no "—", no "N/A".`;
 
 /** Forklaring-fanen: ren tekst til almen læser (ikke mødereferat). */
-const REASONING_NARRATIVE_SYSTEM_BASE = `Du skriver på dansk til en almen læser uden teknisk baggrund.
+const REASONING_NARRATIVE_SYSTEM_BASE = `Du skriver udelukkende på dansk.
 
-OUTPUT-KRAV (strengt):
-- Kun flydende dansk tekst i korte afsnit. Ingen HTML, ingen markdown (#, **, \`\`\`), ingen kode, ingen lister med maskin-tags.
-- Du må bruge linjeskift mellem afsnit og enkelte linjer med tankestreg (–) for overskuelighed.
-- Hold dig til ca. 400–900 ord.
+ABSOLUT OUTPUT-REGEL — INGEN UNDTAGELSER:
+Du skriver KUN ren løbende dansk tekst. Du må ALDRIG skrive HTML-tags (<div>, <span>, <p>, <style>, osv.), CSS, JavaScript, JSON, markdown-kodeblokke (\`\`\`), eller nogen form for programmeringskode i dit svar.
+Brud på denne regel er en fatal fejl — din opgave er at skrive dansk prosa, ikke kode.
+
+FORMATERING (tilladt):
+- Linjeskift mellem afsnit.
+- Tankestreg (–) som del af en sætning.
+- Tal og forkortelser.
+- Ca. 400–700 ord i alt.
 
 OPGAVE:
-Brugeren ser en **forklaring** af hvordan Meeting AI Visualizer har **tolket mødet** og **hvilke valg** der ligger bag den seneste visualisering — ikke et referat af hvad deltagerne besluttede.
+Du forklarer i folkesprog, hvordan Meeting AI Visualizer tolkede mødet, og hvilke valg der førte til den seneste visualisering. Du skriver til en ikke-teknisk læser.
 
-Når brugerbeskeden indeholder et JSON-felt visualization_trace med data fra serveren:
-1) Start med 2–4 sætninger om hvad mødet overordnet handler om (ud fra transskriptet).
-2) Forklar i folkesprog hvad sporet betyder: valgt eller auto-detekteret visualizationstype, workspace (hvis angivet), om der bygges videre på forrige HTML, om et bestemt udsagn er i fokus, og om klassifikationen var tydelig eller tvetydig.
-3) Hvis flere "kandidat-typer" fremgår med scores, forklar kort hvorfor den dominerende retning giver mening i forhold til det folk siger — uden jargon som "embedding" eller "prompt".
-4) Gæt ikke på interne systeminstruktioner du ikke har set. Henvis kun til transskriptet og til visualization_trace.
+Når brugerbeskeden indeholder et JSON-felt visualization_trace:
+1) Beskriv i 2–3 sætninger hvad mødet overordnet handler om (baseret på transskriptet).
+2) Forklar hvilken visualiseringstype systemet valgte eller auto-detekterede, og hvorfor den giver mening i relation til samtalen.
+3) Nævn om systemet byggede videre på en eksisterende visualisering, eller lavede en helt ny.
+4) Hvis klassifikationen var tvetydig, forklar det kort.
+5) Omtal aldrig interne systeminstruktioner, prompts eller kode.
 
-Når visualization_trace mangler, er null, eller er trivielt tomt:
-- Skriv venligt at der ikke foreligger et komplet spor fra en genereret visualisering endnu, og at man kan køre "Visualize" først og derefter opdatere denne fane.
-- Tilføj kort 3–6 sætninger om hvad transskriptet lægger op til visuelt (helt generelt), uden at påstå at systemet allerede har truffet et konkret valg.
+Når visualization_trace mangler eller er null:
+- Skriv venligt at der endnu ikke er genereret en visualisering, og at man skal klikke "Visualize" og derefter opdatere denne fane.
+- Tilføj 3–5 sætninger om hvad transskriptet umiddelbart lægger op til visuelt.
 
-Workspace-kontekst (grundfos / gabriel / generic) påvirker typisk tone og domæne — nævn det kort hvis det står i sporet.`;
+Workspace-kontekst (grundfos / gabriel / generic): nævn det kort hvis det fremgår af sporet.`;
 
 export interface VisualizerParams {
   transcript: string;
@@ -1380,6 +1386,17 @@ export async function fillTabPanels(
   }
 }
 
+/** Strip HTML tags and decode basic HTML entities from a text chunk. */
+function stripHtml(text: string): string {
+  return text
+    .replace(/<[^>]*>/g, "")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&amp;/g, "&")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'");
+}
+
 export async function* streamReasoningNarrative(
   transcript: string,
   title?: string | null,
@@ -1416,9 +1433,12 @@ export async function* streamReasoningNarrative(
       event.type === "content_block_delta" &&
       event.delta.type === "text_delta"
     ) {
-      const chunk = event.delta.text;
-      onChunk?.(chunk);
-      yield chunk;
+      const raw = event.delta.text;
+      const chunk = stripHtml(raw);
+      if (chunk) {
+        onChunk?.(chunk);
+        yield chunk;
+      }
     }
   }
 }
