@@ -590,7 +590,7 @@ ${t}
               title="Åbn Excalidraw med visualiseringen som baggrund — tegn ændringer og annotationer"
             >
               <PenLine className="h-3 w-3" />
-              Tegn på
+              Annotate
             </Button>
           )}
 

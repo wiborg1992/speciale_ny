@@ -1409,7 +1409,7 @@ export default function Room() {
     } catch (err) {
       console.error(err);
       setReasoningText(
-        "Kunne ikke hente forklaringen. Prøv igen om lidt.",
+        "Could not load explanation. Please try again in a moment.",
       );
     } finally {
       setIsLoadingActions(false);
@@ -2605,7 +2605,7 @@ export default function Room() {
                       {tab === "actions" && (
                         <>
                           <Sparkles className="w-3.5 h-3.5" />
-                          Forklaring
+                          Explanation
                         </>
                       )}
                       {tab === "technical" && (
@@ -2823,12 +2823,12 @@ export default function Room() {
                     {isLoadingActions ? (
                       <>
                         <RefreshCcw className="w-3.5 h-3.5 mr-1.5 animate-spin" />
-                        Henter forklaring…
+                        Generating…
                       </>
                     ) : (
                       <>
                         <Play className="w-3.5 h-3.5 mr-1.5" />
-                        Opdatér forklaring
+                        Refresh explanation
                       </>
                     )}
                   </Button>

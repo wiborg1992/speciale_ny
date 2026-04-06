@@ -34,81 +34,164 @@ interface ThinkingStep {
   detail: string | null;
   sub?: string[];
   done: boolean;
+  warning?: boolean;
 }
 
 function buildThinkingSteps(info: VizDebugInfo): ThinkingStep[] {
   const steps: ThinkingStep[] = [];
-
   const c = info.classification;
 
-  // 1. Input
+  // ── Step 1: Input received ────────────────────────────────────────────────
   if (c) {
+    const raw = c.inputText?.trim() ?? "";
+    const preview = raw.length > 0
+      ? `"${raw.slice(0, 150)}${raw.length > 150 ? "…" : ""}"`
+      : null;
     steps.push({
-      label: "Analyserede transkript",
-      detail: `${c.inputWords} nye ord · ${c.totalWords} ord i alt · tilstand: ${c.inputMode}`,
+      label: "Input received",
+      detail: `Mode: ${c.inputMode} · ${c.inputWords} new word${c.inputWords !== 1 ? "s" : ""} analyzed · ${c.totalWords} total in transcript`,
+      sub: preview ? [preview] : undefined,
       done: true,
     });
   }
 
-  // 2. Classification
+  // ── Step 2: Content classification ───────────────────────────────────────
   if (c) {
-    const topScores = [...(c.allScores ?? [])]
-      .sort((a, b) => b.score - a.score)
-      .slice(0, 5);
+    const allSorted = [...(c.allScores ?? [])].sort((a, b) => b.score - a.score);
+    const runnerUp = allSorted[1];
+    const leadPct = ((c.lead ?? 0) * 100).toFixed(1);
+
+    const scoreBars = allSorted.map((s) => {
+      const pct = (s.score * 100).toFixed(1);
+      const filled = Math.round(s.score * 16);
+      const bar = "█".repeat(filled) + "░".repeat(16 - filled);
+      const winner = s.family === c.family ? " ◀" : "";
+      return `${s.family.padEnd(22)} ${bar} ${pct}%${winner}`;
+    });
+
     steps.push({
-      label: "Klassificerede mødeindhold",
-      detail: `Familie: ${c.family} · Emne: ${c.topic} · Score: ${c.lead}${c.ambiguous ? " · ⚠ Tvetydigt" : ""}`,
-      sub: topScores.map(
-        (s) => `${s.family}: ${(s.score * 100).toFixed(0)}%`,
-      ),
+      label: "Content classification",
+      detail: `Winner: ${c.family} · lead margin: ${leadPct}%${c.ambiguous ? " · ⚠ AMBIGUOUS — confidence gap too small" : ""}`,
+      sub: [
+        `Topic identified: "${c.topic}"`,
+        runnerUp
+          ? `Runner-up: ${runnerUp.family} (${(runnerUp.score * 100).toFixed(1)}%)`
+          : null,
+        "── All family scores ────────────────────",
+        ...scoreBars,
+      ].filter((x): x is string => x !== null),
       done: true,
+      warning: c.ambiguous,
     });
   }
 
-  // 3. Resolved family / user override
-  if (info.resolvedFamily) {
-    const userPicked = info.userPickedType;
-    steps.push({
-      label: userPicked
-        ? "Bruger valgte visualiseringstype"
-        : "Valgte visualiseringstype",
-      detail: info.resolvedFamily,
-      done: true,
-    });
-  }
-
-  // 4. Approach: incremental / refinement / fresh
+  // ── Step 3: Viz type resolution ───────────────────────────────────────────
   {
-    const parts: string[] = [];
-    if (info.isIncremental) parts.push("Inkrementel opdatering");
-    else parts.push("Generering fra bunden");
-    if (info.isRefinement) parts.push("Finjustering aktiv");
-    if (info.hasPreviousHtml) parts.push("Tidligere visualisering tilgængelig");
-    if (info.refinementDirective)
-      parts.push(`Direktiv: "${info.refinementDirective}"`);
-    if (info.focusSegment)
-      parts.push(`Fokus: "${info.focusSegment}"`);
+    const userPicked = info.userPickedType;
+    const resolved = info.resolvedFamily ?? info.vizType ?? "unknown";
+    const classifierFamily = c?.family;
+    const overridden = classifierFamily && resolved !== classifierFamily && !userPicked;
+
     steps.push({
-      label: "Valgte fremgangsmåde",
-      detail: parts.join(" · "),
+      label: userPicked ? "Viz type — user override" : "Viz type — auto-resolved",
+      detail: resolved,
+      sub: [
+        userPicked
+          ? "User explicitly selected this type; classifier result ignored"
+          : overridden
+            ? `Classifier said: ${classifierFamily} → overridden to: ${resolved}`
+            : "Classifier family accepted as-is",
+      ],
       done: true,
     });
   }
 
-  // 5. Model
+  // ── Step 4: Context & strategy ────────────────────────────────────────────
+  {
+    const approach: string[] = [];
+    const reasoning: string[] = [];
+
+    if (info.isIncremental && info.hasPreviousHtml) {
+      approach.push("Incremental update");
+      reasoning.push("hasPreviousHtml=true → building on top of existing visualization");
+    } else if (!info.isIncremental) {
+      approach.push("Fresh generation");
+      reasoning.push("isIncremental=false → generating from scratch, no previous baseline");
+    } else {
+      approach.push("Standard generation");
+    }
+
+    if (info.isRefinement) {
+      approach.push("Refinement");
+      reasoning.push("isRefinement=true — transcript signals same topic continuation");
+    }
+
+    if (!info.hasPreviousHtml) {
+      reasoning.push("hasPreviousHtml=false — no existing HTML available to build from");
+    }
+
+    if (info.refinementDirective) {
+      approach.push(`Directive: "${info.refinementDirective}"`);
+      reasoning.push(`Explicit refinement instruction: "${info.refinementDirective}"`);
+    }
+
+    if (info.focusSegment) {
+      approach.push(`Focus segment active`);
+      reasoning.push(`User clicked transcript segment: "${info.focusSegment}" — prompt focuses on that excerpt`);
+    }
+
+    if (info.workspaceDomain) {
+      reasoning.push(`Workspace domain: ${info.workspaceDomain} — domain-specific prompt rules applied`);
+    }
+
+    steps.push({
+      label: "Context strategy",
+      detail: approach.join(" · ") || "Standard",
+      sub: reasoning.length > 0 ? reasoning : undefined,
+      done: true,
+    });
+  }
+
+  // ── Step 5: Model & prompt ────────────────────────────────────────────────
   if (info.vizModel) {
+    const p = info.prompt;
+    const sysKb = p ? (p.systemPrompt.length / 1024).toFixed(1) : null;
+    const userKb = p ? (p.userMessage.length / 1024).toFixed(1) : null;
+    const hasImage = p?.userMessage.includes("base64") || p?.userMessage.includes('"type":"image"');
+
+    const modelNote: Record<string, string> = {
+      haiku: "Haiku — fast initial generation, lightweight vision",
+      sonnet: "Sonnet — balanced quality and speed",
+      opus: "Opus — highest quality, full vision capability for annotations",
+    };
+
     steps.push({
-      label: "Valgte AI-model",
-      detail: info.vizModel + (info.prompt ? ` · ${info.prompt.maxTokens.toLocaleString()} max tokens` : ""),
+      label: "Model & prompt construction",
+      detail: `${info.vizModel} · ${p ? `max ${p.maxTokens.toLocaleString()} output tokens` : ""}`,
+      sub: [
+        modelNote[info.vizModel] ?? null,
+        sysKb ? `System prompt: ${sysKb} KB` : null,
+        userKb ? `User message: ${userKb} KB` : null,
+        hasImage ? "Sketch/annotation image embedded in user message (vision)" : null,
+        p ? `Total prompt context: ${((p.systemPrompt.length + p.userMessage.length) / 1024).toFixed(1)} KB` : null,
+      ].filter((x): x is string => x !== null),
       done: true,
     });
   }
 
-  // 6. Done / performance
+  // ── Step 6: Generation complete ───────────────────────────────────────────
   if (info.performanceMs != null && info.performanceMs > 0) {
+    const sec = (info.performanceMs / 1000).toFixed(2);
     steps.push({
-      label: "Generering færdig",
-      detail: `${(info.performanceMs / 1000).toFixed(1)}s`,
+      label: "Generation complete",
+      detail: `${sec}s total wall time`,
+      sub: [
+        info.performanceMs < 8000
+          ? "Fast response — small model or short output"
+          : info.performanceMs > 35000
+            ? "Extended generation — large model or highly detailed output"
+            : "Normal generation time",
+      ],
       done: true,
     });
   }
@@ -118,7 +201,7 @@ function buildThinkingSteps(info: VizDebugInfo): ThinkingStep[] {
 
 // ── Step row ─────────────────────────────────────────────────────────────────
 
-function StepRow({ step, index }: { step: ThinkingStep; index: number }) {
+function StepRow({ step }: { step: ThinkingStep }) {
   return (
     <li className="flex gap-3 group">
       {/* Timeline column */}
@@ -127,7 +210,7 @@ function StepRow({ step, index }: { step: ThinkingStep; index: number }) {
           className={cn(
             "w-5 h-5 rounded-full flex items-center justify-center shrink-0 mt-0.5",
             step.done
-              ? "text-primary"
+              ? step.warning ? "text-yellow-400" : "text-primary"
               : "text-muted-foreground/40",
           )}
         >
@@ -137,7 +220,6 @@ function StepRow({ step, index }: { step: ThinkingStep; index: number }) {
             <Circle className="w-4 h-4" />
           )}
         </div>
-        {/* connector line — rendered by parent between items */}
       </div>
 
       {/* Content */}
@@ -145,20 +227,30 @@ function StepRow({ step, index }: { step: ThinkingStep; index: number }) {
         <p
           className={cn(
             "text-xs font-medium leading-tight",
-            step.done ? "text-foreground/90" : "text-muted-foreground/60",
+            step.done
+              ? step.warning ? "text-yellow-300/90" : "text-foreground/90"
+              : "text-muted-foreground/60",
           )}
         >
           {step.label}
         </p>
         {step.detail && (
-          <p className="text-[11px] text-muted-foreground leading-relaxed mt-0.5 font-mono">
+          <p className={cn(
+            "text-[11px] leading-relaxed mt-0.5 font-mono",
+            step.warning ? "text-yellow-400/70" : "text-muted-foreground",
+          )}>
             {step.detail}
           </p>
         )}
         {step.sub && step.sub.length > 0 && (
-          <ul className="mt-1 space-y-px">
+          <ul className="mt-1.5 space-y-0.5">
             {step.sub.map((s, i) => (
-              <li key={i} className="text-[10px] text-muted-foreground/70 font-mono pl-2 before:content-['·'] before:mr-1.5 before:text-muted-foreground/40">
+              <li key={i} className={cn(
+                "text-[10px] font-mono leading-snug pl-2",
+                s.startsWith("──") || s.startsWith('"')
+                  ? "text-muted-foreground/50 mt-1"
+                  : "text-muted-foreground/70 before:content-['·'] before:mr-1.5 before:text-muted-foreground/40",
+              )}>
                 {s}
               </li>
             ))}
@@ -306,7 +398,7 @@ export function RoomOutputPanels({
               <div className="text-center space-y-3 text-muted-foreground">
                 <RefreshCcw className="w-8 h-8 mx-auto animate-spin opacity-50" />
                 <p className="text-xs font-mono">
-                  Skriver forklaring på dansk…
+                  Generating explanation…
                 </p>
               </div>
             </div>
@@ -316,14 +408,12 @@ export function RoomOutputPanels({
               <div className="text-center space-y-4 text-muted-foreground max-w-sm">
                 <Sparkles className="w-12 h-12 mx-auto opacity-20" />
                 <div className="space-y-1">
-                  <p className="text-sm font-display">Forklaring</p>
+                  <p className="text-sm font-display">Explanation</p>
                   <p className="text-xs leading-relaxed">
-                    Her får du en almen forklaring på, hvordan AI&apos;en har
-                    læst mødet og hvilke valg der typisk ligger bag den viste
-                    visualisering. Tryk{" "}
-                    <span className="text-foreground/80">Opdatér forklaring</span>{" "}
-                    ovenfor, eller åbn fanen igen efter du har genereret en ny
-                    version.
+                    A plain-language explanation of how the AI read the meeting
+                    and which choices shaped the current visualization. Click{" "}
+                    <span className="text-foreground/80">Refresh explanation</span>{" "}
+                    above, or open this tab again after generating a new version.
                   </p>
                 </div>
               </div>
@@ -332,7 +422,7 @@ export function RoomOutputPanels({
           {reasoningText ? (
             <div className="flex-1 min-h-0 overflow-y-auto rounded-lg border border-border/60 bg-card/30 px-4 py-4">
               <p className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground mb-3">
-                Sådan tænkte modellen (forenklet)
+                How the model reasoned (simplified)
               </p>
               <div className="text-sm text-foreground/90 leading-relaxed whitespace-pre-wrap font-sans max-w-3xl">
                 {reasoningText}
@@ -351,8 +441,8 @@ export function RoomOutputPanels({
                 <div className="space-y-1">
                   <p className="text-sm font-display">Technical Reasoning</p>
                   <p className="text-xs leading-relaxed">
-                    Generer en visualisering for at se modellens tekniske
-                    beslutningsproces trin for trin her.
+                    Generate a visualization to see the model&apos;s step-by-step
+                    decision process here.
                   </p>
                 </div>
               </div>
@@ -363,11 +453,11 @@ export function RoomOutputPanels({
               <div className="flex items-center gap-2 mb-5">
                 <BrainCircuit className="w-4 h-4 text-primary/70 shrink-0" />
                 <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
-                  Modellens beslutningsproces
+                  Model decision trace
                 </span>
                 {debugInfo.performanceMs != null && debugInfo.performanceMs > 0 && (
                   <span className="ml-auto text-[10px] font-mono text-muted-foreground/60">
-                    Tænkte i {(debugInfo.performanceMs / 1000).toFixed(1)}s
+                    {(debugInfo.performanceMs / 1000).toFixed(1)}s total
                   </span>
                 )}
               </div>
@@ -381,7 +471,9 @@ export function RoomOutputPanels({
                       <div
                         className={cn(
                           "w-5 h-5 rounded-full flex items-center justify-center shrink-0 mt-0.5 z-10",
-                          step.done ? "text-primary" : "text-muted-foreground/30",
+                          step.done
+                            ? step.warning ? "text-yellow-400" : "text-primary"
+                            : "text-muted-foreground/30",
                         )}
                       >
                         <CheckCircle2 className="w-4 h-4" />
@@ -393,22 +485,35 @@ export function RoomOutputPanels({
 
                     {/* Content */}
                     <div className="pb-4 flex-1 min-w-0">
-                      <p className="text-xs font-medium text-foreground/90 leading-tight mt-0.5">
+                      <p className={cn(
+                        "text-xs font-medium leading-tight mt-0.5",
+                        step.warning ? "text-yellow-300/90" : "text-foreground/90",
+                      )}>
                         {step.label}
                       </p>
                       {step.detail && (
-                        <p className="text-[11px] text-muted-foreground leading-relaxed mt-0.5 font-mono break-words">
+                        <p className={cn(
+                          "text-[11px] leading-relaxed mt-0.5 font-mono break-words",
+                          step.warning ? "text-yellow-400/70" : "text-muted-foreground",
+                        )}>
                           {step.detail}
                         </p>
                       )}
                       {step.sub && step.sub.length > 0 && (
-                        <ul className="mt-1.5 space-y-px">
+                        <ul className="mt-1.5 space-y-0.5">
                           {step.sub.map((s, si) => (
                             <li
                               key={si}
-                              className="text-[10px] text-muted-foreground/60 font-mono flex items-baseline gap-1.5"
+                              className={cn(
+                                "text-[10px] font-mono leading-snug pl-2",
+                                s.startsWith("──") || s.startsWith('"')
+                                  ? "text-muted-foreground/50 mt-1"
+                                  : "text-muted-foreground/60 flex items-baseline gap-1.5",
+                              )}
                             >
-                              <span className="text-muted-foreground/30">·</span>
+                              {!s.startsWith("──") && !s.startsWith('"') && (
+                                <span className="text-muted-foreground/30 shrink-0">·</span>
+                              )}
                               {s}
                             </li>
                           ))}
