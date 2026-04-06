@@ -25,6 +25,7 @@ import {
   NotebookText,
   Square,
   BrainCircuit,
+  PenLine,
 } from "lucide-react";
 import { format } from "date-fns";
 import { v4 as uuidv4 } from "uuid";
@@ -60,6 +61,7 @@ import { Switch } from "@/components/ui/switch";
 import { SessionEvalSheet } from "@/components/SessionEvalSheet";
 import { toast } from "@/hooks/use-toast";
 import { DirectionCardDialog } from "@/components/DirectionCardDialog";
+import { SketchTab, type SketchTabHandle } from "@/components/SketchTab";
 
 import type {
   InputTab,
@@ -119,6 +121,14 @@ export default function Room() {
   const [pasteText, setPasteText] = useState("");
   const [pasteHistory, setPasteHistory] = useState<PasteHistoryEntry[]>([]);
 
+  // Sketch tab
+  const sketchTabHandleRef = useRef<SketchTabHandle | null>(null);
+  const [sketchId, setSketchId] = useState<string | null>(null);
+
+  // Fixation-breaker: antal inkrementelle forbedringer i træk
+  const [consecutiveRefinements, setConsecutiveRefinements] = useState(0);
+  const FIXATION_THRESHOLD = 3;
+
   // Output tabs
   const [outputTab, setOutputTab] = useState<OutputTab>("viz");
   const [showDebug, setShowDebug] = useState(false);
@@ -136,10 +146,11 @@ export default function Room() {
     request: VisualizeRequestWithIntent;
   } | null>(null);
 
-  // Retningskort — vises kun første gang (vizHistory.length === 0 && vizType === "auto")
+  // Fixation-breaker retningskort — vises ved 3+ inkrementelle forbedringer i træk
   const [pendingDirectionPick, setPendingDirectionPick] = useState<{
     transcript: string;
   } | null>(null);
+  const fixationBreakerShownRef = useRef(false);
 
   // Meeting context
   const [showContext, setShowContext] = useState(false);
@@ -628,6 +639,42 @@ export default function Room() {
     }
   }, [sseViz.html, isGenerating, addVizVersion]);
 
+  // Track consecutive inkrementelle forbedringer til fixation-breaker
+  useEffect(() => {
+    if (vizHistory.length === 0) {
+      setConsecutiveRefinements(0);
+      fixationBreakerShownRef.current = false;
+      return;
+    }
+    let count = 0;
+    for (let i = vizHistory.length - 1; i >= 0; i--) {
+      if (vizHistory[i].debugSnapshot?.isRefinement === true) {
+        count++;
+      } else {
+        break;
+      }
+    }
+    setConsecutiveRefinements(count);
+    // Nulstil "vist" flag når stregen brydes
+    if (count === 0) fixationBreakerShownRef.current = false;
+  }, [vizHistory]);
+
+  // Vis fixation-breaker popup efter FIXATION_THRESHOLD inkrementelle forbedringer i træk
+  useEffect(() => {
+    if (
+      consecutiveRefinements >= FIXATION_THRESHOLD &&
+      !fixationBreakerShownRef.current &&
+      !pendingDirectionPick &&
+      !isGenerating
+    ) {
+      const transcript = getActiveTranscript();
+      if (transcript) {
+        fixationBreakerShownRef.current = true;
+        setPendingDirectionPick({ transcript });
+      }
+    }
+  }, [consecutiveRefinements, FIXATION_THRESHOLD, pendingDirectionPick, isGenerating, getActiveTranscript]);
+
   const displayDebug = useMemo(() => {
     if (isGenerating) return debugInfo;
     const entry = vizHistory.find((v) => v.version === activeVersion);
@@ -994,7 +1041,7 @@ export default function Room() {
   const directionPickPendingResolutionRef = useRef(false);
 
   const handleGenerate = useCallback(
-    (auto = false) => {
+    async (auto = false) => {
       const transcript = getActiveTranscript();
       if (!transcript) return;
 
@@ -1013,10 +1060,38 @@ export default function Room() {
 
       if (inputTab === "paste") appendPasteHistoryIfNeeded(transcript);
 
-      // ── Retningskort: vis direction picker første gang i sessionen ────────────
-      if (!auto && vizHistory.length === 0 && vizType === "auto") {
-        setPendingDirectionPick({ transcript });
-        return;
+      // ── Sketch: export PNG og PUT til backend hvis der er tegninger ───────────
+      let activeSketchId = sketchId;
+      if (inputTab === "sketch" && sketchTabHandleRef.current && roomId) {
+        const elementCount = sketchTabHandleRef.current.getElementCount();
+        if (elementCount > 0) {
+          try {
+            const exported = await sketchTabHandleRef.current.exportPng();
+            if (exported) {
+              const BASE = import.meta.env.BASE_URL;
+              const res = await fetch(`${BASE}api/meetings/${roomId}/sketch`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  pngBase64: exported.pngBase64,
+                  elementCount,
+                }),
+              });
+              if (res.ok) {
+                const json = (await res.json()) as { sketchId: string };
+                setSketchId(json.sketchId);
+                activeSketchId = json.sketchId;
+                sessionEval.recordSketchUsed({
+                  sketchId: json.sketchId,
+                  elementCount,
+                  bytes: Math.round(exported.pngBase64.length * 0.75),
+                });
+              }
+            }
+          } catch (err) {
+            console.error("Failed to upload sketch", err);
+          }
+        }
       }
 
       const previous = !freshStart ? prevHtmlRef.current || null : null;
@@ -1033,6 +1108,7 @@ export default function Room() {
           context: getMeetingContext(),
           freshStart,
           workspaceDomain,
+          ...(activeSketchId ? { sketchId: activeSketchId } : {}),
         },
         {
           onSessionDiagnostic: sessionEval.onStreamDiagnostic,
@@ -1050,14 +1126,15 @@ export default function Room() {
       speakerName,
       vizType,
       vizModel,
-      vizHistory.length,
       meetingTitle,
       getMeetingContext,
       generate,
       workspaceDomain,
       inputTab,
+      sketchId,
       appendPasteHistoryIfNeeded,
       sessionEval.onStreamDiagnostic,
+      sessionEval.recordSketchUsed,
       stopRecording,
     ],
   );
@@ -1274,20 +1351,23 @@ export default function Room() {
   // ── Render ───────────────────────────────────────────────────────────────────
   return (
     <>
-      {/* ── Retningskort — direction picker (første viz i sessionen) ──────── */}
+      {/* ── Fixation-breaker inspiration popup (3+ inkrementelle forbedringer) ── */}
       {pendingDirectionPick && (
         <DirectionCardDialog
           transcript={pendingDirectionPick.transcript}
           workspaceDomain={workspaceDomain}
           context={getMeetingContext()}
+          mode="fixation_breaker"
           onPick={(familyId, shownFamilies) => {
             sessionEval.recordDirectionPick({
               shownFamilies,
               pickedFamily: familyId,
               skipped: false,
             });
-            directionPickPendingResolutionRef.current = true;
             setPendingDirectionPick(null);
+            // Nulstil consecutive count (ny retning bryder fikseringen)
+            setConsecutiveRefinements(0);
+            fixationBreakerShownRef.current = false;
             const transcript = pendingDirectionPick.transcript;
             const previous = !freshStart ? prevHtmlRef.current || null : null;
             generate(
@@ -1319,29 +1399,6 @@ export default function Room() {
               skipped: true,
             });
             setPendingDirectionPick(null);
-            const transcript = pendingDirectionPick.transcript;
-            const previous = !freshStart ? prevHtmlRef.current || null : null;
-            generate(
-              {
-                transcript,
-                previousHtml: previous,
-                roomId,
-                speakerName,
-                vizType: null,
-                vizModel,
-                title: meetingTitle || null,
-                context: getMeetingContext(),
-                freshStart,
-                workspaceDomain,
-              },
-              {
-                onSessionDiagnostic: sessionEval.onStreamDiagnostic,
-                onStreamComplete: (html) => setDisplayHtml(html),
-                onNeedIntent: (payload, originalRequest) => {
-                  setPendingIntent({ payload, request: originalRequest });
-                },
-              },
-            );
           }}
         />
       )}
@@ -1601,7 +1658,7 @@ export default function Room() {
           <div className="w-[360px] shrink-0 border-r border-border flex flex-col bg-card/30 min-h-0">
             {/* Input tab switcher */}
             <div className="flex border-b border-border shrink-0">
-              {(["mic", "paste"] as InputTab[]).map((tab) => (
+              {(["mic", "paste", "sketch"] as InputTab[]).map((tab) => (
                 <button
                   key={tab}
                   onClick={() => setInputTab(tab)}
@@ -1612,7 +1669,7 @@ export default function Room() {
                       : "text-muted-foreground hover:text-white",
                   )}
                 >
-                  {tab === "mic" ? "🎙 Mic" : "📋 Paste"}
+                  {tab === "mic" ? "🎙 Mic" : tab === "paste" ? "📋 Paste" : "✏️ Sketch"}
                 </button>
               ))}
             </div>
@@ -2092,12 +2149,72 @@ export default function Room() {
               </div>
             )}
 
+            {/* Sketch Tab */}
+            {inputTab === "sketch" && (
+              <div className="flex-1 flex flex-col min-h-0">
+                <SketchTab ref={sketchTabHandleRef} />
+                <div className="shrink-0 px-3 pb-3 pt-2 flex flex-col gap-2 border-t border-border">
+                  {sketchId && (
+                    <div className="flex items-center gap-1.5 text-[10px] font-mono text-emerald-400">
+                      <Check className="w-3 h-3" />
+                      Sketch gemt — medsendes ved næste generering
+                    </div>
+                  )}
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant="default"
+                      className="flex-1 h-9 text-xs font-mono"
+                      onClick={() => {
+                        handleGenerate(false);
+                        setOutputTab("viz");
+                      }}
+                      disabled={isGenerating}
+                    >
+                      {isGenerating ? (
+                        <>
+                          <RefreshCcw className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                          Generating…
+                        </>
+                      ) : (
+                        <>
+                          <Wand2 className="w-3.5 h-3.5 mr-1.5" />
+                          Visualize with Sketch
+                        </>
+                      )}
+                    </Button>
+                    {isGenerating && (
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        className="h-9 shrink-0 px-3 text-xs font-mono"
+                        title="Stop generering"
+                        onClick={() => cancelGeneration()}
+                      >
+                        <Square className="w-3 h-3 mr-1 fill-current" />
+                        Stop
+                      </Button>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    className="text-[10px] font-mono text-muted-foreground hover:text-destructive transition-colors text-left"
+                    onClick={() => setSketchId(null)}
+                  >
+                    Nulstil sketch-binding
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* Bottom: word count */}
             <div className="shrink-0 px-3 py-2 border-t border-border flex items-center justify-between">
               <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider">
                 {inputTab === "mic"
                   ? currentWordCount
-                  : pasteText.trim().split(/\s+/).filter(Boolean).length}{" "}
+                  : inputTab === "paste"
+                    ? pasteText.trim().split(/\s+/).filter(Boolean).length
+                    : currentWordCount}{" "}
                 words
               </span>
               {isRecording && (

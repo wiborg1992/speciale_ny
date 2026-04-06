@@ -1,4 +1,5 @@
-import { pgTable, text, serial, integer, timestamp, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, timestamp, boolean, varchar } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -34,6 +35,26 @@ export const visualizationsTable = pgTable("visualizations", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const sketchScenesTable = pgTable("sketch_scenes", {
+  sketchId: varchar("sketch_id").primaryKey().default(sql`gen_random_uuid()`),
+  meetingId: text("meeting_id")
+    .notNull()
+    .references(() => meetingsTable.roomId, { onDelete: "cascade" }),
+  sceneJson: text("scene_json").notNull(),
+  previewPngBase64: text("preview_png_base64").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const sketchVizLinksTable = pgTable("sketch_viz_links", {
+  id: serial("id").primaryKey(),
+  sketchId: varchar("sketch_id")
+    .notNull()
+    .references(() => sketchScenesTable.sketchId, { onDelete: "cascade" }),
+  vizVersion: integer("viz_version").notNull(),
+  meetingId: text("meeting_id").notNull(),
+  linkedAt: timestamp("linked_at").defaultNow().notNull(),
+});
+
 export const insertMeetingSchema = createInsertSchema(meetingsTable).omit({ id: true });
 export type InsertMeeting = z.infer<typeof insertMeetingSchema>;
 export type Meeting = typeof meetingsTable.$inferSelect;
@@ -45,3 +66,6 @@ export type Segment = typeof segmentsTable.$inferSelect;
 export const insertVisualizationSchema = createInsertSchema(visualizationsTable).omit({ id: true });
 export type InsertVisualization = z.infer<typeof insertVisualizationSchema>;
 export type Visualization = typeof visualizationsTable.$inferSelect;
+
+export type SketchScene = typeof sketchScenesTable.$inferSelect;
+export type SketchVizLink = typeof sketchVizLinksTable.$inferSelect;

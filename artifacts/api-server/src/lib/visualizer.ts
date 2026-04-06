@@ -898,6 +898,8 @@ export interface VisualizerParams {
   focusSegment?: string | null;
   /** Fra room-state før dette kald — baggrund, ikke hovedkilde */
   meetingEssence?: MeetingEssenceForPrompt | null;
+  /** Base64-kodet PNG af brugerens Excalidraw-skitse — sendes som image-block til Claude */
+  sketchPngBase64?: string | null;
 }
 
 /** Maps server-side family IDs to clear, unambiguous instructions for the AI */
@@ -1194,6 +1196,7 @@ export async function* streamVisualization(
     workspaceDomain,
     focusSegment,
     meetingEssence,
+    sketchPngBase64,
   } = params;
 
   const domain = normalizeWorkspaceDomain(workspaceDomain);
@@ -1333,6 +1336,16 @@ ${snippet}${tail}`;
         : `FRESH MODE: This statement is your primary anchor. Build the visualization around the ideas, data, or themes expressed in it, using the full transcript as supporting context.\n`);
   }
 
+  if (sketchPngBase64) {
+    userMessage +=
+      `\n\n📐 BRUGER-SKITSE (vedhæftet som billede):\n` +
+      `Deltagerne har skitseret vedhæftede billede som deres initielle forståelse af hvad visualiseringen skal vise. ` +
+      `Brug skitsen som den primære retningsangivelse for layout, struktur og hierarki. ` +
+      `Transskriptionen leverer indholdet — skitsen leverer formen og retningen.\n\n` +
+      `Hvis transskription og skitse tydeligt modsiger hinanden, prioritér den nyeste eksplicitte tale om emnet — ` +
+      `men bevar skitsens layout hvor det er muligt. Afvig kun fra skitsen hvis den er tom eller ufortolkelig.\n`;
+  }
+
   userMessage += "Generate the HTML visualization now.";
 
   if (onPromptReady) {
@@ -1394,11 +1407,26 @@ ${snippet}${tail}`;
           );
         }
 
+        const userContent: Anthropic.Messages.MessageParam["content"] =
+          sketchPngBase64
+            ? [
+                {
+                  type: "image" as const,
+                  source: {
+                    type: "base64" as const,
+                    media_type: "image/png" as const,
+                    data: sketchPngBase64,
+                  },
+                },
+                { type: "text" as const, text: userMessage },
+              ]
+            : userMessage;
+
         const stream = client.messages.stream({
           model: tryModel,
           max_tokens: maxTokens,
           system: systemPrompt,
-          messages: [{ role: "user", content: userMessage }],
+          messages: [{ role: "user", content: userContent }],
         });
 
         let fullText = "";

@@ -5,6 +5,7 @@ import {
   type SessionEvalErrorEvent,
   type SessionEvalEvent,
   type SessionEvalIntentDecisionEvent,
+  type SessionEvalSketchEvent,
   type SessionEvalSkippedEvent,
   type SessionEvalStreamDiagnostic,
   type SessionEvalVizSource,
@@ -125,6 +126,18 @@ export function useSessionEvalLog() {
     [],
   );
 
+  const recordSketchUsed = useCallback(
+    (args: { sketchId: string; elementCount: number; bytes: number }) => {
+      const ev: SessionEvalSketchEvent = {
+        kind: "sketch_used",
+        at: new Date().toISOString(),
+        ...args,
+      };
+      setEvents((prev) => [...prev, ev]);
+    },
+    [],
+  );
+
   const clearLog = useCallback(() => {
     setEvents([]);
   }, []);
@@ -134,6 +147,7 @@ export function useSessionEvalLog() {
     recordIntentDecision,
     recordDirectionPick,
     updateDirectionPickResolution,
+    recordSketchUsed,
     onStreamDiagnostic,
     clearLog,
     eventCount: events.length,

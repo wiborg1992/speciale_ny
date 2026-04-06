@@ -99,12 +99,23 @@ export interface SessionEvalDirectionPickEvent {
   matchedPick: boolean | null;
 }
 
+export interface SessionEvalSketchEvent {
+  kind: "sketch_used";
+  at: string;
+  sketchId: string;
+  elementCount: number;
+  bytes: number;
+}
+
 export type SessionEvalEvent =
   | SessionEvalVisualizationEvent
   | SessionEvalSkippedEvent
   | SessionEvalErrorEvent
   | SessionEvalIntentDecisionEvent
-  | SessionEvalDirectionPickEvent;
+  | SessionEvalDirectionPickEvent
+  | SessionEvalSketchEvent;
+
+export type SketchUsedAt = "before_first_viz" | "after_viz" | null;
 
 export interface SessionEvalReport {
   /** 2 = understøtter `facit` på visualization-events + uændret resten. */
@@ -124,6 +135,13 @@ export interface SessionEvalReport {
     visualizationEventCount: number;
     skippedCount: number;
     errorCount: number;
+    /** Skitse-metadata (fra Fase B). */
+    sketchUsed?: boolean;
+    sketchBytes?: number;
+    sketchElementCount?: number;
+    sketchExportWidth?: number;
+    sketchExportHeight?: number;
+    sketchUsedAt?: SketchUsedAt;
   };
   /** Fritekst til manuel facit/kommentar efter gennemgang. */
   reviewerNotes: string;

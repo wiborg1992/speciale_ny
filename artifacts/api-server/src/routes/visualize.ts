@@ -20,7 +20,7 @@ import {
   extractVizTitleFromHtml,
   roomToMeetingEssencePayload,
 } from "../lib/meeting-essence.js";
-import { saveVisualization, updateMeetingTitle } from "../lib/meeting-store.js";
+import { saveVisualization, updateMeetingTitle, getSketchById, linkSketchToViz } from "../lib/meeting-store.js";
 import { detectRefinementIntent } from "../lib/refinement-detector.js";
 import {
   evaluateVisualizationInput,
@@ -148,6 +148,8 @@ const VisualizeBodySchema = z.object({
   focusSegment: z.string().optional().nullable(),
   /** Eksplicit brugervalg efter disambiguation-dialog: "fresh" = ny viz, "refine" = byg videre */
   userVizIntent: z.enum(["fresh", "refine"]).optional().nullable(),
+  /** Skitse-ID fra PUT /meetings/:roomId/sketch — billede loades fra DB */
+  sketchId: z.string().optional().nullable(),
 });
 
 export type DisambiguationReason =
@@ -325,6 +327,7 @@ router.post("/visualize", async (req, res, next): Promise<void> => {
       workspaceDomain,
       focusSegment,
       userVizIntent,
+      sketchId,
     } = parsed.data;
 
     if (transcript.length > MAX_BODY_CHARS) {
@@ -679,6 +682,19 @@ router.post("/visualize", async (req, res, next): Promise<void> => {
       }
     }
 
+    // ─── Sketch image loading ─────────────────────────────────────────────────
+    // Load PNG from DB if sketchId is provided. Én sandhed — billede hentes fra sketch_scenes.
+    let sketchPngBase64: string | null = null;
+    if (sketchId && roomId) {
+      const sketch = await getSketchById(sketchId);
+      if (sketch && sketch.meetingId === roomId) {
+        sketchPngBase64 = sketch.previewPngBase64;
+        console.log(`[sketch] Loaded sketchId=${sketchId} for room=${roomId} (${sketchPngBase64.length} base64 chars)`);
+      } else {
+        console.warn(`[sketch] sketchId=${sketchId} not found or roomId mismatch (room=${roomId})`);
+      }
+    }
+
     const streamT0 = performance.now();
     res.setHeader("Content-Type", "text/event-stream");
     res.setHeader("Cache-Control", "no-cache");
@@ -784,6 +800,7 @@ router.post("/visualize", async (req, res, next): Promise<void> => {
           workspaceDomain,
           focusSegment,
           meetingEssence: meetingEssenceForPrompt,
+          sketchPngBase64,
         },
         (c) => {
           if (firstChunkMs == null)
@@ -830,7 +847,11 @@ router.post("/visualize", async (req, res, next): Promise<void> => {
             cleanHtml,
             resolvedFamily ?? classification?.family ?? "generic",
             meta.wordCount,
-          ).catch((err) => console.error("[viz-save] Failed to persist visualization:", err));
+          ).then((savedVersion) => {
+            if (sketchId && savedVersion) {
+              linkSketchToViz(sketchId, savedVersion, roomId).catch(() => {});
+            }
+          }).catch((err) => console.error("[viz-save] Failed to persist visualization:", err));
           if (title) {
             updateMeetingTitle(roomId, title).catch(() => {});
           }

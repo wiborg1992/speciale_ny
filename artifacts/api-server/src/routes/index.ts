@@ -7,6 +7,7 @@ import segmentRouter from "./segment.js";
 import deepgramRouter from "./deepgram.js";
 import historyRouter from "./history.js";
 import meetingsRouter from "./meetings.js";
+import sketchRouter from "./sketch.js";
 
 const router: IRouter = Router();
 
@@ -18,5 +19,6 @@ router.use(segmentRouter);
 router.use(deepgramRouter);
 router.use(historyRouter);
 router.use(meetingsRouter);
+router.use(sketchRouter);
 
 export default router;

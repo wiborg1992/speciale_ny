@@ -19,10 +19,19 @@ export interface DirectionFamily {
   score: number;
 }
 
+/**
+ * mode:
+ *  "direction_picker" (default) — vises ved første visualisering, FJERNET FRA DETTE FLOW.
+ *    Behold typen for bagudkompatibilitet.
+ *  "fixation_breaker" — inspiration-popup ved 3+ inkrementelle forbedringer i træk.
+ */
+export type DirectionCardMode = "fixation_breaker";
+
 interface DirectionCardDialogProps {
   transcript: string;
   workspaceDomain?: string | null;
   context?: string | null;
+  mode?: DirectionCardMode;
   onPick: (familyId: VizFamilyId, shownFamilies: string[]) => void;
   onSkip: (shownFamilies: string[]) => void;
 }
@@ -31,6 +40,7 @@ export function DirectionCardDialog({
   transcript,
   workspaceDomain,
   context,
+  mode = "fixation_breaker",
   onPick,
   onSkip,
 }: DirectionCardDialogProps) {
@@ -108,10 +118,14 @@ export function DirectionCardDialog({
       >
         <div className="mb-5">
           <h2 className="text-white font-semibold text-lg leading-tight mb-1">
-            Hvilken retning skal visualiseringen tage?
+            {mode === "fixation_breaker"
+              ? "Inspiration: prøv en anden retning?"
+              : "Hvilken retning skal visualiseringen tage?"}
           </h2>
           <p className="text-zinc-400 text-sm leading-relaxed">
-            Klassifikatoren foreslår disse typer baseret på samtalen. Vælg en for at starte — eller lad AI'en bestemme.
+            {mode === "fixation_breaker"
+              ? "I har arbejdet med inkrementelle forbedringer i et stykke tid. Her er forslag til alternative visualiseringstyper baseret på samtalen — vælg en for at bryde mønsteret, eller fortsæt som før."
+              : "Klassifikatoren foreslår disse typer baseret på samtalen. Vælg en for at starte — eller lad AI'en bestemme."}
           </p>
         </div>
 
@@ -144,7 +158,9 @@ export function DirectionCardDialog({
 
         <div className="flex items-center justify-between pt-2 border-t border-zinc-800">
           <p className="text-zinc-600 text-xs">
-            Kun første visualisering pr. session
+            {mode === "fixation_breaker"
+              ? "Valgfrit — fortsæt bare for at beholde nuværende type"
+              : "Kun første visualisering pr. session"}
           </p>
           <Button
             variant="ghost"
@@ -157,7 +173,7 @@ export function DirectionCardDialog({
             }}
           >
             <Sparkles className="w-3.5 h-3.5" />
-            Lad AI bestemme
+            {mode === "fixation_breaker" ? "Fortsæt som før" : "Lad AI bestemme"}
           </Button>
         </div>
       </motion.div>

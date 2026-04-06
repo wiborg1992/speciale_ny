@@ -3,6 +3,8 @@ import {
   meetingsTable,
   segmentsTable,
   visualizationsTable,
+  sketchScenesTable,
+  sketchVizLinksTable,
 } from "@workspace/db/schema";
 import { eq, desc, sql } from "drizzle-orm";
 
@@ -83,10 +85,10 @@ export async function saveVisualization(
   html: string,
   family: string,
   wordCount: number
-) {
+): Promise<number | null> {
   try {
     const meeting = await getOrCreateMeeting(roomId);
-    if (!meeting || !db) return;
+    if (!meeting || !db) return null;
 
     const existingViz = await db
       .select()
@@ -109,8 +111,11 @@ export async function saveVisualization(
       .update(meetingsTable)
       .set({ updatedAt: new Date() })
       .where(eq(meetingsTable.id, meeting.id));
+
+    return nextVersion;
   } catch (err) {
     console.error("Failed to persist visualization:", err);
+    return null;
   }
 }
 
@@ -192,6 +197,61 @@ export async function clearMeetingTranscript(roomId: string): Promise<void> {
       .where(eq(meetingsTable.id, meeting.id));
   } catch (err) {
     console.error("Failed to clear meeting transcript:", err);
+  }
+}
+
+/** Gem en ny skitse-scene og returnér det autogenererede sketchId. */
+export async function saveSketch(
+  roomId: string,
+  sceneJson: string,
+  previewPngBase64: string,
+): Promise<string | null> {
+  if (!db) return null;
+  try {
+    const [row] = await db
+      .insert(sketchScenesTable)
+      .values({ meetingId: roomId, sceneJson, previewPngBase64 })
+      .returning({ sketchId: sketchScenesTable.sketchId });
+    return row?.sketchId ?? null;
+  } catch (err) {
+    console.error("Failed to save sketch:", err);
+    return null;
+  }
+}
+
+/** Hent en skitse-scene fra DB. */
+export async function getSketchById(
+  sketchId: string,
+): Promise<{ sceneJson: string; previewPngBase64: string; meetingId: string } | null> {
+  if (!db) return null;
+  try {
+    const rows = await db
+      .select()
+      .from(sketchScenesTable)
+      .where(eq(sketchScenesTable.sketchId, sketchId))
+      .limit(1);
+    if (rows.length === 0) return null;
+    const r = rows[0];
+    return { sceneJson: r.sceneJson, previewPngBase64: r.previewPngBase64, meetingId: r.meetingId };
+  } catch (err) {
+    console.error("Failed to get sketch:", err);
+    return null;
+  }
+}
+
+/** Link et sketchId til en viz-version (indsættes kun efter vellydende persist). */
+export async function linkSketchToViz(
+  sketchId: string,
+  vizVersion: number,
+  meetingId: string,
+): Promise<void> {
+  if (!db) return;
+  try {
+    await db
+      .insert(sketchVizLinksTable)
+      .values({ sketchId, vizVersion, meetingId });
+  } catch (err) {
+    console.error("Failed to link sketch to viz:", err);
   }
 }
 
