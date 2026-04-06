@@ -61,7 +61,8 @@ import { Switch } from "@/components/ui/switch";
 import { SessionEvalSheet } from "@/components/SessionEvalSheet";
 import { toast } from "@/hooks/use-toast";
 import { DirectionCardDialog } from "@/components/DirectionCardDialog";
-import { SketchTab, type SketchTabHandle } from "@/components/SketchTab";
+import { SketchTab } from "@/components/SketchTab";
+import { SketchModal } from "@/components/SketchModal";
 
 import type {
   InputTab,
@@ -121,9 +122,11 @@ export default function Room() {
   const [pasteText, setPasteText] = useState("");
   const [pasteHistory, setPasteHistory] = useState<PasteHistoryEntry[]>([]);
 
-  // Sketch tab
-  const sketchTabHandleRef = useRef<SketchTabHandle | null>(null);
+  // Sketch modal + sketch state
+  const [sketchModalOpen, setSketchModalOpen] = useState(false);
   const [sketchId, setSketchId] = useState<string | null>(null);
+  const [sketchPreviewDataUrl, setSketchPreviewDataUrl] = useState<string | null>(null);
+  const [sketchElementCount, setSketchElementCount] = useState(0);
 
   // Fixation-breaker: antal inkrementelle forbedringer i træk
   const [consecutiveRefinements, setConsecutiveRefinements] = useState(0);
@@ -639,6 +642,54 @@ export default function Room() {
     }
   }, [sseViz.html, isGenerating, addVizVersion]);
 
+  // Auto-åbn sketch modal hvis URL indeholder ?sketch=new (sendt fra New Session)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("sketch") === "new") {
+      setSketchModalOpen(true);
+      setInputTab("sketch");
+      // Fjern query param fra URL uden page reload
+      const url = new URL(window.location.href);
+      url.searchParams.delete("sketch");
+      window.history.replaceState({}, "", url.toString());
+    }
+  }, []); // kun ved mount
+
+  // Gem sketch: PUTs til backend, gemmer preview og sketchId i state
+  const handleSaveSketch = useCallback(
+    async (result: { pngBase64: string; previewDataUrl: string; elementCount: number }) => {
+      setSketchPreviewDataUrl(result.previewDataUrl);
+      setSketchElementCount(result.elementCount);
+      setSketchModalOpen(false);
+
+      if (roomId) {
+        try {
+          const BASE = import.meta.env.BASE_URL;
+          const res = await fetch(`${BASE}api/meetings/${roomId}/sketch`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              pngBase64: result.pngBase64,
+              elementCount: result.elementCount,
+            }),
+          });
+          if (res.ok) {
+            const json = (await res.json()) as { sketchId: string };
+            setSketchId(json.sketchId);
+            sessionEval.recordSketchUsed({
+              sketchId: json.sketchId,
+              elementCount: result.elementCount,
+              bytes: Math.round(result.pngBase64.length * 0.75),
+            });
+          }
+        } catch (err) {
+          console.error("Failed to upload sketch", err);
+        }
+      }
+    },
+    [roomId, sessionEval.recordSketchUsed],
+  );
+
   // Track consecutive inkrementelle forbedringer til fixation-breaker
   useEffect(() => {
     if (vizHistory.length === 0) {
@@ -1041,7 +1092,7 @@ export default function Room() {
   const directionPickPendingResolutionRef = useRef(false);
 
   const handleGenerate = useCallback(
-    async (auto = false) => {
+    (auto = false) => {
       const transcript = getActiveTranscript();
       if (!transcript) return;
 
@@ -1060,40 +1111,6 @@ export default function Room() {
 
       if (inputTab === "paste") appendPasteHistoryIfNeeded(transcript);
 
-      // ── Sketch: export PNG og PUT til backend hvis der er tegninger ───────────
-      let activeSketchId = sketchId;
-      if (inputTab === "sketch" && sketchTabHandleRef.current && roomId) {
-        const elementCount = sketchTabHandleRef.current.getElementCount();
-        if (elementCount > 0) {
-          try {
-            const exported = await sketchTabHandleRef.current.exportPng();
-            if (exported) {
-              const BASE = import.meta.env.BASE_URL;
-              const res = await fetch(`${BASE}api/meetings/${roomId}/sketch`, {
-                method: "PUT",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  pngBase64: exported.pngBase64,
-                  elementCount,
-                }),
-              });
-              if (res.ok) {
-                const json = (await res.json()) as { sketchId: string };
-                setSketchId(json.sketchId);
-                activeSketchId = json.sketchId;
-                sessionEval.recordSketchUsed({
-                  sketchId: json.sketchId,
-                  elementCount,
-                  bytes: Math.round(exported.pngBase64.length * 0.75),
-                });
-              }
-            }
-          } catch (err) {
-            console.error("Failed to upload sketch", err);
-          }
-        }
-      }
-
       const previous = !freshStart ? prevHtmlRef.current || null : null;
 
       generate(
@@ -1108,7 +1125,7 @@ export default function Room() {
           context: getMeetingContext(),
           freshStart,
           workspaceDomain,
-          ...(activeSketchId ? { sketchId: activeSketchId } : {}),
+          ...(sketchId ? { sketchId } : {}),
         },
         {
           onSessionDiagnostic: sessionEval.onStreamDiagnostic,
@@ -1134,7 +1151,6 @@ export default function Room() {
       sketchId,
       appendPasteHistoryIfNeeded,
       sessionEval.onStreamDiagnostic,
-      sessionEval.recordSketchUsed,
       stopRecording,
     ],
   );
@@ -1351,6 +1367,14 @@ export default function Room() {
   // ── Render ───────────────────────────────────────────────────────────────────
   return (
     <>
+      {/* ── Fullscreen sketch canvas modal ──────────────────────────────────── */}
+      <SketchModal
+        open={sketchModalOpen}
+        onClose={() => setSketchModalOpen(false)}
+        onSave={handleSaveSketch}
+        title="Tegn en layoutskitse til din session"
+      />
+
       {/* ── Fixation-breaker inspiration popup (3+ inkrementelle forbedringer) ── */}
       {pendingDirectionPick && (
         <DirectionCardDialog
@@ -2151,60 +2175,21 @@ export default function Room() {
 
             {/* Sketch Tab */}
             {inputTab === "sketch" && (
-              <div className="flex-1 flex flex-col min-h-0">
-                <SketchTab ref={sketchTabHandleRef} />
-                <div className="shrink-0 px-3 pb-3 pt-2 flex flex-col gap-2 border-t border-border">
-                  {sketchId && (
-                    <div className="flex items-center gap-1.5 text-[10px] font-mono text-emerald-400">
-                      <Check className="w-3 h-3" />
-                      Sketch gemt — medsendes ved næste generering
-                    </div>
-                  )}
-                  <div className="flex gap-2">
-                    <Button
-                      type="button"
-                      variant="default"
-                      className="flex-1 h-9 text-xs font-mono"
-                      onClick={() => {
-                        handleGenerate(false);
-                        setOutputTab("viz");
-                      }}
-                      disabled={isGenerating}
-                    >
-                      {isGenerating ? (
-                        <>
-                          <RefreshCcw className="w-3.5 h-3.5 mr-1.5 animate-spin" />
-                          Generating…
-                        </>
-                      ) : (
-                        <>
-                          <Wand2 className="w-3.5 h-3.5 mr-1.5" />
-                          Visualize with Sketch
-                        </>
-                      )}
-                    </Button>
-                    {isGenerating && (
-                      <Button
-                        type="button"
-                        variant="destructive"
-                        className="h-9 shrink-0 px-3 text-xs font-mono"
-                        title="Stop generering"
-                        onClick={() => cancelGeneration()}
-                      >
-                        <Square className="w-3 h-3 mr-1 fill-current" />
-                        Stop
-                      </Button>
-                    )}
-                  </div>
-                  <button
-                    type="button"
-                    className="text-[10px] font-mono text-muted-foreground hover:text-destructive transition-colors text-left"
-                    onClick={() => setSketchId(null)}
-                  >
-                    Nulstil sketch-binding
-                  </button>
-                </div>
-              </div>
+              <SketchTab
+                previewDataUrl={sketchPreviewDataUrl}
+                elementCount={sketchElementCount}
+                onOpenCanvas={() => setSketchModalOpen(true)}
+                isGenerating={isGenerating}
+                onVisualize={() => {
+                  handleGenerate(false);
+                  setOutputTab("viz");
+                }}
+                onClear={() => {
+                  setSketchId(null);
+                  setSketchPreviewDataUrl(null);
+                  setSketchElementCount(0);
+                }}
+              />
             )}
 
             {/* Bottom: word count */}

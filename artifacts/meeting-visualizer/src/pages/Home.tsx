@@ -101,7 +101,7 @@ export default function Home() {
     e.preventDefault();
     if (!speakerName.trim()) return;
     const newRoom = generateRoomCode();
-    setLocation(`/room/${newRoom}`);
+    setLocation(`/room/${newRoom}?sketch=new`);
   };
 
   const handleJoin = (e: React.FormEvent) => {

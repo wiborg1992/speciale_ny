@@ -1,129 +1,108 @@
-import { forwardRef, lazy, Suspense, useCallback, useImperativeHandle, useRef } from "react";
-import { Loader2 } from "lucide-react";
+import { PenLine, ImageOff, RefreshCcw } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
-const MAX_DIMENSION = 1024;
-const JPEG_QUALITY = 0.82;
-const JPEG_SIZE_THRESHOLD = 1_000_000;
-
-const Excalidraw = lazy(() =>
-  import("@excalidraw/excalidraw").then((m) => ({ default: m.Excalidraw })),
-);
-
-export interface SketchTabHandle {
-  getElementCount: () => number;
-  exportPng: () => Promise<{ pngBase64: string; sceneJson: string; width: number; height: number } | null>;
+interface SketchTabProps {
+  previewDataUrl: string | null;
+  elementCount: number;
+  onOpenCanvas: () => void;
+  isGenerating?: boolean;
+  onVisualize?: () => void;
+  onClear?: () => void;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type ExcalidrawAPI = any;
-
-export const SketchTab = forwardRef<SketchTabHandle>((_, ref) => {
-  const excalidrawApiRef = useRef<ExcalidrawAPI | null>(null);
-
-  const getElementCount = useCallback(() => {
-    const api = excalidrawApiRef.current;
-    if (!api) return 0;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return api.getSceneElements().filter((el: any) => !el.isDeleted).length;
-  }, []);
-
-  const exportPng = useCallback(async () => {
-    const api = excalidrawApiRef.current;
-    if (!api) return null;
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const elements = api.getSceneElements().filter((el: any) => !el.isDeleted);
-    if (elements.length === 0) return null;
-
-    const sceneJson = JSON.stringify({
-      type: "excalidraw",
-      version: 2,
-      elements,
-      appState: api.getAppState(),
-    });
-
-    const { exportToBlob } = await import("@excalidraw/excalidraw");
-
-    const blob = await exportToBlob({
-      elements,
-      appState: { ...api.getAppState(), exportBackground: true },
-      files: api.getFiles(),
-      mimeType: "image/png",
-    });
-
-    const imgBitmap = await createImageBitmap(blob);
-    const origW = imgBitmap.width;
-    const origH = imgBitmap.height;
-
-    let outW = origW;
-    let outH = origH;
-    if (origW > MAX_DIMENSION || origH > MAX_DIMENSION) {
-      const ratio = Math.min(MAX_DIMENSION / origW, MAX_DIMENSION / origH);
-      outW = Math.round(origW * ratio);
-      outH = Math.round(origH * ratio);
-    }
-
-    const canvas = document.createElement("canvas");
-    canvas.width = outW;
-    canvas.height = outH;
-    const ctx = canvas.getContext("2d")!;
-    ctx.drawImage(imgBitmap, 0, 0, outW, outH);
-    imgBitmap.close();
-
-    let format: "image/png" | "image/jpeg" = "image/png";
-    let pngBase64 = canvas.toDataURL("image/png").split(",")[1];
-
-    if (pngBase64.length > JPEG_SIZE_THRESHOLD) {
-      const jpegBase64 = canvas.toDataURL("image/jpeg", JPEG_QUALITY).split(",")[1];
-      if (jpegBase64.length < pngBase64.length) {
-        format = "image/jpeg";
-        pngBase64 = jpegBase64;
-      }
-    }
-
-    console.log(`[sketch] Exported ${format} ${outW}x${outH}, ${pngBase64.length} base64 chars`);
-    return { pngBase64, sceneJson, width: outW, height: outH };
-  }, []);
-
-  useImperativeHandle(ref, () => ({ getElementCount, exportPng }), [getElementCount, exportPng]);
-
-  const handleApiReady = useCallback(
-    (api: ExcalidrawAPI) => {
-      excalidrawApiRef.current = api;
-    },
-    [],
-  );
+export function SketchTab({
+  previewDataUrl,
+  elementCount,
+  onOpenCanvas,
+  isGenerating,
+  onVisualize,
+  onClear,
+}: SketchTabProps) {
+  const hasSketch = elementCount > 0 && previewDataUrl;
 
   return (
-    <div className="flex flex-col flex-1 min-h-0">
-      <div className="shrink-0 px-3 py-1.5 border-b border-border bg-card/20 text-[10px] font-mono text-muted-foreground uppercase tracking-wider leading-snug">
-        Tegn din ønskede layoutstruktur — skitsen følger med til visualisering
+    <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+      {/* Instruction */}
+      <div className="shrink-0 px-3 py-2 border-b border-border bg-card/20 text-[10px] font-mono text-muted-foreground uppercase tracking-wider">
+        Tegn layoutstruktur → AI bruger skitsen som guide
       </div>
-      <div className="flex-1 min-h-0 relative">
-        <Suspense
-          fallback={
-            <div className="absolute inset-0 flex items-center justify-center">
-              <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+
+      {/* Preview or empty state */}
+      <div className="flex-1 min-h-0 flex flex-col items-center justify-center px-4 py-4 gap-3">
+        {hasSketch ? (
+          <>
+            {/* Thumbnail */}
+            <div className="w-full rounded-lg overflow-hidden border border-border/60 bg-zinc-900 shadow-inner">
+              <img
+                src={previewDataUrl}
+                alt="Sketch preview"
+                className="w-full h-auto object-contain max-h-[180px]"
+              />
             </div>
-          }
+            <p className="text-[10px] font-mono text-emerald-400 text-center">
+              ✓ {elementCount} element{elementCount !== 1 ? "er" : ""} gemt — sendes med ved visualisering
+            </p>
+          </>
+        ) : (
+          <div className="flex flex-col items-center gap-2 py-4 text-center">
+            <div className="w-12 h-12 rounded-xl bg-zinc-800/60 border border-border flex items-center justify-center">
+              <PenLine className="w-5 h-5 text-zinc-500" />
+            </div>
+            <p className="text-zinc-500 text-xs leading-relaxed max-w-[200px]">
+              Ingen skitse endnu. Åbn canvas for at tegne din ønskede layoutstruktur.
+            </p>
+          </div>
+        )}
+
+        {/* Open canvas button */}
+        <Button
+          type="button"
+          variant={hasSketch ? "outline" : "default"}
+          className={cn(
+            "w-full font-mono text-xs gap-2",
+            !hasSketch && "bg-primary hover:bg-primary/90",
+          )}
+          onClick={onOpenCanvas}
         >
-          <Excalidraw
-            excalidrawAPI={handleApiReady}
-            theme="dark"
-            UIOptions={{
-              canvasActions: {
-                saveAsImage: false,
-                loadScene: false,
-              },
-            }}
-          />
-        </Suspense>
-      </div>
-      <div className="shrink-0 px-3 py-1.5 border-t border-border text-[10px] text-muted-foreground leading-snug">
-        Skitsen bruges som layout-guide for AI'en. Tom canvas → ingen skitse sendes.
+          <PenLine className="w-3.5 h-3.5" />
+          {hasSketch ? "Rediger canvas" : "Åbn canvas"}
+        </Button>
+
+        {/* Visualize button (if sketch present) */}
+        {hasSketch && onVisualize && (
+          <Button
+            type="button"
+            variant="default"
+            className="w-full font-mono text-xs gap-2 bg-primary hover:bg-primary/90"
+            onClick={onVisualize}
+            disabled={isGenerating}
+          >
+            {isGenerating ? (
+              <>
+                <RefreshCcw className="w-3.5 h-3.5 animate-spin" />
+                Generating…
+              </>
+            ) : (
+              <>
+                <ImageOff className="w-3.5 h-3.5" />
+                Visualize with Sketch
+              </>
+            )}
+          </Button>
+        )}
+
+        {/* Clear sketch */}
+        {hasSketch && onClear && (
+          <button
+            type="button"
+            className="text-[10px] font-mono text-muted-foreground hover:text-destructive transition-colors"
+            onClick={onClear}
+          >
+            Fjern skitse
+          </button>
+        )}
       </div>
     </div>
   );
-});
-
-SketchTab.displayName = "SketchTab";
+}
