@@ -22,29 +22,35 @@ function getRoomDbHydrationPromise(roomId: string): Promise<void> {
   const existing = roomHydrationInflight.get(roomId);
   if (existing) return existing;
 
+  // Skip if the room is already fully hydrated (has both segments and a visualization)
   const room = getOrCreateRoom(roomId);
-  if (room.segments.length > 0) {
+  if (room.segments.length > 0 && room.lastVisualization) {
     return Promise.resolve();
   }
 
   const p = (async () => {
     try {
       const dbData = await getMeetingByRoom(roomId);
-      if (!dbData || dbData.segments.length === 0) return;
+      if (!dbData) return;
 
       const r = getOrCreateRoom(roomId);
-      if (r.segments.length > 0) return;
 
-      for (const seg of dbData.segments) {
-        addSegment(roomId, {
-          id: seg.segmentId,
-          speakerName: seg.speakerName,
-          text: seg.text,
-          timestamp: new Date(seg.timestamp).getTime(),
-          isFinal: seg.isFinal,
-        });
+      // Load segments if not already in memory
+      if (dbData.segments.length > 0 && r.segments.length === 0) {
+        for (const seg of dbData.segments) {
+          addSegment(roomId, {
+            id: seg.segmentId,
+            speakerName: seg.speakerName,
+            text: seg.text,
+            timestamp: new Date(seg.timestamp).getTime(),
+            isFinal: seg.isFinal,
+          });
+        }
       }
-      if (dbData.visualizations.length > 0) {
+
+      // Always load the latest visualization into memory so new SSE clients
+      // get it immediately — even for paste-only sessions with no segments.
+      if (dbData.visualizations.length > 0 && !r.lastVisualization) {
         const latest = dbData.visualizations[dbData.visualizations.length - 1];
         r.lastVisualization = latest.html;
         r.lastVizWordCount = latest.wordCount;

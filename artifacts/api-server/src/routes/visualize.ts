@@ -806,45 +806,55 @@ router.post("/visualize", async (req, res, next): Promise<void> => {
       const cleanHtml = stripCodeFences(fullHtml);
       const qualityOk = isHtmlQualityOk(cleanHtml);
 
-      if (clientDisconnected) {
-        console.log(
-          `[viz-orphan] Client disconnected during generation — skipping broadcast/save (room=${roomId}, family=${resolvedFamily ?? classification?.family}, took=${Math.round(performance.now() - streamT0)}ms)`,
-        );
-      } else if (qualityOk) {
+      if (qualityOk) {
         if (roomId) {
-          const room = getRoom(roomId);
-          if (room) {
-            room.lastVisualization = cleanHtml;
-            room.lastFamily = resolvedFamily ?? classification?.family ?? null;
-            const fromHtml = extractVizTitleFromHtml(cleanHtml);
-            room.lastVizTitle =
-              fromHtml ??
-              (title?.trim() ? title.trim().slice(0, 84) : room.lastVizTitle);
-            room.meetingEssenceBullets = computeEssenceBullets(
-              classification,
-              (resolvedFamily ??
-                classification?.family ??
-                null) as VizFamily | null,
-            );
-            broadcastEvent(roomId, "visualization", { html: cleanHtml, meta });
-          }
+          // Always persist to DB — even if the client navigated away while the
+          // AI was still streaming. The HTML is complete at this point because
+          // the server-side loop runs to completion regardless of disconnect.
           saveVisualization(
             roomId,
             cleanHtml,
             resolvedFamily ?? classification?.family ?? "generic",
             meta.wordCount,
-          ).catch(() => {});
+          ).catch((err) => console.error("[viz-save] Failed to persist visualization:", err));
           if (title) {
             updateMeetingTitle(roomId, title).catch(() => {});
           }
+
+          if (!clientDisconnected) {
+            const room = getRoom(roomId);
+            if (room) {
+              room.lastVisualization = cleanHtml;
+              room.lastFamily = resolvedFamily ?? classification?.family ?? null;
+              const fromHtml = extractVizTitleFromHtml(cleanHtml);
+              room.lastVizTitle =
+                fromHtml ??
+                (title?.trim() ? title.trim().slice(0, 84) : room.lastVizTitle);
+              room.meetingEssenceBullets = computeEssenceBullets(
+                classification,
+                (resolvedFamily ??
+                  classification?.family ??
+                  null) as VizFamily | null,
+              );
+              broadcastEvent(roomId, "visualization", { html: cleanHtml, meta });
+            }
+          } else {
+            console.log(
+              `[viz-orphan] Client disconnected during generation — saved to DB but skipping live broadcast (room=${roomId}, family=${resolvedFamily ?? classification?.family}, took=${Math.round(performance.now() - streamT0)}ms)`,
+            );
+          }
         }
-        res.write(
-          `data: ${JSON.stringify({ type: "done", html: cleanHtml, meta })}\n\n`,
-        );
+        if (!clientDisconnected) {
+          res.write(
+            `data: ${JSON.stringify({ type: "done", html: cleanHtml, meta })}\n\n`,
+          );
+        }
       } else {
-        res.write(
-          `data: ${JSON.stringify({ type: "error", error: "Generated visualization was incomplete. Please try again." })}\n\n`,
-        );
+        if (!clientDisconnected) {
+          res.write(
+            `data: ${JSON.stringify({ type: "error", error: "Generated visualization was incomplete. Please try again." })}\n\n`,
+          );
+        }
       }
 
       req.log?.info({
