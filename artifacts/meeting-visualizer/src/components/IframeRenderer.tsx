@@ -562,19 +562,36 @@ ${t}
 
   const handleAnnotate = useCallback(async () => {
     if (!onAnnotate || !iframeRef.current) return;
-    const iframeBody = iframeRef.current.contentDocument?.body;
-    if (!iframeBody) return;
+    const iframe = iframeRef.current;
+    const iframeDoc = iframe.contentDocument;
+    if (!iframeDoc?.body) return;
     setIsCapturing(true);
     try {
+      // Fang KUN det synlige viewport — ikke hele den scrollbare body
+      const vw = iframe.clientWidth || 1280;
+      const vh = iframe.clientHeight || 720;
+      // Scale ned til max 1400px bredde for at holde filen lille
+      const scale = Math.min(1.5, 1400 / vw);
+
       const html2canvas = (await import("html2canvas")).default;
-      const canvas = await html2canvas(iframeBody, {
+      const canvas = await html2canvas(iframeDoc.body, {
         allowTaint: true,
         useCORS: true,
-        backgroundColor: "#0d1421",
-        scale: Math.min(1, 1200 / (iframeBody.scrollWidth || 1200)),
+        // Ingen backgroundColor-override — brug visualiseringens egne styles
+        backgroundColor: null,
+        scale,
+        // Begræns til viewport-dimensioner
+        width: vw,
+        height: vh,
+        windowWidth: vw,
+        windowHeight: vh,
+        x: 0,
+        y: 0,
+        scrollX: 0,
+        scrollY: 0,
         logging: false,
       });
-      const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
+      const dataUrl = canvas.toDataURL("image/jpeg", 0.88);
       onAnnotate(dataUrl);
     } catch {
       // Fallback: send without screenshot — modal åbner stadig

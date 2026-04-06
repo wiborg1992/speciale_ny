@@ -63,7 +63,7 @@ export const SketchModal = forwardRef<SketchModalHandle, SketchModalProps>(
       if (isAnnotationMode) {
         return {
           elements: [],
-          appState: { viewBackgroundColor: "transparent" },
+          appState: { viewBackgroundColor: "rgba(0,0,0,0)" },
         };
       }
 
