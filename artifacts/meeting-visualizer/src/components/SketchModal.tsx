@@ -54,6 +54,20 @@ export const SketchModal = forwardRef<SketchModalHandle, SketchModalProps>(
       doc.close();
     }, [backgroundHtml]);
 
+    // Forward hjul-scroll-events til baggrundsiframen — bruges til at scrolle visualiseringen
+    // (iframen har pointer-events:none så events rammer Excalidraw canvassen i stedet)
+    useEffect(() => {
+      const container = canvasContainerRef.current;
+      if (!container || !isAnnotationMode) return;
+      const handleWheel = (e: WheelEvent) => {
+        const iframe = bgIframeRef.current;
+        if (!iframe?.contentWindow) return;
+        iframe.contentWindow.scrollBy({ top: e.deltaY, left: e.deltaX, behavior: "instant" });
+      };
+      container.addEventListener("wheel", handleWheel, { passive: true });
+      return () => container.removeEventListener("wheel", handleWheel);
+    }, [isAnnotationMode]);
+
     // I annotation-mode: Excalidraw starter tom (baggrundsbilledet er i iframen, ikke et element)
     // I normal mode: genindlæs tidligere scene-elementer
     const initialData = (() => {
@@ -279,7 +293,6 @@ export const SketchModal = forwardRef<SketchModalHandle, SketchModalProps>(
                   ref={bgIframeRef}
                   title="Visualisering baggrund"
                   sandbox="allow-scripts allow-same-origin"
-                  scrolling="no"
                   style={{
                     position: "absolute",
                     inset: 0,
@@ -288,6 +301,7 @@ export const SketchModal = forwardRef<SketchModalHandle, SketchModalProps>(
                     border: "none",
                     pointerEvents: "none",
                     zIndex: 0,
+                    overflow: "auto",
                   }}
                 />
               )}

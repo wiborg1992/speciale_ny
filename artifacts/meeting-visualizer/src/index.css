@@ -126,3 +126,26 @@
 .annotation-excalidraw .excalidraw-container {
   background: transparent !important;
 }
+
+/* Annotation-mode: flyt toolbar til venstre side som vertikal palette */
+.annotation-excalidraw .App-toolbar {
+  position: absolute !important;
+  left: 12px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  bottom: auto !important;
+  width: auto !important;
+  pointer-events: all !important;
+  z-index: 10 !important;
+}
+.annotation-excalidraw .App-toolbar .App-toolbar-content {
+  flex-direction: column !important;
+  gap: 2px !important;
+  justify-content: center !important;
+}
+/* Skjul hamburger-menu og "Library" knappen i annotation-mode */
+.annotation-excalidraw .App-menu_top .App-menu__left,
+.annotation-excalidraw .App-menu_top .App-menu__right,
+.annotation-excalidraw .sidebar-trigger {
+  display: none !important;
+}
