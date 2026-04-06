@@ -83,11 +83,28 @@ export interface SessionEvalIntentDecisionEvent {
   scores: Array<{ family: string; score: number }>;
 }
 
+/** Registrerer brugerens valg i retningskort-dialogen (første viz i sessionen). */
+export interface SessionEvalDirectionPickEvent {
+  kind: "direction_pick";
+  at: string;
+  /** De familier der blev vist som kort. */
+  shownFamilies: string[];
+  /** Den familie brugeren valgte — null hvis de trykkede "Lad AI bestemme". */
+  pickedFamily: string | null;
+  /** true hvis brugeren sprang over med "Lad AI bestemme". */
+  skipped: boolean;
+  /** Den faktisk genererede familie — udfyldes efter generering (null = afventer). */
+  finalFamily: string | null;
+  /** Om den genererede familie matchede det valgte kort — null = afventer eller skipped. */
+  matchedPick: boolean | null;
+}
+
 export type SessionEvalEvent =
   | SessionEvalVisualizationEvent
   | SessionEvalSkippedEvent
   | SessionEvalErrorEvent
-  | SessionEvalIntentDecisionEvent;
+  | SessionEvalIntentDecisionEvent
+  | SessionEvalDirectionPickEvent;
 
 export interface SessionEvalReport {
   /** 2 = understøtter `facit` på visualization-events + uændret resten. */

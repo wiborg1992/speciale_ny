@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
 import {
   sanitizeDebugForExport,
+  type SessionEvalDirectionPickEvent,
   type SessionEvalErrorEvent,
   type SessionEvalEvent,
   type SessionEvalIntentDecisionEvent,
@@ -80,6 +81,50 @@ export function useSessionEvalLog() {
     [],
   );
 
+  const recordDirectionPick = useCallback(
+    (args: {
+      shownFamilies: string[];
+      pickedFamily: string | null;
+      skipped: boolean;
+    }) => {
+      const ev: SessionEvalDirectionPickEvent = {
+        kind: "direction_pick",
+        at: new Date().toISOString(),
+        ...args,
+        finalFamily: null,
+        matchedPick: null,
+      };
+      setEvents((prev) => [...prev, ev]);
+    },
+    [],
+  );
+
+  /**
+   * Udfylder finalFamily + matchedPick på det seneste direction_pick event.
+   * Kaldes efter første generering for at registrere om AI'en fulgte valget.
+   */
+  const updateDirectionPickResolution = useCallback(
+    (finalFamily: string | null) => {
+      setEvents((prev) => {
+        const idx = [...prev].reverse().findIndex((e) => e.kind === "direction_pick");
+        if (idx === -1) return prev;
+        const realIdx = prev.length - 1 - idx;
+        const ev = prev[realIdx] as SessionEvalDirectionPickEvent;
+        const matchedPick =
+          ev.pickedFamily !== null && finalFamily !== null
+            ? finalFamily === ev.pickedFamily
+            : null;
+        const updated: SessionEvalDirectionPickEvent = {
+          ...ev,
+          finalFamily,
+          matchedPick,
+        };
+        return [...prev.slice(0, realIdx), updated, ...prev.slice(realIdx + 1)];
+      });
+    },
+    [],
+  );
+
   const clearLog = useCallback(() => {
     setEvents([]);
   }, []);
@@ -87,6 +132,8 @@ export function useSessionEvalLog() {
   return {
     recordVisualization,
     recordIntentDecision,
+    recordDirectionPick,
+    updateDirectionPickResolution,
     onStreamDiagnostic,
     clearLog,
     eventCount: events.length,

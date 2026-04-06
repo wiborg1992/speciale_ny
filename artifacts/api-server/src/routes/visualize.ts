@@ -468,6 +468,20 @@ router.post("/visualize", async (req, res, next): Promise<void> => {
       prototype: "ux_prototype",
       clickable: "ux_prototype",
       mockup: "ux_prototype",
+      // VizFamily IDs passeret direkte fra retningskort-picker
+      hmi_interface: "hmi_interface",
+      user_journey: "user_journey",
+      workflow_process: "workflow_process",
+      physical_product: "physical_product",
+      requirements_matrix: "requirements_matrix",
+      management_summary: "management_summary",
+      engagement_analytics: "engagement_analytics",
+      persona_research: "persona_research",
+      service_blueprint: "service_blueprint",
+      comparison_evaluation: "comparison_evaluation",
+      design_system: "design_system",
+      ux_prototype: "ux_prototype",
+      generic: "generic",
     };
 
     const lastFamily = (

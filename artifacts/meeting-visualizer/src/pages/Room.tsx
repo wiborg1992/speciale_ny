@@ -59,6 +59,7 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { SessionEvalSheet } from "@/components/SessionEvalSheet";
 import { toast } from "@/hooks/use-toast";
+import { DirectionCardDialog } from "@/components/DirectionCardDialog";
 
 import type {
   InputTab,
@@ -133,6 +134,11 @@ export default function Room() {
   const [pendingIntent, setPendingIntent] = useState<{
     payload: NeedIntentPayload;
     request: VisualizeRequestWithIntent;
+  } | null>(null);
+
+  // Retningskort — vises kun første gang (vizHistory.length === 0 && vizType === "auto")
+  const [pendingDirectionPick, setPendingDirectionPick] = useState<{
+    transcript: string;
   } | null>(null);
 
   // Meeting context
@@ -604,8 +610,15 @@ export default function Room() {
       setDisplayHtml(streamedHtml);
       addVizVersion(streamedHtml, debugInfo ?? null);
       setVizModel((prev) => (prev === "haiku" ? "opus" : prev));
+      // Retningskort-match: registrér hvilken familie der faktisk blev genereret
+      if (directionPickPendingResolutionRef.current) {
+        directionPickPendingResolutionRef.current = false;
+        sessionEval.updateDirectionPickResolution(
+          debugInfo?.resolvedFamily ?? null,
+        );
+      }
     }
-  }, [isGenerating, streamedHtml, addVizVersion, debugInfo]);
+  }, [isGenerating, streamedHtml, addVizVersion, debugInfo, sessionEval.updateDirectionPickResolution]);
 
   // When SSE viz arrives from another user
   useEffect(() => {
@@ -976,6 +989,10 @@ export default function Room() {
     prevHtmlRef.current = displayHtml || sseViz.html || "";
   }, [displayHtml, sseViz.html]);
 
+  // Tracker til retningskort-match: sættes til true når bruger vælger et kort,
+  // nulstilles efter første viz er registreret (så kun ét match-event afsendes).
+  const directionPickPendingResolutionRef = useRef(false);
+
   const handleGenerate = useCallback(
     (auto = false) => {
       const transcript = getActiveTranscript();
@@ -995,6 +1012,12 @@ export default function Room() {
       if (!auto) stopRecording();
 
       if (inputTab === "paste") appendPasteHistoryIfNeeded(transcript);
+
+      // ── Retningskort: vis direction picker første gang i sessionen ────────────
+      if (!auto && vizHistory.length === 0 && vizType === "auto") {
+        setPendingDirectionPick({ transcript });
+        return;
+      }
 
       const previous = !freshStart ? prevHtmlRef.current || null : null;
 
@@ -1027,6 +1050,7 @@ export default function Room() {
       speakerName,
       vizType,
       vizModel,
+      vizHistory.length,
       meetingTitle,
       getMeetingContext,
       generate,
@@ -1097,6 +1121,11 @@ export default function Room() {
   useEffect(() => {
     pendingIntentRef.current = pendingIntent;
   }, [pendingIntent]);
+  // Spejler pendingDirectionPick-state til interval-callback
+  const pendingDirectionPickRef = useRef<typeof pendingDirectionPick>(null);
+  useEffect(() => {
+    pendingDirectionPickRef.current = pendingDirectionPick;
+  }, [pendingDirectionPick]);
   const currentWordCountRef = useRef(currentWordCount);
   useEffect(() => {
     currentWordCountRef.current = currentWordCount;
@@ -1126,8 +1155,8 @@ export default function Room() {
     if (!autoVizEnabled) return;
 
     const tick = setInterval(() => {
-      // Frys nedtælling mens disambiguation-dialog afventer brugerens valg
-      if (pendingIntentRef.current) return;
+      // Frys nedtælling mens disambiguation-dialog eller retningskort afventer brugerens valg
+      if (pendingIntentRef.current || pendingDirectionPickRef.current) return;
 
       autoVizCountdownRef.current -= 1;
       const next = autoVizCountdownRef.current;
@@ -1245,6 +1274,78 @@ export default function Room() {
   // ── Render ───────────────────────────────────────────────────────────────────
   return (
     <>
+      {/* ── Retningskort — direction picker (første viz i sessionen) ──────── */}
+      {pendingDirectionPick && (
+        <DirectionCardDialog
+          transcript={pendingDirectionPick.transcript}
+          workspaceDomain={workspaceDomain}
+          context={getMeetingContext()}
+          onPick={(familyId, shownFamilies) => {
+            sessionEval.recordDirectionPick({
+              shownFamilies,
+              pickedFamily: familyId,
+              skipped: false,
+            });
+            directionPickPendingResolutionRef.current = true;
+            setPendingDirectionPick(null);
+            const transcript = pendingDirectionPick.transcript;
+            const previous = !freshStart ? prevHtmlRef.current || null : null;
+            generate(
+              {
+                transcript,
+                previousHtml: previous,
+                roomId,
+                speakerName,
+                vizType: familyId,
+                vizModel,
+                title: meetingTitle || null,
+                context: getMeetingContext(),
+                freshStart,
+                workspaceDomain,
+              },
+              {
+                onSessionDiagnostic: sessionEval.onStreamDiagnostic,
+                onStreamComplete: (html) => setDisplayHtml(html),
+                onNeedIntent: (payload, originalRequest) => {
+                  setPendingIntent({ payload, request: originalRequest });
+                },
+              },
+            );
+          }}
+          onSkip={(shownFamilies) => {
+            sessionEval.recordDirectionPick({
+              shownFamilies,
+              pickedFamily: null,
+              skipped: true,
+            });
+            setPendingDirectionPick(null);
+            const transcript = pendingDirectionPick.transcript;
+            const previous = !freshStart ? prevHtmlRef.current || null : null;
+            generate(
+              {
+                transcript,
+                previousHtml: previous,
+                roomId,
+                speakerName,
+                vizType: null,
+                vizModel,
+                title: meetingTitle || null,
+                context: getMeetingContext(),
+                freshStart,
+                workspaceDomain,
+              },
+              {
+                onSessionDiagnostic: sessionEval.onStreamDiagnostic,
+                onStreamComplete: (html) => setDisplayHtml(html),
+                onNeedIntent: (payload, originalRequest) => {
+                  setPendingIntent({ payload, request: originalRequest });
+                },
+              },
+            );
+          }}
+        />
+      )}
+
       {/* ── Disambiguation dialog ──────────────────────────────────────────── */}
       {pendingIntent && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
