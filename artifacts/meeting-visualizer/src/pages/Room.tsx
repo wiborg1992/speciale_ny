@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
-import { useParams } from "wouter";
+import { useParams, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Mic,
@@ -46,6 +46,8 @@ import type { NeedIntentPayload } from "@/types/need-intent";
 import { useSessionEvalLog } from "@/hooks/use-session-eval-log";
 import { recordMeetingVisit } from "@/lib/recent-meetings-log";
 import type { SessionEvalVizSource } from "@/lib/session-eval-report";
+import { useOpenSessions } from "@/hooks/use-open-sessions";
+import { SessionTabs } from "@/components/SessionTabs";
 import {
   usePostSegment,
   type TranscriptSegment,
@@ -85,6 +87,13 @@ import { RoomOutputPanels } from "./room/RoomOutputPanels";
 
 export default function Room() {
   const { id: roomId } = useParams<{ id: string }>();
+  const [, setLocation] = useLocation();
+  const {
+    sessions: openSessions,
+    addSession,
+    removeSession: removeOpenSession,
+    updateTitle: updateSessionTitle,
+  } = useOpenSessions();
   const [speakerName, setSpeakerName] = useLocalStorage(
     "meetingVisualizer_speakerName",
     "Anonymous",
@@ -204,7 +213,7 @@ export default function Room() {
     if (!roomId) return;
     if (
       !window.confirm(
-        "Slette hele transskriptet i dette rum? Segmenter fjernes fra server/databasen for alle i rummet.",
+        "Slette hele transskriptet i denne session? Segmenter fjernes fra server/databasen for alle i sessionen.",
       )
     )
       return;
@@ -532,6 +541,15 @@ export default function Room() {
     sessionStartedAtRef.current = Date.now();
     sessionEval.clearLog();
   }, [roomId, sessionEval.clearLog]);
+
+  // Track open sessions for the tab bar
+  useEffect(() => {
+    if (roomId) addSession(roomId, meetingTitle || "");
+  }, [roomId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (roomId && meetingTitle) updateSessionTitle(roomId, meetingTitle);
+  }, [roomId, meetingTitle]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Version history ─────────────────────────────────────────────────────────
   const addVizVersion = useCallback(
@@ -1336,15 +1354,22 @@ export default function Room() {
         {/* ── Header ── */}
         <header className="h-14 glass-panel border-x-0 border-t-0 flex items-center justify-between px-4 z-20 shrink-0">
           <div className="flex items-center gap-3">
-            <img
-              src={`${BASE}images/logo-mark.png`}
-              className="w-7 h-7"
-              alt="Logo"
-            />
-            <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setLocation("/")}
+              className="flex items-center gap-2.5 hover:opacity-80 transition-opacity"
+              title="Til forsiden"
+            >
+              <img
+                src={`${BASE}images/logo-mark.png`}
+                className="w-7 h-7"
+                alt="Logo"
+              />
               <h1 className="text-base font-display leading-none text-white">
                 AI Visualizer
               </h1>
+            </button>
+            <div className="flex items-center gap-2">
               <div
                 className={`w-2 h-2 rounded-full ${
                   connectionStatus === "connected"
@@ -1465,6 +1490,13 @@ export default function Room() {
             </select>
           </div>
         </header>
+
+        {/* ── Session Tabs ── */}
+        <SessionTabs
+          currentRoomId={roomId ?? ""}
+          sessions={openSessions}
+          onRemove={removeOpenSession}
+        />
 
         {/* ── Main ── */}
         <main className="flex-1 flex overflow-hidden min-h-0">
@@ -2034,7 +2066,7 @@ export default function Room() {
                 type="text"
                 value={meetingTitle}
                 onChange={(e) => setMeetingTitle(e.target.value)}
-                placeholder="Meeting title (optional)"
+                placeholder="Session title (optional)"
                 className="flex-1 min-w-[160px] max-w-[240px] h-8 bg-secondary/50 border border-border rounded px-3 text-sm font-mono text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-primary/40"
               />
 
@@ -2243,7 +2275,7 @@ export default function Room() {
                               type="text"
                               value={sessionPickerSearch}
                               onChange={(e) => setSessionPickerSearch(e.target.value)}
-                              placeholder="Søg rum..."
+                              placeholder="Søg session..."
                               autoFocus
                               className="w-full h-7 bg-secondary/40 border border-border rounded px-2 text-xs font-mono text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-primary/40"
                             />
@@ -2252,7 +2284,7 @@ export default function Room() {
                             {filteredAvailableSessions.length === 0 ? (
                               <div className="px-3 py-3 text-xs font-mono text-muted-foreground text-center">
                                 {availableSessions.length === 0
-                                  ? "Ingen rum fundet"
+                                  ? "Ingen sessioner fundet"
                                   : "Ingen resultater"}
                               </div>
                             ) : (

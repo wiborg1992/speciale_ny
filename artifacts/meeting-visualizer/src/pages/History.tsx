@@ -61,9 +61,9 @@ export default function History() {
                 Back
               </Button>
             </Link>
-            <h1 className="text-3xl font-display font-bold text-white uppercase tracking-widest">Meeting Archive</h1>
+            <h1 className="text-3xl font-display font-bold text-white uppercase tracking-widest">Session Archive</h1>
             <p className="text-muted-foreground text-sm mt-1">
-              {meetings.length} meeting{meetings.length !== 1 ? "s" : ""} saved
+              {meetings.length} session{meetings.length !== 1 ? "s" : ""} saved
             </p>
           </div>
         </header>
@@ -81,10 +81,10 @@ export default function History() {
         ) : meetings.length === 0 ? (
           <div className="text-center p-12 glass-panel rounded-xl">
             <Clock className="w-12 h-12 text-muted-foreground mx-auto mb-4 opacity-50" />
-            <h3 className="text-lg font-display text-white mb-2">No Meetings Yet</h3>
-            <p className="text-muted-foreground text-sm mb-4">Start a meeting and it will be saved here automatically.</p>
+            <h3 className="text-lg font-display text-white mb-2">No Sessions Yet</h3>
+            <p className="text-muted-foreground text-sm mb-4">Start a session and it will be saved here automatically.</p>
             <Link href="/">
-              <Button>Create Meeting</Button>
+              <Button>Create Session</Button>
             </Link>
           </div>
         ) : (
@@ -101,7 +101,7 @@ export default function History() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-3 mb-2">
                         <h3 className="text-lg font-display text-white font-bold truncate">
-                          {meeting.title || `Room ${meeting.roomId}`}
+                          {meeting.title || `Session ${meeting.roomId}`}
                         </h3>
                         <Badge variant="outline" className="shrink-0 font-mono text-[10px]">
                           {meeting.roomId}

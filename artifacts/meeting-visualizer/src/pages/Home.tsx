@@ -84,7 +84,7 @@ export default function Home() {
       .map((e, i) => ({
         id: -1000 - i,
         roomId: e.roomId,
-        title: e.title || `Room ${e.roomId}`,
+        title: e.title || `Session ${e.roomId}`,
         createdAt: e.visitedAt,
         updatedAt: e.visitedAt,
         segmentCount: 0,
@@ -162,7 +162,7 @@ export default function Home() {
                   disabled={!speakerName.trim()}
                 >
                   <Play className="w-5 h-5 mr-2" />
-                  New Room
+                  New Session
                 </Button>
               </form>
 
@@ -199,7 +199,7 @@ export default function Home() {
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-xs font-display font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
               <Clock className="w-3.5 h-3.5" />
-              Recent Meetings
+              Recent Sessions
             </h2>
             <button
               type="button"
@@ -213,7 +213,7 @@ export default function Home() {
 
           {recentMeetings.length === 0 ? (
             <p className="text-[11px] text-muted-foreground py-6 text-center leading-relaxed">
-              Ingen møder endnu — opret et rum eller tilslut med kode. Besøgte rum gemmes her (også uden database).
+              Ingen sessioner endnu — opret en ny session eller tilslut med kode. Besøgte sessioner gemmes her (også uden database).
             </p>
           ) : (
             <div className="space-y-1.5">
@@ -234,7 +234,7 @@ export default function Home() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-sm text-white font-medium truncate">
-                            {m.title || `Room ${m.roomId}`}
+                            {m.title || `Session ${m.roomId}`}
                           </span>
                           <span className="text-[10px] font-mono text-muted-foreground/70 shrink-0 bg-accent/30 px-1 rounded">
                             {m.roomId}
