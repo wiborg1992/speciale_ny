@@ -1,0 +1,126 @@
+
+# Plan v3 — Definitiv (implementeringsklar)  
+## *Med afsluttende kommentar fra review (samlet dokument)*
+
+---
+
+## 1. Lukket beslutning: PNG + `sketchId`-flow
+
+**Model 1 valgt:**
+
+- **Client:** `exportToBlob()` → PNG base64 + Excalidraw scene JSON  
+- **`PUT /meetings/:roomId/sketch`**  
+  Body: `{ sceneJson: string, previewPngBase64: string }`  
+  → gemmer begge i DB under autogenereret **`sketchId`**  
+  → returnerer `{ sketchId }`  
+- **`POST /api/visualize`** (eksisterende kontrakt: typisk **`roomId` i body**, ikke ny visualize-URL)  
+  Body: `{ roomId, transcript, sketchId, ... }`  
+  → backend loader **PNG fra DB** via `sketchId`  
+  → **image-block** til Claude  
+  → `sceneJson` kan medtages i **eval-/log-artefakt**  
+- **`sketchImageBase64` på `POST /visualize`**: **nej fra dag 1** — **én sandhed** (billede ligger på skitsen i DB).
+
+---
+
+## 2. DB-skema (Drizzle — migration i **Fase C-skelet**)
+
+**`sketch_scenes`:**
+
+- `sketchId`: uuid (PK)  
+- `meetingId`: text (FK — **skal matche eksisterende møde-/room-model**)  
+- `sceneJson`: text  
+- `previewPngBase64`: text  
+- `createdAt`: timestamp  
+
+**`sketch_viz_links`** (flere viz-forsøg per skitse):
+
+- `sketchId`: uuid (FK)  
+- `vizVersion`: integer  
+- `meetingId`: text  
+- `linkedAt`: timestamp  
+
+`sketchRevision` skrives **ikke** direkte på sketch-rækken — link-tabellen håndterer **én skitse → mange viz-forsøg**.
+
+---
+
+## 3. Prompt-strategi (inkl. konfliktresolution)
+
+> Deltagerne har skitseret vedhæftede billede som deres initielle forståelse af hvad visualiseringen skal vise. Brug skitsen som den primære retningsangivelse for layout, struktur og hierarki. Transskriptionen leverer indholdet — skitsen leverer formen og retningen.  
+>  
+> Hvis transskription og skitse tydeligt modsiger hinanden, prioritér den nyeste eksplicitte tale om emnet — men bevar skitsens layout hvor det er muligt. Afvig kun fra skitsen hvis den er tom eller ufortolkelig.
+
+---
+
+## 4. Faser (endelig rækkefølge)
+
+### Fase B — Typer
+
+- `session-eval-report.ts` (m.fl.): bl.a.  
+  `sketchUsed`, `sketchBytes`, `sketchElementCount`, `sketchExportWidth/Height`,  
+  `sketchUsedAt`: `"before_first_viz" | "after_viz" | null`
+
+### Fase C-skelet + D-forfang — Backend + DB (samlet)
+
+- Drizzle-migration: `sketch_scenes` + `sketch_viz_links`  
+- `PUT /meetings/:roomId/sketch` (gem scene + PNG, returner `sketchId`)  
+- `GET /meetings/:roomId/classify` (top-3, **samme transcript-tail-helper som visualize**)  
+- `POST /api/visualize` Zod: `sketchId?: string` (**ingen** `sketchImageBase64`)  
+- **Stub:** loader PNG fra DB via `sketchId`, logger fx *would attach image* / tilsvarende diagnostik  
+
+### Fase A — Sketch-tab UI
+
+- Excalidraw (**lazy import**), max 1024px resize, JPEG 0.82 fallback ved stor fil  
+- Flow: `exportToBlob()` → **`PUT /sketch`** → `sketchId` i state → **`POST /visualize`**  
+- **Top-1 badge** over/ved canvas (fra classify-endpoint, **samme tail-helper**)  
+- **Tom canvas:** ingen PUT (fx `elements.length === 0`)  
+- Hjælpetekst (bl.a.): at skitsen følger med ved Visualisér, bedst på større skærm  
+- `InputTab` = `mic` | `paste` | `sketch`  
+
+### Fase C-færdig — Multimodal
+
+- Verificér **Anthropic SDK** image-format mod installeret version  
+- Loader PNG fra `sketch_scenes` via `sketchId` → image-block + opdateret prompt  
+- Log: `sketchIncluded`, dimensioner, decode-fejl  
+
+### Fase E — Fixation-breaker (kan paralleliseres med A)
+
+- Tæller på eksisterende **refinement**-signal  
+- Banner ved **3** i træk → `freshStart: true` (+ evt. lille prompt-variation)  
+
+### Session-eval
+
+- **Q2** (hvis `sketchUsed`): om skitsen hjalp med **initiel retning** (før første viz)  
+- **Q3** (hvis `sketchUsedAt === "after_viz"`): om skitsen brugtes til at **korrigere** en eksisterende visualisering  
+
+*(Planen nævner også Q1 “bredde” i den bredere v3 — behold den hvis I stadig vil have den som generel procesmåling.)*
+
+---
+
+## 5. Afventer bekræftelse (original)
+
+Skriv **“ja”** for at starte med **Fase B + C-skelet**.
+
+---
+
+## 6. Afsluttende kommentar fra review (tilføjelser og skærpinger)
+
+**Samlet dom:** Planen er **implementeringsklar** på arkitektur-niveau: `sketchId`-flow løser body-limit og dobbelt sandhed; link-tabel er den rigtige måde at håndtere **fejlede viz-forsøg**; prompt med **konfliktlinje** matcher jeres “seneste tale”-logik og gør interventionen **testbar**.
+
+**Præcisér før/I forbindelse med kodning:**
+
+1. **`PUT /sketch` timing** — fast regel: helst **lige før** “Visualisér” (én sammenhængende handling), så `sketchId` og det visuelle indhold altid matcher. Autosave kan komme senere og giver ekstra versionering.  
+2. **`previewPngBase64` som `text`** — sæt **max størrelse** + resize/JPEG som I allerede har; overvej på sigt `bytea`/storage; dokumentér DB-vækst til pilot.  
+3. **`meetingId` / FK** — sørg for at typen og relationen **spejler** jeres eksisterende `meetings`-schema (undgår migrationsfejl).  
+4. **`vizVersion` i `sketch_viz_links`** — skal følge **samme semantik** som i `visualizations`-tabellen; link bør knyttes når en viz er **persisted** med kendt version — **ikke** ved stream-start — ellers bliver forskningsdata misvisende.  
+5. **`GET …/classify`** — implementér som **én delt helper** til transcript-tail (bruges både af classify og visualize), så badge og model ikke divergerer.  
+6. **Stub-fase:** undgå at skrive **endelige** `sketch_viz_links` før I ved at multimodal-path er korrekt; overvej **`pending` → `completed`** eller kun insert efter vellydende persist.
+
+**Risici (uændret, men vigtige):** Excalidraw + Vite (lifecycle/bundle/mobil); **alle** code paths i `streamVisualization` med valgfrit billede; konsistens mellem classify og visualize.
+
+**Kompleksitet:** **Medium–høj** — ikke fordi idéen er svær, men fordi **persistens, multimodal SDK, og alle visualize-stier** skal lande uden at knække eksisterende sessions.
+
+**Konklusion:** Denne **v3-definitiv** plan er **god nok at gå efter** i speciale og workshop, **forudsat** at I binder **`sketchId` ↔ PNG-load ↔ `vizVersion`-link** med præcis lifecycle som ovenfor.
+
+---
+
+*Slut på samlet dokument (Claude-plan + afsluttende review).*
