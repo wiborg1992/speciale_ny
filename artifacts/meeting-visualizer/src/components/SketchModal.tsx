@@ -1,7 +1,7 @@
 import "@excalidraw/excalidraw/index.css";
 import { forwardRef, lazy, Suspense, useCallback, useEffect, useImperativeHandle, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Loader2, PenLine, X } from "lucide-react";
+import { ChevronUp, ChevronDown, Loader2, PenLine, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const MAX_DIMENSION = 1600;
@@ -43,34 +43,62 @@ export const SketchModal = forwardRef<SketchModalHandle, SketchModalProps>(
       : "Tegn en skitse til din session"
     );
 
-    // Skriv HTML til baggrundsiframen + injicér scroll-CSS så content altid kan scrolles
+    // Hjælpefunktion til at scrolle baggrundsiframen — brugt af knapper og wheel-listener
+    const scrollBg = useCallback((dy: number) => {
+      const iwin = bgIframeRef.current?.contentWindow as (Window & { _bgScrollBy?: (n: number) => void }) | null;
+      iwin?._bgScrollBy?.(dy);
+    }, []);
+
+    // Skriv HTML til baggrundsiframen.
+    // Injicér _bgScrollBy() og scroll-CSS direkte i dokumentet
+    // så vi kan scrolle uanset om AI-HTML bruger window-scroll eller inner-container-scroll.
     useEffect(() => {
       const iframe = bgIframeRef.current;
       if (!iframe || !backgroundHtml) return;
       const doc = iframe.contentDocument;
       if (!doc) return;
+
+      // Script der prøver alle scroll-strategier
+      const scrollScript = `<script id="_bgScrollHelper">(function(){
+  function doScroll(dy){
+    // Strategi 1: window scroll
+    try{window.scrollBy({top:dy,behavior:'instant'});}catch(_){}
+    // Strategi 2: documentElement / body direkte
+    try{document.documentElement.scrollTop+=dy;}catch(_){}
+    try{document.body.scrollTop+=dy;}catch(_){}
+    // Strategi 3: den største scrollable descendant
+    var best=null,bestSH=0;
+    try{document.querySelectorAll('*').forEach(function(el){
+      var ov=getComputedStyle(el).overflowY;
+      if((ov==='auto'||ov==='scroll')&&el.scrollHeight>el.clientHeight+10&&el.scrollHeight>bestSH){
+        bestSH=el.scrollHeight;best=el;
+      }
+    });if(best)best.scrollTop+=dy;}catch(_){}
+  }
+  window._bgScrollBy=doScroll;
+}());<\/script>`;
+
+      // CSS der sikrer body/html kan scrolle (AI-HTML sætter tit overflow:hidden)
+      const scrollCSS = `<style id="_bgScrollCSS">html,body{overflow:auto!important;height:auto!important;min-height:100%!important;}</style>`;
+
+      // Injicer script inden </body> og CSS til sidst
+      const enriched = backgroundHtml.includes("</body>")
+        ? backgroundHtml.replace("</body>", scrollScript + "</body>")
+        : backgroundHtml + scrollScript;
+
       doc.open();
-      doc.write(backgroundHtml);
+      doc.write(enriched + scrollCSS);
       doc.close();
-      // AI-genereret HTML kan have overflow:hidden på body/html — tving scrollability
-      const style = doc.createElement("style");
-      style.textContent = "html,body{overflow:auto!important;height:auto!important;min-height:100%!important;}";
-      (doc.head ?? doc.documentElement).appendChild(style);
     }, [backgroundHtml]);
 
-    // Scroll-forwarding — lyt på window i capture-fasen (allerførst i event-propagation)
-    // Excalidraw kan IKKE blokere dette med stopPropagation/stopImmediatePropagation
-    // fordi vores listener er på window og registreres inden Excalidraw's listeners
+    // Wheel-forwarding: lyt på window capture (kører FØR Excalidraw's listeners)
+    // Bruger _bgScrollBy() som prøver alle scroll-strategier
     useEffect(() => {
       if (!open || !isAnnotationMode) return;
-      const handleWheel = (e: WheelEvent) => {
-        const iframe = bgIframeRef.current;
-        if (!iframe?.contentWindow) return;
-        iframe.contentWindow.scrollBy({ top: e.deltaY, left: e.deltaX, behavior: "instant" });
-      };
+      const handleWheel = (e: WheelEvent) => { scrollBg(e.deltaY); };
       window.addEventListener("wheel", handleWheel, { passive: true, capture: true });
       return () => window.removeEventListener("wheel", handleWheel, { capture: true });
-    }, [open, isAnnotationMode]);
+    }, [open, isAnnotationMode, scrollBg]);
 
     // MutationObserver: gør Excalidraw toolbar draggable (click-and-drag position)
     const annotationWrapperRef = useRef<HTMLDivElement | null>(null);
@@ -412,6 +440,52 @@ export const SketchModal = forwardRef<SketchModalHandle, SketchModalProps>(
                     overflow: "auto",
                   }}
                 />
+              )}
+
+              {/* Scroll-knapper — bruges når wheel-events ikke kan nå igennem Excalidraw */}
+              {isAnnotationMode && (
+                <div
+                  style={{
+                    position: "absolute",
+                    right: 12,
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    zIndex: 25,
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 4,
+                    pointerEvents: "all",
+                  }}
+                >
+                  <button
+                    type="button"
+                    title="Scroll op"
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onClick={(e) => { e.stopPropagation(); scrollBg(-250); }}
+                    style={{
+                      width: 32, height: 32, borderRadius: 6, border: "1px solid rgba(255,255,255,0.15)",
+                      background: "rgba(24,24,27,0.85)", color: "#fff", cursor: "pointer",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      backdropFilter: "blur(4px)",
+                    }}
+                  >
+                    <ChevronUp size={16} />
+                  </button>
+                  <button
+                    type="button"
+                    title="Scroll ned"
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onClick={(e) => { e.stopPropagation(); scrollBg(250); }}
+                    style={{
+                      width: 32, height: 32, borderRadius: 6, border: "1px solid rgba(255,255,255,0.15)",
+                      background: "rgba(24,24,27,0.85)", color: "#fff", cursor: "pointer",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      backdropFilter: "blur(4px)",
+                    }}
+                  >
+                    <ChevronDown size={16} />
+                  </button>
+                </div>
               )}
 
               {/* Excalidraw canvas — transparent i annotation-mode, normal i sketch-mode */}
