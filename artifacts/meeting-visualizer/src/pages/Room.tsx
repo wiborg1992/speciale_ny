@@ -136,6 +136,23 @@ export default function Room() {
   >([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Previous sessions (imported as context)
+  type PreviousSessionMeta = {
+    roomId: string;
+    title: string;
+    createdAt: string;
+    wordCount: number;
+    transcript: string;
+  };
+  const [previousSessions, setPreviousSessions] = useState<PreviousSessionMeta[]>([]);
+  const [showSessionPicker, setShowSessionPicker] = useState(false);
+  const [sessionPickerSearch, setSessionPickerSearch] = useState("");
+  const [availableSessions, setAvailableSessions] = useState<
+    { roomId: string; title: string; createdAt: string; wordCount: number }[]
+  >([]);
+  const [loadingSessionTranscript, setLoadingSessionTranscript] = useState<string | null>(null);
+  const previousSessionsSectionRef = useRef<HTMLDivElement>(null);
+
   // Transcription mode: "browser" = Web Speech API, "deepgram" = Deepgram (diarization)
   const [transcriptionMode, setTranscriptionMode] = useLocalStorage<
     "browser" | "deepgram"
@@ -391,15 +408,112 @@ export default function Room() {
         parts.push(`\n--- FILE: ${f.name} ---\n${f.content}\n--- END FILE ---`);
       });
     }
+    if (previousSessions.length > 0) {
+      previousSessions.forEach((s) => {
+        const date = format(new Date(s.createdAt), "yyyy-MM-dd");
+        parts.push(
+          `\n--- PREVIOUS SESSION: "${s.title || s.roomId}" (${date}, ${s.wordCount} ord) ---\n${s.transcript}\n--- END PREVIOUS SESSION ---`,
+        );
+      });
+    }
     return parts.join("\n") || null;
-  }, [ctxPurpose, ctxProjects, ctxAttend, ctxExtra, uploadedFiles]);
+  }, [ctxPurpose, ctxProjects, ctxAttend, ctxExtra, uploadedFiles, previousSessions]);
 
   const hasContext =
     ctxPurpose ||
     ctxProjects ||
     ctxAttend ||
     ctxExtra ||
-    uploadedFiles.length > 0;
+    uploadedFiles.length > 0 ||
+    previousSessions.length > 0;
+
+  // Previous sessions: filtered list for picker
+  const filteredAvailableSessions = useMemo(() => {
+    const search = sessionPickerSearch.trim().toLowerCase();
+    if (!search) return availableSessions;
+    return availableSessions.filter(
+      (s) =>
+        (s.title || s.roomId).toLowerCase().includes(search) ||
+        s.roomId.toLowerCase().includes(search),
+    );
+  }, [availableSessions, sessionPickerSearch]);
+
+  // Close picker when clicking outside
+  useEffect(() => {
+    if (!showSessionPicker) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        previousSessionsSectionRef.current &&
+        !previousSessionsSectionRef.current.contains(e.target as Node)
+      ) {
+        setShowSessionPicker(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [showSessionPicker]);
+
+  const handleOpenSessionPicker = useCallback(async () => {
+    setShowSessionPicker(true);
+    setSessionPickerSearch("");
+    try {
+      const res = await fetch(`${BASE}api/meetings`);
+      if (res.ok) {
+        const data = await res.json();
+        const selectedIds = new Set(previousSessions.map((s) => s.roomId));
+        const filtered = ((data.meetings as Array<Record<string, unknown>>) || [])
+          .filter((m) => m.roomId !== roomId && !selectedIds.has(m.roomId as string))
+          .map((m) => ({
+            roomId: m.roomId as string,
+            title: (m.title as string) || "",
+            createdAt: m.createdAt as string,
+            wordCount: (m.wordCount as number) || 0,
+          }));
+        setAvailableSessions(filtered);
+      }
+    } catch (err) {
+      console.error("Failed to load sessions list:", err);
+    }
+  }, [roomId, previousSessions]);
+
+  const handleSelectSession = useCallback(
+    async (selectedRoomId: string) => {
+      if (previousSessions.length >= 4) return;
+      setLoadingSessionTranscript(selectedRoomId);
+      try {
+        const res = await fetch(
+          `${BASE}api/meetings/${encodeURIComponent(selectedRoomId)}/transcript`,
+        );
+        if (!res.ok) throw new Error("Not found");
+        const data = await res.json();
+        setPreviousSessions((prev) => [
+          ...prev,
+          {
+            roomId: selectedRoomId,
+            title: data.title,
+            createdAt: data.createdAt,
+            wordCount: data.wordCount,
+            transcript: data.transcript,
+          },
+        ]);
+        setShowSessionPicker(false);
+      } catch (err) {
+        console.error("Failed to load session transcript:", err);
+        toast({
+          title: "Fejl",
+          description: "Kunne ikke hente transskript fra det valgte rum.",
+          variant: "destructive",
+        });
+      } finally {
+        setLoadingSessionTranscript(null);
+      }
+    },
+    [previousSessions.length],
+  );
+
+  const removePreviousSession = useCallback((sessionRoomId: string) => {
+    setPreviousSessions((prev) => prev.filter((s) => s.roomId !== sessionRoomId));
+  }, []);
 
   const sessionStartedAtRef = useRef<number>(Date.now());
 
@@ -2082,6 +2196,92 @@ export default function Room() {
                           </button>
                         </span>
                       ))}
+                    </div>
+
+                    {/* Previous sessions section */}
+                    <div
+                      ref={previousSessionsSectionRef}
+                      className="mt-2 pt-2 border-t border-border/50 relative"
+                    >
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={handleOpenSessionPicker}
+                          disabled={previousSessions.length >= 4}
+                          className="flex items-center gap-1.5 h-7 px-2.5 rounded border border-dashed border-border text-xs font-mono text-muted-foreground hover:text-white hover:border-primary/50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                          <History className="w-3 h-3" />
+                          Tilføj tidligere session
+                        </button>
+                        {previousSessions.map((s) => (
+                          <span
+                            key={s.roomId}
+                            title={s.title || s.roomId}
+                            className="flex items-center gap-1 h-7 px-2 rounded bg-primary/10 border border-primary/30 text-xs font-mono text-primary max-w-[200px]"
+                          >
+                            <History className="w-3 h-3 shrink-0" />
+                            <span className="truncate">{s.title || s.roomId}</span>
+                            <button
+                              type="button"
+                              onClick={() => removePreviousSession(s.roomId)}
+                              className="ml-0.5 hover:text-red-400 transition-colors"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+
+                      {/* Session picker dropdown */}
+                      {showSessionPicker && (
+                        <div className="mt-2 bg-card border border-border rounded-lg shadow-xl z-50 max-h-60 flex flex-col">
+                          <div className="p-2 border-b border-border shrink-0">
+                            <input
+                              type="text"
+                              value={sessionPickerSearch}
+                              onChange={(e) => setSessionPickerSearch(e.target.value)}
+                              placeholder="Søg rum..."
+                              autoFocus
+                              className="w-full h-7 bg-secondary/40 border border-border rounded px-2 text-xs font-mono text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-primary/40"
+                            />
+                          </div>
+                          <div className="overflow-y-auto flex-1">
+                            {filteredAvailableSessions.length === 0 ? (
+                              <div className="px-3 py-3 text-xs font-mono text-muted-foreground text-center">
+                                {availableSessions.length === 0
+                                  ? "Ingen rum fundet"
+                                  : "Ingen resultater"}
+                              </div>
+                            ) : (
+                              filteredAvailableSessions.map((s) => (
+                                <button
+                                  key={s.roomId}
+                                  type="button"
+                                  onClick={() => handleSelectSession(s.roomId)}
+                                  disabled={loadingSessionTranscript === s.roomId}
+                                  className="w-full px-3 py-2 text-left text-xs font-mono hover:bg-secondary/50 transition-colors flex items-center justify-between gap-2 disabled:opacity-60"
+                                >
+                                  <div className="flex flex-col gap-0.5 min-w-0">
+                                    <span className="text-foreground truncate">
+                                      {s.title || s.roomId}
+                                    </span>
+                                    <span className="text-muted-foreground text-[10px]">
+                                      {format(new Date(s.createdAt), "d. MMM yyyy")}
+                                      {" · "}
+                                      {s.wordCount.toLocaleString()} ord
+                                    </span>
+                                  </div>
+                                  {loadingSessionTranscript === s.roomId && (
+                                    <span className="text-muted-foreground text-[10px] shrink-0">
+                                      Henter…
+                                    </span>
+                                  )}
+                                </button>
+                              ))
+                            )}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </motion.div>

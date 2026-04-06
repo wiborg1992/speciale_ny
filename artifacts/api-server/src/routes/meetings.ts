@@ -2,6 +2,7 @@ import { Router, type IRouter } from "express";
 import {
   listMeetings,
   getMeetingByRoom,
+  getMeetingTranscript,
   deleteMeeting,
   updateMeetingTitle,
   clearMeetingTranscript,
@@ -25,6 +26,21 @@ router.get("/meetings", async (_req, res): Promise<void> => {
       dbHint:
         "Tjek at PostgreSQL kører, DATABASE_URL i .env er korrekt, og kør: pnpm --filter @workspace/db push",
     });
+  }
+});
+
+router.get("/meetings/:roomId/transcript", async (req, res): Promise<void> => {
+  try {
+    const { roomId } = req.params;
+    const data = await getMeetingTranscript(roomId);
+    if (!data) {
+      res.status(404).json({ error: "Meeting not found" });
+      return;
+    }
+    res.json(data);
+  } catch (err) {
+    console.error("Failed to load transcript:", err);
+    res.status(500).json({ error: "Failed to load transcript" });
   }
 });
 

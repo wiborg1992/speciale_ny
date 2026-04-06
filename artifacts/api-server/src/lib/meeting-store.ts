@@ -204,3 +204,46 @@ export async function deleteMeeting(roomId: string) {
 
   return result.length > 0;
 }
+
+/** Return a room's transcript as formatted text, truncated to 3000 words. */
+export async function getMeetingTranscript(roomId: string): Promise<{
+  title: string;
+  roomId: string;
+  createdAt: Date;
+  wordCount: number;
+  transcript: string;
+} | null> {
+  if (!db) return null;
+
+  const meetings = await db
+    .select()
+    .from(meetingsTable)
+    .where(eq(meetingsTable.roomId, roomId))
+    .limit(1);
+
+  if (meetings.length === 0) return null;
+  const meeting = meetings[0];
+
+  const segments = await db
+    .select()
+    .from(segmentsTable)
+    .where(eq(segmentsTable.meetingId, meeting.id))
+    .orderBy(segmentsTable.timestamp);
+
+  const lines = segments.map((s) => `[${s.speakerName}]: ${s.text}`);
+  const fullText = lines.join("\n");
+
+  const words = fullText.split(/\s+/).filter(Boolean);
+  const truncated =
+    words.length > 3000
+      ? words.slice(0, 3000).join(" ") + "\n[...transskript afkortet]"
+      : fullText;
+
+  return {
+    title: meeting.title || roomId,
+    roomId: meeting.roomId,
+    createdAt: meeting.createdAt,
+    wordCount: meeting.wordCount,
+    transcript: truncated,
+  };
+}
