@@ -126,17 +126,6 @@ export default function Home() {
           transition={{ duration: 0.6, ease: "easeOut" }}
           className="glass-panel p-8 rounded-2xl glow-border"
         >
-          <div className="flex justify-center mb-8">
-            <div className="relative">
-              <div className="absolute inset-0 bg-primary blur-xl opacity-30 rounded-full animate-pulse" />
-              <img
-                src={`${import.meta.env.BASE_URL}images/logo-mark.png`}
-                alt="Logo"
-                className="w-20 h-20 relative z-10 drop-shadow-2xl"
-              />
-            </div>
-          </div>
-
           <div className="text-center mb-10">
             <h1 className="text-3xl font-display font-bold text-white mb-2">Meeting AI Visualizer</h1>
             <p className="text-muted-foreground">Real-time industrial systems modeling from speech.</p>

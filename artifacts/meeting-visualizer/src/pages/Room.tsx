@@ -1360,11 +1360,6 @@ export default function Room() {
               className="flex items-center gap-2.5 hover:opacity-80 transition-opacity"
               title="Til forsiden"
             >
-              <img
-                src={`${BASE}images/logo-mark.png`}
-                className="w-7 h-7"
-                alt="Logo"
-              />
               <h1 className="text-base font-display leading-none text-white">
                 AI Visualizer
               </h1>
