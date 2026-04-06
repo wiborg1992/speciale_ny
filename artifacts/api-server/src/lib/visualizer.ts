@@ -523,11 +523,14 @@ GRUNDFOS HARDWARE COLOURS (reference):
   Display bg: #0A1628 | Display text: #00C8FF / #7CFC00
 
 SURROUNDING LAYOUT (for all pump/controller types):
-  Top: product name hero title — Outfit 2.2rem font-weight:700 color:#002A5C
-  THE PRODUCT SVG IS THE HERO — it must fill at least 65% of viewport height, centered.
-  Below the SVG: MAXIMUM 2 compact info boxes (not cards with long text — just a short label and 1-2 key values).
-  Callout annotations: SVG <line> elements directly on the product drawing — labels embedded next to the product, NOT in separate cards.
-  DO NOT add requirements lists, specification tables, or long descriptive paragraphs. The drawing speaks for itself.
+  Top: product name hero title — Outfit 2.2rem font-weight:700 color:#002A5C, centered.
+  SVG SIZING — the SVG element MUST be embedded WITHOUT fixed width/height attributes.
+    Wrap it in: <div style="width:min(88vw,640px);margin:0 auto">
+    Set SVG to: <svg viewBox="..." style="width:100%;height:auto;display:block">
+    This scales the product to fill the visible area at any screen size.
+  MAXIMUM 2 compact info items below (short label + 1-2 key values — NO long text, NO spec tables).
+  Callout annotations: SVG <line>+<text> elements around the product — labels near the parts they describe.
+  DO NOT add requirements lists, specification tables, or paragraphs. The drawing speaks for itself.
 
 ━━━ USER JOURNEY MAP — FULL VISUAL SPEC ━━━
 Visual language: Miro/Figma UX style. Light background #F7F8FA.
@@ -941,9 +944,10 @@ YOUR JOB:
 3. ADAPT values: change display readings, model name, LED states, button labels to match the transcript
 4. EMBED the SVG inside a clean white (#F8FAFC) HTML page with:
    - Product title: font-family Outfit, 2rem, font-weight 700, color #002A5C — ABOVE the SVG
-   - The SVG large and centered — at least 65% viewport height
-   - Callout annotations: SVG <line> elements directly on/around the product, label text near the product — NOT in separate cards
-   - MAXIMUM 2 compact info boxes below (short label + 1-2 values each, not long prose)
+   - SVG sizing: REMOVE width/height from the <svg> tag; wrap in <div style="width:min(88vw,640px);margin:0 auto">
+     and set <svg viewBox="..." style="width:100%;height:auto;display:block"> — fills the visible area
+   - Callout annotations: SVG <line>+<text> elements around the product near the parts they describe — NOT in separate cards
+   - MAXIMUM 2 compact info items below (short label + 1-2 key values — NO long text)
 
 SVG QUALITY RULES:
   • NEVER simplify the SVG — keep ALL gradients, filters, shadows, highlight effects

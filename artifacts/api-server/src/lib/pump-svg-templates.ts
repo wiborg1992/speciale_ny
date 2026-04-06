@@ -362,12 +362,21 @@ YOUR JOB: Copy the most relevant template below, then ADAPT it:
   2. Adjust model name (CU 362, Alpha GO, CR 32-3, etc.) to match what's discussed
   3. Modify LED states, button labels, or status text based on context
   4. Keep ALL gradients, filters, shadows, and structural elements — they create the realistic look
-  5. Add callout annotations (SVG lines + text labels) pointing to key parts discussed in the meeting
+  5. Add callout annotations (SVG <line> + <text> elements) pointing to key parts discussed
 
-SURROUNDING LAYOUT: Place the SVG in a white (#F8FAFC) container with:
-  - Product name as hero title: Outfit 2rem font-weight:700 color:#002A5C
-  - 3-4 spec cards below/beside the SVG showing key parameters from the transcript
-  - Callout annotations: <line> from SVG element to label text outside the drawing
+SVG SIZING — CRITICAL:
+  When you embed the SVG in the HTML page, REMOVE the fixed width/height attributes from the <svg> element
+  and KEEP only the viewBox. Then control size with CSS:
+    <div style="width:min(88vw,640px);margin:0 auto;padding:8px 0">
+      <svg viewBox="..." style="width:100%;height:auto;display:block">
+  This makes the product illustration fill most of the visible viewport regardless of screen size.
+
+SURROUNDING LAYOUT — STRICTLY:
+  - Product name as hero title: Outfit 2.2rem font-weight:700 color:#002A5C, centered above SVG
+  - The SVG fills the viewport as described above — it is the ENTIRE visualization
+  - MAXIMUM 2 compact info items below the SVG (short label + value only, NO long text)
+  - Callout annotations: <line> + <text> elements placed around the SVG, near the parts they describe
+  - NO spec card grids, NO requirements lists, NO paragraphs of text
 
 DO NOT simplify the SVG. DO NOT remove gradients or filters. DO NOT replace detailed elements with simple rectangles.
 The templates below are your MINIMUM quality bar — you may add MORE detail but never less.
