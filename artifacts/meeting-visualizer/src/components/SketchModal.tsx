@@ -254,9 +254,13 @@ export const SketchModal = forwardRef<SketchModalHandle, SketchModalProps>(
         const cW = container?.clientWidth ?? iframe.clientWidth;
         const cH = container?.clientHeight ?? iframe.clientHeight;
 
-        // 1. Fang baggrundsiframen med html2canvas — den er fuld størrelse (no scaling)
+        // 1. Fang baggrundsiframen med html2canvas
+        //    — start ved iframens nuværende scroll-position så vi fanger hvad brugeren ser
         const html2canvas = (await import("html2canvas")).default;
         const iframeDoc = iframe.contentDocument;
+        const iframeScrollY = iframe.contentWindow?.scrollY
+          ?? iframeDoc?.documentElement.scrollTop
+          ?? 0;
         const bgCanvas = iframeDoc
           ? await html2canvas(iframeDoc.documentElement, {
               allowTaint: true,
@@ -267,6 +271,7 @@ export const SketchModal = forwardRef<SketchModalHandle, SketchModalProps>(
               height: cH,
               windowWidth: cW,
               windowHeight: cH,
+              y: iframeScrollY,   // start capture ved nuværende scroll
               logging: false,
             })
           : null;
@@ -283,23 +288,29 @@ export const SketchModal = forwardRef<SketchModalHandle, SketchModalProps>(
           ctx.drawImage(bgCanvas, 0, 0, outW, outH);
         }
 
-        // 3. Eksportér annotation-elementer med transparent baggrund
+        // 3. Kopiér Excalidraw-canvasses direkte (pixel-perfekt position — ingen bounding-box-beskæring)
+        //    exportToBlob beskærer til elementernes bounding box og mister positionsinfo;
+        //    direct canvas copy bevarer præcis placering relativt til baggrunden.
         if (allElements.length > 0) {
-          const annotationBlob = await exportToBlob({
-            elements: allElements,
-            appState: {
-              ...api.getAppState(),
-              exportBackground: false,
-            },
-            files: api.getFiles(),
-            mimeType: "image/png",
-          });
-
-          const annotBitmap = await createImageBitmap(annotationBlob);
-          // Annotationslaget dækker hele Excalidraw-canvas (=containeren)
-          // → skalér til output-dimensioner
-          ctx.drawImage(annotBitmap, 0, 0, outW, outH);
-          annotBitmap.close();
+          const excWrapper = canvasContainerRef.current?.querySelector(".annotation-excalidraw");
+          const excCanvases = excWrapper ? Array.from(excWrapper.querySelectorAll("canvas")) : [];
+          for (const exc of excCanvases) {
+            try {
+              ctx.drawImage(exc, 0, 0, outW, outH);
+            } catch {
+              // Fallback: canvas kan være tainted — brug exportToBlob i stedet
+              const annotationBlob = await exportToBlob({
+                elements: allElements,
+                appState: { ...api.getAppState(), exportBackground: false },
+                files: api.getFiles(),
+                mimeType: "image/png",
+              });
+              const annotBitmap = await createImageBitmap(annotationBlob);
+              ctx.drawImage(annotBitmap, 0, 0, outW, outH);
+              annotBitmap.close();
+              break;
+            }
+          }
         }
 
         let pngBase64 = canvas.toDataURL("image/png").split(",")[1];
