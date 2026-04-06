@@ -486,16 +486,19 @@ export default function Room() {
         );
         if (!res.ok) throw new Error("Not found");
         const data = await res.json();
-        setPreviousSessions((prev) => [
-          ...prev,
-          {
-            roomId: selectedRoomId,
-            title: data.title,
-            createdAt: data.createdAt,
-            wordCount: data.wordCount,
-            transcript: data.transcript,
-          },
-        ]);
+        setPreviousSessions((prev) => {
+          if (prev.some((s) => s.roomId === selectedRoomId)) return prev;
+          return [
+            ...prev,
+            {
+              roomId: selectedRoomId,
+              title: data.title,
+              createdAt: data.createdAt,
+              wordCount: data.wordCount,
+              transcript: data.transcript,
+            },
+          ];
+        });
         setShowSessionPicker(false);
       } catch (err) {
         console.error("Failed to load session transcript:", err);

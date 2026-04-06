@@ -230,20 +230,35 @@ export async function getMeetingTranscript(roomId: string): Promise<{
     .where(eq(segmentsTable.meetingId, meeting.id))
     .orderBy(segmentsTable.timestamp);
 
-  const lines = segments.map((s) => `[${s.speakerName}]: ${s.text}`);
-  const fullText = lines.join("\n");
+  const MAX_WORDS = 3000;
+  const formattedLines = segments.map((s) => `[${s.speakerName}]: ${s.text}`);
 
-  const words = fullText.split(/\s+/).filter(Boolean);
-  const truncated =
-    words.length > 3000
-      ? words.slice(0, 3000).join(" ") + "\n[...transskript afkortet]"
-      : fullText;
+  let wordsSeen = 0;
+  const keptLines: string[] = [];
+  let wasTruncated = false;
+
+  for (const line of formattedLines) {
+    const lineWords = line.split(/\s+/).filter(Boolean);
+    if (wordsSeen + lineWords.length > MAX_WORDS) {
+      const remaining = MAX_WORDS - wordsSeen;
+      if (remaining > 0) {
+        keptLines.push(lineWords.slice(0, remaining).join(" ") + "…");
+      }
+      wasTruncated = true;
+      break;
+    }
+    keptLines.push(line);
+    wordsSeen += lineWords.length;
+  }
+
+  const transcript =
+    keptLines.join("\n") + (wasTruncated ? "\n[...transskript afkortet]" : "");
 
   return {
     title: meeting.title || roomId,
     roomId: meeting.roomId,
     createdAt: meeting.createdAt,
     wordCount: meeting.wordCount,
-    transcript: truncated,
+    transcript,
   };
 }
