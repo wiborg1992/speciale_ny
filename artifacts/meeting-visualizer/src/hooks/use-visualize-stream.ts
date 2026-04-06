@@ -7,10 +7,12 @@ import type { NeedIntentPayload } from "@/types/need-intent";
 
 const BASE = import.meta.env.BASE_URL;
 
-/** VisualizeRequest udvidet med disambiguation- og sketch-felter (ikke i genereret API-klient) */
+/** VisualizeRequest udvidet med disambiguation-, sketch- og force-felter (ikke i genereret API-klient) */
 export type VisualizeRequestWithIntent = VisualizeRequest & {
   userVizIntent?: "fresh" | "refine";
   sketchId?: string;
+  /** Bypass server-side ord-tærskel-check — sættes ved annotation-trigger */
+  forceVisualize?: boolean;
 };
 
 export type VisualizeGenerateOptions = {

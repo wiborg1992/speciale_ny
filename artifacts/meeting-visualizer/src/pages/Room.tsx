@@ -1170,6 +1170,9 @@ export default function Room() {
 
       const previous = !freshStart ? prevHtmlRef.current || null : null;
 
+      // Annotation-triggered viz skal altid køre uanset nye ords antal
+      const isAnnotationTrigger = isAnnotationSketch && !!sketchId;
+
       generate(
         {
           transcript,
@@ -1183,6 +1186,7 @@ export default function Room() {
           freshStart,
           workspaceDomain,
           ...(sketchId ? { sketchId } : {}),
+          ...(isAnnotationTrigger ? { forceVisualize: true } : {}),
         },
         {
           onSessionDiagnostic: sessionEval.onStreamDiagnostic,

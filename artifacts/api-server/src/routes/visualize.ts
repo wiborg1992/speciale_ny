@@ -150,6 +150,8 @@ const VisualizeBodySchema = z.object({
   userVizIntent: z.enum(["fresh", "refine"]).optional().nullable(),
   /** Skitse-ID fra PUT /meetings/:roomId/sketch — billede loades fra DB */
   sketchId: z.string().optional().nullable(),
+  /** Bypass ord-tærskel-check — bruges når annotation-sketch trigger viz (ingen nye ord kræves) */
+  forceVisualize: z.boolean().optional(),
 });
 
 export type DisambiguationReason =
@@ -328,6 +330,7 @@ router.post("/visualize", async (req, res, next): Promise<void> => {
       focusSegment,
       userVizIntent,
       sketchId,
+      forceVisualize,
     } = parsed.data;
 
     if (transcript.length > MAX_BODY_CHARS) {
@@ -614,9 +617,9 @@ router.post("/visualize", async (req, res, next): Promise<void> => {
     // ─── Word-count delta guard ───────────────────────────────────────────────
     // Undgår at regenerere når samtalen ikke har vokset nok siden sidst.
     // Fx: stille perioder, small-talk, pauser — ingen Claude-kald.
-    // Bypasses hvis: freshStart, refinement, focusSegment, topic-skift, ingen forrige viz.
+    // Bypasses hvis: freshStart, refinement, focusSegment, forceVisualize, topic-skift, ingen forrige viz.
     const MIN_NEW_WORDS_FOR_REGEN = 10;
-    if (!freshStart && !refinementDirective && !focusSegment && roomId) {
+    if (!freshStart && !refinementDirective && !focusSegment && !forceVisualize && roomId) {
       const room = getRoom(roomId);
       if (
         room?.lastVizWordCount &&
