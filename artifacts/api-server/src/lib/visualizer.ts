@@ -5,6 +5,8 @@ import {
   CU_CONTROLLER_TEMPLATE,
   ALPHA_GO_TEMPLATE,
   CR_PUMP_TEMPLATE,
+  COMFORT_TA_PANEL_TEMPLATE,
+  MAGNA3_DISPLAY_TEMPLATE,
   PUMP_TEMPLATE_INSTRUCTIONS,
 } from "./pump-svg-templates.js";
 import {
@@ -507,30 +509,34 @@ FREKVENSOMFORMER:
    Hero-sektion med produktnavn (Playfair), tagline, og 3 kolonner:
    What it does | Who it's for | Why it matters.
 
-━━━ FYSISK GRUNDFOS PUMPE & CONTROLLER VISUALISERING ━━━
-USE WHEN: transcript mentions physical pump appearance, hardware, product model, controller, CU unit, control box, pump panel.
+━━━ FYSISK GRUNDFOS PUMPE & CONTROLLER VISUALISERING (FRONT PANEL FOCUS) ━━━
+USE WHEN: transcript mentions physical pump appearance, hardware, product model, controller, CU unit, control box, pump panel, front face.
 
-When physical_product is detected, COMPLETE SVG TEMPLATES with all gradients, filters, shadows and detail
-are injected into the user message. YOU MUST:
-1. Copy the matching template (CU controller, Alpha GO, CR pump) from the user message
-2. Adapt values (display readings, model name, LED states) to match the transcript
-3. Keep ALL SVG complexity — gradients, filters, shadows, highlight dots, textured surfaces
-4. Embed the SVG in a clean white (#F8FAFC) page with product title (Outfit font), spec cards, and callout annotations
+FRONT PANEL ONLY — NOT the full pump body with pipes and flanges:
+  • Comfort TA / Comfort PM → ROUND BLACK DISC (circular front panel with icons, QR code, > button, AUTO ADAPT text)
+  • Magna3 → RECTANGULAR LCD DISPLAY + navigation arrow buttons + MAGNA3 label
+  • CU 352/362/200 → RECTANGULAR ENCLOSURE with display, LED row, nav pad
+  • Alpha GO → white CONTROL DISC on red pump body
+
+COMPLETE SVG TEMPLATES with all gradients, filters, shadows are injected into the user message. YOU MUST:
+1. Pick the right template: Comfort TA/PM → COMFORT_TA_PANEL; Magna3 → MAGNA3_DISPLAY; CU → CU_CONTROLLER; Alpha → ALPHA_GO; CR/CRE → CR_PUMP
+2. Extract from transcript: model name, flow values, pressure/head, operating mode, setpoints, alarm states, named features
+3. Adapt the "CHANGE THIS / ADAPT" lines in the template — keep ALL other SVG complexity unchanged
+4. Add <line>+<text> callout annotations for each feature explicitly discussed in the transcript
 
 GRUNDFOS HARDWARE COLOURS (reference):
   Signature Red: #BE1E2D | Navy: #002A5C | Blue: #0077C8
   Enclosure: #2A2D30 | Stainless: #B0B8C1 | LED green: #22C55E | LED red: #EF4444
   Display bg: #0A1628 | Display text: #00C8FF / #7CFC00
+  Comfort TA panel: #111111 black disc, outer rim #D8E8F0 light blue-grey
 
 SURROUNDING LAYOUT (for all pump/controller types):
   Top: product name hero title — Outfit 2.2rem font-weight:700 color:#002A5C, centered.
-  SVG SIZING — the SVG element MUST be embedded WITHOUT fixed width/height attributes.
-    Wrap it in: <div style="width:min(88vw,640px);margin:0 auto">
+  SVG SIZING — REMOVE fixed width/height; wrap in: <div style="width:min(90vw,480px);margin:0 auto">
     Set SVG to: <svg viewBox="..." style="width:100%;height:auto;display:block">
-    This scales the product to fill the visible area at any screen size.
   MAXIMUM 2 compact info items below (short label + 1-2 key values — NO long text, NO spec tables).
-  Callout annotations: SVG <line>+<text> elements around the product — labels near the parts they describe.
-  DO NOT add requirements lists, specification tables, or paragraphs. The drawing speaks for itself.
+  Callout annotations: SVG <line>+<text> elements around the panel — near the parts they describe.
+  DO NOT add requirements lists, specification tables, or paragraphs. The panel drawing speaks for itself.
 
 ━━━ USER JOURNEY MAP — FULL VISUAL SPEC ━━━
 Visual language: Miro/Figma UX style. Light background #F7F8FA.
@@ -929,38 +935,47 @@ Show clear start → process nodes → decision points → end states.
 Use Grundfos colours, crisp lines, directional arrows, numbered steps.
 DO NOT use dark HMI style. DO NOT generate journey maps or pump hardware.`,
 
-  physical_product: `GENERATE: PHYSICAL PUMP HARDWARE ILLUSTRATION — the product drawing IS the visualization.
+  physical_product: `GENERATE: GRUNDFOS PUMP FRONT PANEL — the control face / display IS the visualization. NOT the full pump body.
+
+FRONT PANEL FOCUS — NON-NEGOTIABLE:
+  Show the USER-FACING CONTROL FACE of the product — the circular disc, the LCD screen, the button layout.
+  Do NOT draw the whole pump body with pipes, flanges, motor housing, or base plate.
+  The Comfort TA and Comfort PM look like a ROUND BLACK DISC with icons (thermometer, AUTO ADAPT, > button, QR code).
+  The Magna3 looks like a RECTANGULAR LCD DISPLAY with navigation arrow buttons and MAGNA3 label below.
+  The CU 352/362 is a RECTANGULAR ENCLOSURE with display and button pad.
+
+TRANSCRIPT EXTRACTION — READ CAREFULLY BEFORE DRAWING:
+  Scan the ENTIRE transcript for these specifics and use them in the SVG:
+  ① MODEL NAME:     Comfort TA / Comfort PM / Magna3 / Alpha GO / CU 352 / CU 362 → set product title + label on panel
+  ② FLOW RATE:      any number + m³/h, l/min, l/s → show on LCD display / info box
+  ③ PRESSURE/HEAD:  any number + m, bar, mH₂O → setpoint / display reading
+  ④ OPERATING MODE: AUTO ADAPT / Konstanttryk / Proportionaltryk / TIMER / Manuel → mode text on display or disc label
+  ⑤ SPECIFIC SETTINGS: setpoint value (e.g. "sæt til 4.5m"), timer interval, RPM → show as display reading
+  ⑥ ALARMS / FAULTS: fault, alarm, advarsel, fejl → alarm triangle icon active (red / amber)
+  ⑦ FEATURES NAMED: "QR-kode scanning", "AUTO ADAPT funktion", "timerfunktion", "Bluetooth" → callout annotation pointing to that element
+  If a value is mentioned → USE IT. If not → keep the template default. NEVER invent values not in the transcript.
 
 LAYOUT RULE — NON-NEGOTIABLE:
-  The SVG product illustration must occupy at LEAST 65% of the viewport height and be centered.
-  Below it: MAXIMUM 2 compact info boxes — each just a short label + 1-2 key values from the transcript.
-  NO requirements lists. NO long descriptions. NO specification tables. NO more than 2 boxes.
-  If the transcript has no specific values, leave the 2 boxes very minimal or omit them entirely.
-  The product drawing speaks for itself.
+  The SVG panel illustration must occupy at LEAST 70% of the viewport and be centered.
+  Below it: MAXIMUM 2 compact info boxes — short label + 1–2 key values from transcript only.
+  NO requirements lists. NO long descriptions. NO specification tables. The drawing speaks for itself.
 
 YOUR JOB:
-1. IDENTIFY which product is discussed (CU controller, Alpha GO circulator, CR/CRE pump, etc.)
-2. COPY the matching SVG template — it contains all gradients, shadows, filters, and structural detail
-3. ADAPT values: change display readings, model name, LED states, button labels to match the transcript
-4. EMBED the SVG inside a clean white (#F8FAFC) HTML page with:
-   - Product title: font-family Outfit, 2rem, font-weight 700, color #002A5C — ABOVE the SVG
-   - SVG sizing: REMOVE width/height from the <svg> tag; wrap in <div style="width:min(88vw,640px);margin:0 auto">
-     and set <svg viewBox="..." style="width:100%;height:auto;display:block"> — fills the visible area
-   - Callout annotations: SVG <line>+<text> elements around the product near the parts they describe — NOT in separate cards
-   - MAXIMUM 2 compact info items below (short label + 1-2 key values — NO long text)
+1. IDENTIFY product: Comfort TA/PM → COMFORT_TA_PANEL_TEMPLATE; Magna3 → MAGNA3_DISPLAY_TEMPLATE; CU → CU_CONTROLLER_TEMPLATE; Alpha → ALPHA_GO_TEMPLATE; CR/CRE → CR_PUMP_TEMPLATE
+2. COPY the matching SVG template from the user message — all gradients, shadows, filters intact
+3. ADAPT: change the lines marked "CHANGE THIS" or "ADAPT" to match transcript values from step above
+4. ADD callout annotations (<line>+<text> around the panel) for each feature explicitly discussed
+5. EMBED in clean white (#F8FAFC) page: Outfit font title above, SVG fills width, max 2 items below
 
 SVG QUALITY RULES:
   • NEVER simplify the SVG — keep ALL gradients, filters, shadows, highlight effects
-  • NEVER replace detailed template elements with simple flat rectangles
-  • Each LED must have a highlight dot (small white circle, opacity 0.3)
-  • Each button must have a gradient face (not flat fill)
-  • The enclosure must have edge highlights and shadow filters
-  • Display text must use monospace font with realistic readings
-  • If the transcript mentions specific values (flow, pressure, RPM), show them on the display
+  • NEVER replace detailed template elements with simple flat shapes
+  • Display text must use monospace font with the values extracted from transcript
+  • Callout annotations are SVG <line>+<text> elements placed outside the panel, NOT card sections
 
-DO NOT use dark HMI dashboard style. DO NOT generate journey maps or flowcharts.
-DO NOT generate 3-4 spec cards, requirement sections, or text-heavy layouts.
-The visualization MUST be dominated by the large, detailed SVG product illustration.`,
+DO NOT draw the whole pump with pipes and flanges. DO NOT use dark HMI dashboard layouts.
+DO NOT generate spec card grids or text-heavy requirement sections.
+The visualization IS the front panel — large, detailed, faithful to the product.`,
 
   requirements_matrix: `GENERATE: REQUIREMENTS TRACEABILITY MATRIX — structured table layout.
 Columns: Req ID | Requirement | Priority (MoSCoW) | Source | Status | Notes.
@@ -1269,7 +1284,9 @@ export async function* streamVisualization(
 
   if (isPump) {
     userMessage += `${PUMP_TEMPLATE_INSTRUCTIONS}\n\n`;
-    userMessage += `=== CU CONTROLLER TEMPLATE ===\n${CU_CONTROLLER_TEMPLATE}\n\n`;
+    userMessage += `=== COMFORT TA / COMFORT PM — CIRCULAR FRONT PANEL TEMPLATE ===\n${COMFORT_TA_PANEL_TEMPLATE}\n\n`;
+    userMessage += `=== MAGNA3 — LCD DISPLAY + NAV BUTTONS TEMPLATE ===\n${MAGNA3_DISPLAY_TEMPLATE}\n\n`;
+    userMessage += `=== CU 352/362/200 CONTROLLER TEMPLATE ===\n${CU_CONTROLLER_TEMPLATE}\n\n`;
     userMessage += `=== ALPHA GO CIRCULATOR TEMPLATE ===\n${ALPHA_GO_TEMPLATE}\n\n`;
     userMessage += `=== CR/CRE MULTISTAGE PUMP TEMPLATE ===\n${CR_PUMP_TEMPLATE}\n\n`;
   }

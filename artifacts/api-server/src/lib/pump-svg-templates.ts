@@ -354,30 +354,284 @@ export const CR_PUMP_TEMPLATE = `
   <text x="248" y="288" fill="#0077C8" font-family="Arial,sans-serif" font-size="10">→</text>
 </svg>`;
 
+export const COMFORT_TA_PANEL_TEMPLATE = `
+<!-- GRUNDFOS COMFORT TA — CIRCULAR FRONT PANEL (not the whole pump — FRONT FACE ONLY) -->
+<!-- ADAPT: operating mode text, LED color, values shown, AUTO ADAPT vs TIMER state -->
+<svg viewBox="0 0 300 300" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="ctaBg" cx="50%" cy="42%" r="58%">
+      <stop offset="0%" stop-color="#242424"/>
+      <stop offset="70%" stop-color="#111111"/>
+      <stop offset="100%" stop-color="#0A0A0A"/>
+    </radialGradient>
+    <radialGradient id="btnFaceW" cx="35%" cy="30%" r="65%">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#D8D8D8"/>
+    </radialGradient>
+    <filter id="ctaGlow"><feGaussianBlur stdDeviation="2.5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    <filter id="ctaShadow"><feDropShadow dx="0" dy="3" stdDeviation="8" flood-color="#000" flood-opacity="0.6"/></filter>
+  </defs>
+
+  <!-- OUTER RIM (light grey/blue, like the product mount) -->
+  <circle cx="150" cy="150" r="148" fill="#D8E8F0" stroke="#BBCDD8" stroke-width="1"/>
+  <circle cx="150" cy="150" r="142" fill="#C8D8E8" stroke="#AABECE" stroke-width="0.5"/>
+
+  <!-- DARK PANEL FACE -->
+  <circle cx="150" cy="150" r="133" fill="url(#ctaBg)" filter="url(#ctaShadow)"/>
+  <!-- Panel edge highlight ring -->
+  <circle cx="150" cy="150" r="133" fill="none" stroke="#3A3A3A" stroke-width="1.5"/>
+  <circle cx="150" cy="150" r="131" fill="none" stroke="#282828" stroke-width="0.5"/>
+
+  <!-- ══ GRUNDFOS LOGO (white X / butterfly mark) at top ══ -->
+  <g transform="translate(150,68)" fill="white">
+    <path d="M-16,-10 L-5,0 L-16,10 L-10,10 L0,3 L10,10 L16,10 L5,0 L16,-10 L10,-10 L0,-3 L-10,-10 Z"/>
+  </g>
+  <!-- GRUNDFOS wordmark -->
+  <text x="150" y="91" text-anchor="middle" fill="white" font-family="Arial,Helvetica,sans-serif" font-size="9.5" font-weight="700" letter-spacing="0.15em">GRUNDFOS</text>
+  <!-- Product name — CHANGE THIS to match transcript (COMFORT TA / COMFORT PM / etc.) -->
+  <text x="150" y="106" text-anchor="middle" fill="white" font-family="Arial,Helvetica,sans-serif" font-size="8" letter-spacing="0.06em">COMFORT TA</text>
+
+  <!-- ══ LEFT CLUSTER: THERMOMETER + AUTO ADAPT ══ -->
+  <!-- Thermometer body -->
+  <rect x="68" y="122" width="10" height="30" rx="5" fill="none" stroke="#AAAAAA" stroke-width="1.5"/>
+  <!-- Thermometer fill (green = active / heating) -->
+  <rect x="70.5" y="130" width="5" height="20" rx="2.5" fill="#22C55E" filter="url(#ctaGlow)"/>
+  <!-- Bulb -->
+  <circle cx="73" cy="156" r="7.5" fill="#22C55E" filter="url(#ctaGlow)"/>
+  <circle cx="71" cy="154" r="2.5" fill="white" opacity="0.25"/>
+
+  <!-- AUTO ADAPT text block -->
+  <text x="118" y="138" text-anchor="middle" fill="white" font-family="Arial,Helvetica,sans-serif" font-size="13" font-weight="700">AUTO</text>
+  <text x="118" y="154" text-anchor="middle" fill="#AAAAAA" font-family="Arial,Helvetica,sans-serif" font-size="9.5" font-style="italic" letter-spacing="0.04em">ADAPT</text>
+
+  <!-- Recycle/undo arc to right of AUTO ADAPT (shows continuous auto cycling) -->
+  <g transform="translate(148,142)">
+    <path d="M-10,-8 A13,13 0 1,1 10,-2" fill="none" stroke="white" stroke-width="1.8" stroke-linecap="round"/>
+    <polygon points="10,-6 14,0 6,0" fill="white"/>
+  </g>
+
+  <!-- ══ TOP RIGHT: CLOCK / TIMER ICON ══ -->
+  <g transform="translate(196,118)">
+    <circle cx="0" cy="0" r="12" fill="none" stroke="white" stroke-width="1.8"/>
+    <line x1="0" y1="-7" x2="0" y2="0" stroke="white" stroke-width="1.8" stroke-linecap="round"/>
+    <line x1="0" y1="0" x2="6" y2="4" stroke="white" stroke-width="1.8" stroke-linecap="round"/>
+    <!-- Small auto-refresh arc outside clock -->
+    <path d="M10,-6 A11,11 0 0,1 11,4" fill="none" stroke="white" stroke-width="1.2" stroke-linecap="round"/>
+    <polygon points="10,6 14,1 7,2" fill="white" opacity="0.85"/>
+  </g>
+
+  <!-- ══ RIGHT: ALARM / WARNING TRIANGLE ══ -->
+  <g transform="translate(210,162)">
+    <polygon points="0,-13 14,9 -14,9" fill="none" stroke="white" stroke-width="1.8"/>
+    <text x="0" y="7" text-anchor="middle" fill="white" font-family="Arial,sans-serif" font-size="8" font-weight="700">!</text>
+  </g>
+
+  <!-- ══ BOTTOM LEFT: QR CODE (simplified, scannable-looking) ══ -->
+  <g transform="translate(90,196)">
+    <rect x="-22" y="-22" width="44" height="44" fill="#111" rx="2"/>
+    <!-- Top-left finder -->
+    <rect x="-20" y="-20" width="14" height="14" rx="1" fill="white"/>
+    <rect x="-18" y="-18" width="10" height="10" rx="0.5" fill="#111"/>
+    <rect x="-16" y="-16" width="6" height="6" rx="0.5" fill="white"/>
+    <!-- Top-right finder -->
+    <rect x="6" y="-20" width="14" height="14" rx="1" fill="white"/>
+    <rect x="8" y="-18" width="10" height="10" rx="0.5" fill="#111"/>
+    <rect x="10" y="-16" width="6" height="6" rx="0.5" fill="white"/>
+    <!-- Bottom-left finder -->
+    <rect x="-20" y="6" width="14" height="14" rx="1" fill="white"/>
+    <rect x="-18" y="8" width="10" height="10" rx="0.5" fill="#111"/>
+    <rect x="-16" y="10" width="6" height="6" rx="0.5" fill="white"/>
+    <!-- Data modules (right-bottom quadrant, scattered) -->
+    <rect x="6" y="6" width="4" height="4" fill="white" rx="0.3"/>
+    <rect x="12" y="6" width="4" height="4" fill="white" rx="0.3"/>
+    <rect x="18" y="6" width="4" height="4" fill="white" rx="0.3"/>
+    <rect x="6" y="12" width="4" height="4" fill="white" rx="0.3"/>
+    <rect x="18" y="12" width="4" height="4" fill="white" rx="0.3"/>
+    <rect x="6" y="18" width="4" height="4" fill="white" rx="0.3"/>
+    <rect x="12" y="18" width="4" height="4" fill="white" rx="0.3"/>
+    <rect x="18" y="18" width="4" height="4" fill="white" rx="0.3"/>
+    <!-- Row of data modules top-center -->
+    <rect x="-4" y="-20" width="4" height="4" fill="white" rx="0.3"/>
+    <rect x="-4" y="-14" width="4" height="4" fill="white" rx="0.3"/>
+    <rect x="-4" y="-8" width="4" height="4" fill="white" rx="0.3"/>
+    <rect x="0" y="-20" width="4" height="4" fill="white" rx="0.3"/>
+  </g>
+
+  <!-- ══ BOTTOM CENTER-RIGHT: NEXT / NAVIGATE BUTTON ══ -->
+  <!-- Outer shadow ring -->
+  <circle cx="175" cy="200" r="26" fill="#1A1A1A" stroke="#333" stroke-width="1"/>
+  <!-- Button face (white, with highlight) -->
+  <circle cx="175" cy="200" r="23" fill="url(#btnFaceW)" filter="url(#ctaShadow)"/>
+  <circle cx="168" cy="193" r="7" fill="white" opacity="0.18"/>
+  <!-- Chevron / next arrow -->
+  <text x="177" y="208" text-anchor="middle" fill="#111111" font-family="Arial,Helvetica,sans-serif" font-size="22" font-weight="700">›</text>
+</svg>`;
+
+export const MAGNA3_DISPLAY_TEMPLATE = `
+<!-- GRUNDFOS MAGNA3 — FRONT PANEL DISPLAY (LCD screen + navigation buttons — NOT the full pump) -->
+<!-- ADAPT: menu selection, Reguleringsform, Aktuel Flow, Sætpunkt, Løftehøjde, alarm status -->
+<svg viewBox="0 0 320 360" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="m3Housing" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#2A2A2A"/>
+      <stop offset="100%" stop-color="#1A1A1A"/>
+    </linearGradient>
+    <linearGradient id="m3Screen" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0E1F38"/>
+      <stop offset="100%" stop-color="#07121F"/>
+    </linearGradient>
+    <linearGradient id="m3Btn" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#484848"/>
+      <stop offset="100%" stop-color="#323232"/>
+    </linearGradient>
+    <filter id="m3Glow"><feGaussianBlur stdDeviation="2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    <filter id="m3Shadow"><feDropShadow dx="0" dy="4" stdDeviation="10" flood-color="#000" flood-opacity="0.5"/></filter>
+  </defs>
+
+  <!-- HOUSING (circular front face, slightly oval for depth) -->
+  <ellipse cx="160" cy="170" rx="148" ry="158" fill="url(#m3Housing)" filter="url(#m3Shadow)"/>
+  <ellipse cx="160" cy="170" rx="148" ry="158" fill="none" stroke="#444" stroke-width="1"/>
+  <!-- Inner housing ring -->
+  <ellipse cx="160" cy="170" rx="144" ry="154" fill="none" stroke="#333" stroke-width="0.5"/>
+
+  <!-- Green LED ring at top (power / running indicator) -->
+  <path d="M100,28 A90,90 0 0,1 220,28" fill="none" stroke="#22C55E" stroke-width="6" stroke-linecap="round" filter="url(#m3Glow)"/>
+
+  <!-- LCD DISPLAY BEZEL -->
+  <rect x="30" y="42" width="240" height="148" rx="6" fill="#0A0A0A" stroke="#222" stroke-width="2"/>
+  <!-- Screen -->
+  <rect x="34" y="46" width="232" height="140" rx="4" fill="url(#m3Screen)"/>
+  <!-- Screen edge glow (blue) -->
+  <rect x="34" y="46" width="232" height="140" rx="4" fill="none" stroke="rgba(0,160,220,0.18)" stroke-width="1"/>
+
+  <!-- ── MENU TABS ── -->
+  <!-- Active tab (Hjem) -->
+  <rect x="36" y="48" width="54" height="20" rx="3" fill="#0077C8"/>
+  <text x="63" y="62" text-anchor="middle" fill="white" font-family="Arial,sans-serif" font-size="8" font-weight="700">Hjem</text>
+  <!-- Inactive tabs -->
+  <rect x="92" y="48" width="54" height="20" rx="3" fill="#0D1F38"/>
+  <text x="119" y="62" text-anchor="middle" fill="#6A8AB0" font-family="Arial,sans-serif" font-size="8">Status</text>
+  <rect x="148" y="48" width="64" height="20" rx="3" fill="#0D1F38"/>
+  <text x="180" y="62" text-anchor="middle" fill="#6A8AB0" font-family="Arial,sans-serif" font-size="8">Indstilli</text>
+  <rect x="214" y="48" width="50" height="20" rx="3" fill="#0D1F38"/>
+  <text x="239" y="62" text-anchor="middle" fill="#6A8AB0" font-family="Arial,sans-serif" font-size="8">Hjælp</text>
+
+  <!-- ── LEFT PANE: Operating data ── -->
+  <line x1="34" y1="70" x2="266" y2="70" stroke="#0D2040" stroke-width="0.5"/>
+
+  <!-- Home icon + label -->
+  <text x="44" y="84" fill="#6A8AB0" font-family="Arial,sans-serif" font-size="9">⌂</text>
+  <text x="55" y="84" fill="#8AA8CC" font-family="Arial,sans-serif" font-size="7.5">Reguleringsform</text>
+  <!-- CHANGE THIS VALUE to match transcript (Konstanttryk / Proportionaltryk / AUTO) -->
+  <rect x="38" y="88" width="100" height="16" rx="2" fill="#0A1F3A"/>
+  <text x="88" y="100" text-anchor="middle" fill="#00C8FF" font-family="'Courier New',monospace" font-size="8.5" font-weight="700">Konstanttryk</text>
+  <!-- Small navigation arrow inside left pane -->
+  <text x="136" y="99" fill="#4A6A8A" font-family="Arial,sans-serif" font-size="9">▷</text>
+
+  <!-- Aktuel Flow label + value — CHANGE VALUE to match transcript -->
+  <text x="44" y="122" fill="#6A8AB0" font-family="Arial,sans-serif" font-size="7.5">Aktuel Flow</text>
+  <text x="44" y="137" fill="#00C8FF" font-family="'Courier New',monospace" font-size="16" font-weight="700">1.7</text>
+  <text x="80" y="137" fill="#6A8AB0" font-family="'Courier New',monospace" font-size="9">m³/h</text>
+
+  <!-- Divider between panes -->
+  <line x1="150" y1="72" x2="150" y2="184" stroke="#0D2040" stroke-width="1"/>
+
+  <!-- ── RIGHT PANE: Setpoint / Head ── -->
+  <!-- Sætpunkt label + value — CHANGE VALUE to match transcript -->
+  <text x="160" y="84" fill="#8AA8CC" font-family="Arial,sans-serif" font-size="7.5">Sætpunkt</text>
+  <rect x="160" y="88" width="18" height="16" rx="2" fill="#0A3060"/>
+  <text x="169" y="100" text-anchor="middle" fill="#00C8FF" font-family="Arial,sans-serif" font-size="7">▷</text>
+  <text x="186" y="100" fill="#00C8FF" font-family="'Courier New',monospace" font-size="14" font-weight="700">4.50</text>
+  <text x="218" y="100" fill="#6A8AB0" font-family="'Courier New',monospace" font-size="9">m</text>
+
+  <!-- Løftehøjde label + value — CHANGE VALUE to match transcript -->
+  <text x="160" y="120" fill="#8AA8CC" font-family="Arial,sans-serif" font-size="7.5">Løftehøjde</text>
+  <text x="186" y="138" fill="#00C8FF" font-family="'Courier New',monospace" font-size="14" font-weight="700">4.5</text>
+  <text x="214" y="138" fill="#6A8AB0" font-family="'Courier New',monospace" font-size="9">m</text>
+
+  <!-- Navigation arrow in right pane -->
+  <text x="255" y="100" fill="#00C8FF" font-family="Arial,sans-serif" font-size="12">›</text>
+  <text x="255" y="120" fill="#4A6A8A" font-family="Arial,sans-serif" font-size="12">›</text>
+
+  <!-- ── STATUS BAR at bottom of screen ── -->
+  <line x1="34" y1="156" x2="266" y2="156" stroke="#0D2040" stroke-width="0.5"/>
+  <text x="44" y="168" fill="#2A4A6A" font-family="'Courier New',monospace" font-size="6.5">● KØRENDE</text>
+  <text x="130" y="168" fill="#2A4A6A" font-family="'Courier New',monospace" font-size="6.5">RPM: 2300</text>
+  <text x="210" y="168" fill="#2A4A6A" font-family="'Courier New',monospace" font-size="6.5">η: 72%</text>
+  <line x1="34" y1="182" x2="266" y2="182" stroke="#0D2040" stroke-width="0.5"/>
+
+  <!-- ── NAVIGATION BUTTON PAD ── -->
+  <!-- Circular base for buttons -->
+  <circle cx="130" cy="258" r="52" fill="#222" stroke="#383838" stroke-width="1"/>
+  <!-- Up arrow -->
+  <rect x="118" y="210" width="24" height="22" rx="4" fill="url(#m3Btn)" stroke="#555" stroke-width="0.5"/>
+  <text x="130" y="225" text-anchor="middle" fill="#9CB8D8" font-family="Arial,sans-serif" font-size="13">▲</text>
+  <!-- Down arrow -->
+  <rect x="118" y="282" width="24" height="22" rx="4" fill="url(#m3Btn)" stroke="#555" stroke-width="0.5"/>
+  <text x="130" y="297" text-anchor="middle" fill="#9CB8D8" font-family="Arial,sans-serif" font-size="13">▼</text>
+  <!-- Left arrow -->
+  <rect x="80" y="246" width="22" height="24" rx="4" fill="url(#m3Btn)" stroke="#555" stroke-width="0.5"/>
+  <text x="91" y="262" text-anchor="middle" fill="#9CB8D8" font-family="Arial,sans-serif" font-size="13">◄</text>
+  <!-- Right arrow -->
+  <rect x="158" y="246" width="22" height="24" rx="4" fill="url(#m3Btn)" stroke="#555" stroke-width="0.5"/>
+  <text x="169" y="262" text-anchor="middle" fill="#9CB8D8" font-family="Arial,sans-serif" font-size="13">►</text>
+  <!-- OK center button -->
+  <circle cx="130" cy="258" r="18" fill="url(#m3Btn)" stroke="#555" stroke-width="0.5"/>
+  <circle cx="127" cy="255" r="5" fill="white" opacity="0.08"/>
+  <text x="130" y="263" text-anchor="middle" fill="#00C8FF" font-family="Arial,sans-serif" font-size="10" font-weight="700">OK</text>
+
+  <!-- BACK / RETURN BUTTON (right of nav pad) -->
+  <circle cx="220" cy="255" r="18" fill="url(#m3Btn)" stroke="#555" stroke-width="0.5"/>
+  <text x="220" y="252" text-anchor="middle" fill="#9CB8D8" font-family="Arial,sans-serif" font-size="12">↩</text>
+  <text x="220" y="264" text-anchor="middle" fill="#6A8AB0" font-family="Arial,sans-serif" font-size="5.5">TILBAGE</text>
+
+  <!-- ── PRODUCT LABEL ── -->
+  <text x="160" y="318" text-anchor="middle" fill="#FF6040" font-family="Arial,Helvetica,sans-serif" font-size="11" font-weight="700" letter-spacing="0.12em">MAGNA3</text>
+</svg>`;
+
 export const PUMP_TEMPLATE_INSTRUCTIONS = `
-━━━ SVG PUMP TEMPLATE SYSTEM ━━━
-Below are COMPLETE, WORKING SVG templates for Grundfos products.
-YOUR JOB: Copy the most relevant template below, then ADAPT it:
-  1. Change display values (flow, pressure, RPM, etc.) to match transcript data
-  2. Adjust model name (CU 362, Alpha GO, CR 32-3, etc.) to match what's discussed
-  3. Modify LED states, button labels, or status text based on context
-  4. Keep ALL gradients, filters, shadows, and structural elements — they create the realistic look
-  5. Add callout annotations (SVG <line> + <text> elements) pointing to key parts discussed
+━━━ FRONT PANEL / DISPLAY TEMPLATES ━━━
+
+CRITICAL PRINCIPLE: Visualise the CONTROL FACE of the pump — NOT the full pump body with pipes and flanges.
+Users want to see what they interact with: the circular control disc, the LCD display screen, the button layout.
+
+TEMPLATE SELECTION GUIDE:
+  • Comfort TA / Comfort PM / Alpha GO          → COMFORT_TA_PANEL_TEMPLATE  (circular black disc, icons, QR, > button)
+  • Magna3 / MAGNA3                              → MAGNA3_DISPLAY_TEMPLATE    (rectangular LCD + nav buttons + MAGNA3 label)
+  • CU 352 / CU 362 / CU 200 / CU controller    → CU_CONTROLLER_TEMPLATE     (rectangular enclosure, LED row, nav pad)
+  • Alpha / Alpha2 / Alpha3 / Alpha GO           → ALPHA_GO_TEMPLATE          (red body + white control disc + LED ring)
+  • CR / CRE / NK / NB / SE / SL multistage     → CR_PUMP_TEMPLATE           (vertical stainless stages + motor)
+
+TRANSCRIPT EXTRACTION RULES — NON-NEGOTIABLE:
+  Before generating the SVG, scan the ENTIRE transcript for these values and fill them in:
+  ① PRODUCT MODEL   — e.g. "Magna3", "Comfort TA", "CU 362", "Alpha GO"  → product name + title
+  ② FLOW RATE       — e.g. "1.7 m³/h", "18 m³", "aktuel flow"           → display reading
+  ③ PRESSURE/HEAD   — e.g. "4.5 m", "2.8 bar", "sætpunkt", "tryktab"    → setpoint / display value
+  ④ OPERATING MODE  — "Konstanttryk", "AUTO ADAPT", "Proportionaltryk", "TIMER" → mode text on display
+  ⑤ ALARMS / FAULTS — mention of fault, alarm, warning                    → alarm LED/icon active (red)
+  ⑥ SPECIFIC SETTINGS — "24h timer", "setpoint 4.50m", "RPM", "efficiency" → show on screen / callout label
+  ⑦ FEATURES DISCUSSED — "QR code scanning", "Bluetooth", "AUTO ADAPT mode" → highlight that element with callout
+
+  If the transcript gives a value → USE IT. If not → keep the template default. NEVER invent values not in the transcript.
+
+YOUR JOB:
+  1. Pick the matching template from those injected below
+  2. Change ONLY the lines marked "CHANGE THIS" or "ADAPT" — keep all gradients, filters, shadows
+  3. Add SVG <line>+<text> callout annotations for each feature explicitly discussed in the transcript
+  4. Embed in clean white (#F8FAFC) page — product name title above the SVG, max 2 compact info items below
 
 SVG SIZING — CRITICAL:
-  When you embed the SVG in the HTML page, REMOVE the fixed width/height attributes from the <svg> element
-  and KEEP only the viewBox. Then control size with CSS:
-    <div style="width:min(88vw,640px);margin:0 auto;padding:8px 0">
+  REMOVE width/height attributes from <svg>, wrap in:
+    <div style="width:min(90vw,480px);margin:0 auto">
       <svg viewBox="..." style="width:100%;height:auto;display:block">
-  This makes the product illustration fill most of the visible viewport regardless of screen size.
 
 SURROUNDING LAYOUT — STRICTLY:
-  - Product name as hero title: Outfit 2.2rem font-weight:700 color:#002A5C, centered above SVG
-  - The SVG fills the viewport as described above — it is the ENTIRE visualization
-  - MAXIMUM 2 compact info items below the SVG (short label + value only, NO long text)
-  - Callout annotations: <line> + <text> elements placed around the SVG, near the parts they describe
-  - NO spec card grids, NO requirements lists, NO paragraphs of text
+  - Product name: font-family Outfit, 2.2rem, font-weight 700, color #002A5C, centered above SVG
+  - MAXIMUM 2 compact info items below (short label + 1–2 values only — NO paragraphs, NO spec tables)
+  - Callout annotations point to specific elements on the panel
+  - NO requirements lists. NO long descriptions. The panel drawing speaks for itself.
 
-DO NOT simplify the SVG. DO NOT remove gradients or filters. DO NOT replace detailed elements with simple rectangles.
-The templates below are your MINIMUM quality bar — you may add MORE detail but never less.
+DO NOT simplify the SVG. DO NOT remove gradients or filters. DO NOT replace template elements with flat rectangles.
+The templates are your MINIMUM quality bar — add more detail but never less.
 `;
+
