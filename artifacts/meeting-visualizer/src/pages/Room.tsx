@@ -317,6 +317,8 @@ export default function Room() {
   const [vizHistory, setVizHistory] = useState<VizVersion[]>([]);
   const vizVersionCounterRef = useRef(0);
   const [activeVersion, setActiveVersion] = useState(0);
+  /** Timestamp of last local_stream completion — used to suppress SSE echo duplicates. */
+  const lastLocalStreamCompletedMsRef = useRef<number>(0);
   const [displayHtml, setDisplayHtml] = useState<string>("");
 
   // Forklaring-fanen (AI reasoning som almen tekst)
@@ -487,6 +489,29 @@ export default function Room() {
     () => (fullText.trim() === "" ? 0 : fullText.split(/\s+/).length),
     [fullText],
   );
+
+  /**
+   * Client-side family prediction from transcript keywords.
+   * Used to show a matching skeleton in the empty output panel BEFORE the first generation starts.
+   * Only activates when we have enough words (≥50) and no visualization exists yet.
+   */
+  const predictedFamily = useMemo((): string | null => {
+    if (currentWordCount < 50) return null;
+    if (displayHtml) return null;
+    const text = fullText.toLowerCase();
+    if (/\bhmi\b|human.machine interface|control panel display|pump controller ui/.test(text)) return "hmi_interface";
+    if (/user journey|customer journey|journey map|touchpoint/.test(text)) return "user_journey";
+    if (/service blueprint|backstage process|frontstage|service design/.test(text)) return "service_blueprint";
+    if (/moscow|must have.*should have|could have.*won.t have|krav.?spec/.test(text)) return "requirements_matrix";
+    if (/analytics|engagement metric|click.through rate|ctr\b|retention rate|kpi\b|cdp\b/.test(text)) return "engagement_analytics";
+    if (/\bpersona\b|user research|user interview|target user|user profile/.test(text)) return "persona_research";
+    if (/\bpump\b.*\b(motor|valve|impeller|bearing)|centrifugal pump|motor pump|pump system/.test(text)) return "physical_product";
+    if (/design system|component library|style guide|design token/.test(text)) return "design_system";
+    if (/prototype|wireframe|mockup|ux flow|ui flow/.test(text)) return "ux_prototype";
+    if (/status report|executive summary|mileston|gantt|resource allocation/.test(text)) return "management_summary";
+    if (/workflow|process flow|swim.?lane|step by step procedure|how it works/.test(text)) return "workflow_process";
+    return null;
+  }, [currentWordCount, fullText, displayHtml]);
 
   const workshopQuickNames = useMemo(
     () =>
@@ -703,9 +728,26 @@ export default function Room() {
     ) => {
       const trimmed = html.trim();
       if (trimmed.length < 50) return;
+
+      // Record when a local stream generation completes
+      if (sessionSource === "local_stream") {
+        lastLocalStreamCompletedMsRef.current = Date.now();
+      }
+
       const snap = cloneVizDebug(debugSnapshot);
       setVizHistory((prev) => {
         const last = prev[prev.length - 1];
+
+        // Suppress sse_peer echoes: if a local_stream just completed within 3s
+        // and the incoming HTML length is within 200 chars of the last entry,
+        // it's almost certainly the server broadcasting our own generation back.
+        if (sessionSource === "sse_peer" && last) {
+          const msSinceLocal = Date.now() - lastLocalStreamCompletedMsRef.current;
+          if (msSinceLocal < 3000 && Math.abs(last.html.length - trimmed.length) < 200) {
+            return prev; // skip duplicate echo
+          }
+        }
+
         if (last && last.html.trim() === trimmed) {
           if (snap && !(last.debugSnapshot && last.debugSnapshot.prompt)) {
             return [...prev.slice(0, -1), { ...last, debugSnapshot: snap }];
@@ -740,12 +782,12 @@ export default function Room() {
   );
 
   // When a new viz arrives from streaming, add it to history
-  // After the first successful visualization, auto-upgrade to Opus for better quality
+  // After the first successful visualization, auto-upgrade to Sonnet for better incremental quality
   useEffect(() => {
     if (!isGenerating && streamedHtml && streamedHtml.length > 50) {
       setDisplayHtml(streamedHtml);
       addVizVersion(streamedHtml, debugInfo ?? null);
-      setVizModel((prev) => (prev === "haiku" ? "opus" : prev));
+      setVizModel((prev) => (prev === "haiku" ? "sonnet" : prev));
       // Retningskort-match: registrér hvilken familie der faktisk blev genereret
       if (directionPickPendingResolutionRef.current) {
         directionPickPendingResolutionRef.current = false;
@@ -763,7 +805,7 @@ export default function Room() {
       addVizVersion(sseViz.html, null, "sse_peer");
       // Auto-upgrade model præcis som ved lokal streaming — en eksisterende viz
       // er forudsætning for annotation, så vi bør aldrig annotere med haiku
-      setVizModel((prev) => (prev === "haiku" ? "opus" : prev));
+      setVizModel((prev) => (prev === "haiku" ? "sonnet" : prev));
     }
   }, [sseViz.html, isGenerating, addVizVersion]);
 
@@ -3200,7 +3242,7 @@ export default function Room() {
               reasoningText={reasoningText}
               isLoadingActions={isLoadingActions}
               debugInfo={displayDebug}
-              streamFamily={isGenerating ? streamFamily : null}
+              streamFamily={isGenerating ? streamFamily : (!displayHtml ? predictedFamily : null)}
               onAnnotate={handleVizAnnotate}
             />
           </div>

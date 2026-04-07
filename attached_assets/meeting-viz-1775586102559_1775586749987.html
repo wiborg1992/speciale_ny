@@ -1,0 +1,552 @@
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Service Technician Workflow</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Outfit:wght@300;400;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  font-family: 'Outfit', sans-serif;
+  background: linear-gradient(135deg, #F0F4F8 0%, #F8FAFB 100%);
+  color: #333333;
+  min-height: 100vh;
+}
+
+.container {
+  display: flex;
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+  gap: 0;
+  min-height: 100vh;
+  background: #FFFFFF;
+  box-shadow: 0 4px 32px rgba(0, 42, 92, 0.08);
+}
+
+.flow-section {
+  flex: 1.8;
+  padding: 32px 28px;
+  overflow-y: auto;
+  background: #FAFAF9;
+  background-image: repeating-linear-gradient(
+    45deg,
+    rgba(0, 42, 92, 0.015) 0px,
+    rgba(0, 42, 92, 0.015) 1px,
+    transparent 1px,
+    transparent 20px
+  );
+  border-right: 1px solid rgba(0, 42, 92, 0.08);
+}
+
+.detail-section {
+  flex: 1;
+  padding: 32px 28px;
+  overflow-y: auto;
+  background: #F8FAFC;
+  display: flex;
+  flex-direction: column;
+}
+
+.header {
+  margin-bottom: 32px;
+  animation: fadeIn 0.5s ease both;
+}
+
+.header h1 {
+  font-family: 'Playfair Display', serif;
+  font-size: 2.4rem;
+  font-weight: 900;
+  color: #002A5C;
+  margin-bottom: 8px;
+  letter-spacing: -0.02em;
+}
+
+.header p {
+  font-size: 0.85rem;
+  color: #5a6a7a;
+  font-weight: 400;
+}
+
+.workflow-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: #002A5C;
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.workflow-title::before {
+  content: '';
+  width: 4px;
+  height: 32px;
+  background: #0077C8;
+  border-radius: 2px;
+}
+
+svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  margin-bottom: 24px;
+}
+
+.swim-lane-label {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #002A5C;
+  margin-bottom: 16px;
+}
+
+.detail-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(0, 42, 92, 0.12);
+}
+
+.detail-header h2 {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #002A5C;
+}
+
+.reset-btn {
+  padding: 8px 14px;
+  background: #FFFFFF;
+  border: 1px solid #CBD5E1;
+  color: #475569;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.reset-btn:hover {
+  background: #F1F5F9;
+  border-color: #0077C8;
+  color: #002A5C;
+}
+
+.detail-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 300px;
+  color: #94A3B8;
+  font-size: 0.9rem;
+  text-align: center;
+  padding: 32px;
+  background: #FFFFFF;
+  border-radius: 8px;
+  border: 1px dashed #CBD5E1;
+}
+
+.detail-content {
+  animation: fadeIn 0.3s ease both;
+}
+
+.detail-field {
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(0, 42, 92, 0.06);
+}
+
+.detail-field:last-child {
+  border-bottom: none;
+}
+
+.detail-label {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.62rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #5a6a7a;
+  margin-bottom: 6px;
+  font-weight: 700;
+}
+
+.detail-value {
+  font-size: 0.9rem;
+  color: #1e293b;
+  line-height: 1.5;
+  font-weight: 500;
+}
+
+.detail-value.secondary {
+  color: #64748b;
+  font-size: 0.82rem;
+}
+
+.status-chip {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  margin-top: 8px;
+}
+
+.status-chip.active {
+  background: #DCFCE7;
+  color: #166534;
+}
+
+.status-chip.pending {
+  background: #FEF3C7;
+  color: #92400E;
+}
+
+.actor-chip {
+  display: inline-block;
+  padding: 6px 12px;
+  background: #EFF6FF;
+  border: 1px solid #0077C8;
+  color: #0077C8;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin-top: 8px;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (max-width: 1024px) {
+  .container {
+    flex-direction: column;
+  }
+  
+  .flow-section, .detail-section {
+    flex: 1;
+    border-right: none;
+    border-bottom: 1px solid rgba(0, 42, 92, 0.08);
+  }
+  
+  .header h1 {
+    font-size: 1.8rem;
+  }
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+  
+  <div class="flow-section">
+    <div class="header">
+      <h1>Service Technician Workflow</h1>
+      <p>Pump System Diagnosis & Support Process</p>
+    </div>
+
+    <div class="workflow-title">Site Visit Scenario</div>
+
+    <svg viewBox="0 0 600 720" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="arrowhead" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto">
+          <polygon points="0 0, 8 3, 0 6" fill="#0077C8" opacity="0.8"/>
+        </marker>
+        <filter id="shadow">
+          <feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.12"/>
+        </filter>
+      </defs>
+
+      <!-- Swim Lane Backgrounds -->
+      <rect x="10" y="20" width="280" height="680" fill="#002A5C" opacity="0.04" rx="4"/>
+      <rect x="290" y="20" width="300" height="680" fill="#0077C8" opacity="0.04" rx="4"/>
+
+      <!-- Swim Lane Labels -->
+      <text x="50" y="45" font-family="Space Mono" font-size="11" font-weight="700" fill="#002A5C" letter-spacing="1">TECHNICIAN</text>
+      <text x="340" y="45" font-family="Space Mono" font-size="11" font-weight="700" fill="#002A5C" letter-spacing="1">SYSTEM</text>
+
+      <!-- Step 1: Arrive at Site -->
+      <rect x="30" y="70" width="240" height="60" fill="#FFFFFF" stroke="#0077C8" stroke-width="2" rx="6" filter="url(#shadow)" data-step="arrive"/>
+      <text x="150" y="92" font-family="Outfit" font-size="13" font-weight="700" fill="#002A5C" text-anchor="middle">① Arrive at Site</text>
+      <text x="150" y="108" font-family="Outfit" font-size="10" fill="#5a6a7a" text-anchor="middle">Greet customer, assess pump</text>
+
+      <!-- Arrow -->
+      <line x1="150" y1="130" x2="150" y2="160" stroke="#0077C8" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+      <!-- Step 2: Gather Information -->
+      <rect x="30" y="160" width="240" height="60" fill="#FFFFFF" stroke="#0077C8" stroke-width="2" rx="6" filter="url(#shadow)" data-step="gather"/>
+      <text x="150" y="182" font-family="Outfit" font-size="13" font-weight="700" fill="#002A5C" text-anchor="middle">② Gather Information</text>
+      <text x="150" y="198" font-family="Outfit" font-size="10" fill="#5a6a7a" text-anchor="middle">Document symptoms, history</text>
+
+      <!-- Arrow -->
+      <line x1="150" y1="220" x2="150" y2="250" stroke="#0077C8" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+      <!-- Step 3: Access Digital Tool -->
+      <rect x="310" y="250" width="260" height="60" fill="#FFFFFF" stroke="#0077C8" stroke-width="2" rx="6" filter="url(#shadow)" data-step="access-tool"/>
+      <text x="440" y="272" font-family="Outfit" font-size="13" font-weight="700" fill="#002A5C" text-anchor="middle">③ Launch Support Tool</text>
+      <text x="440" y="288" font-family="Outfit" font-size="10" fill="#5a6a7a" text-anchor="middle">Retrieve pump system data</text>
+
+      <!-- Arrow from Step 2 to Step 3 -->
+      <line x1="270" y1="280" x2="310" y2="280" stroke="#0077C8" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+      <!-- Arrow down from Step 3 -->
+      <line x1="440" y1="310" x2="440" y2="340" stroke="#0077C8" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+      <!-- Step 4: Review System Status -->
+      <rect x="310" y="340" width="260" height="60" fill="#FFFFFF" stroke="#0077C8" stroke-width="2" rx="6" filter="url(#shadow)" data-step="review-status"/>
+      <text x="440" y="362" font-family="Outfit" font-size="13" font-weight="700" fill="#002A5C" text-anchor="middle">④ Review System Status</text>
+      <text x="440" y="378" font-family="Outfit" font-size="10" fill="#5a6a7a" text-anchor="middle">Check real-time metrics</text>
+
+      <!-- Arrow -->
+      <line x1="440" y1="400" x2="440" y2="430" stroke="#0077C8" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+      <!-- Step 5: Analyze Performance Data -->
+      <rect x="310" y="430" width="260" height="60" fill="#FFFFFF" stroke="#0077C8" stroke-width="2" rx="6" filter="url(#shadow)" data-step="analyze"/>
+      <text x="440" y="452" font-family="Outfit" font-size="13" font-weight="700" fill="#002A5C" text-anchor="middle">⑤ Analyze Performance Data</text>
+      <text x="440" y="468" font-family="Outfit" font-size="10" fill="#5a6a7a" text-anchor="middle">Compare against baseline</text>
+
+      <!-- Arrow -->
+      <line x1="440" y1="490" x2="440" y2="520" stroke="#0077C8" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+      <!-- Decision Diamond: Issue Identified? -->
+      <polygon points="440,520 500,570 440,620 380,570" fill="#FEF3C7" stroke="#F59E0B" stroke-width="2" filter="url(#shadow)" data-step="decision"/>
+      <text x="440" y="570" font-family="Outfit" font-size="11" font-weight="700" fill="#92400E" text-anchor="middle">Issue</text>
+      <text x="440" y="585" font-family="Outfit" font-size="11" font-weight="700" fill="#92400E" text-anchor="middle">Found?</text>
+
+      <!-- YES Path (right) -->
+      <line x1="500" y1="570" x2="560" y2="570" stroke="#22C55E" stroke-width="2" marker-end="url(#arrowhead)"/>
+      <text x="530" y="560" font-family="Outfit" font-size="9" font-weight="600" fill="#22C55E">Yes</text>
+
+      <!-- NO Path (down) -->
+      <line x1="440" y1="620" x2="440" y2="650" stroke="#EF4444" stroke-width="2" marker-end="url(#arrowhead)"/>
+      <text x="450" y="635" font-family="Outfit" font-size="9" font-weight="600" fill="#EF4444">No</text>
+
+      <!-- Step 6: Prepare Recommendation (YES path) -->
+      <rect x="560" y="540" width="220" height="60" fill="#FFFFFF" stroke="#22C55E" stroke-width="2" rx="6" filter="url(#shadow)" data-step="recommend"/>
+      <text x="670" y="562" font-family="Outfit" font-size="12" font-weight="700" fill="#002A5C" text-anchor="middle">⑥ Recommend Action</text>
+      <text x="670" y="578" font-family="Outfit" font-size="9" fill="#5a6a7a" text-anchor="middle">Repair or service plan</text>
+
+      <!-- Step 7: Further Diagnostics (NO path) -->
+      <rect x="30" y="650" width="240" height="60" fill="#FFFFFF" stroke="#EF4444" stroke-width="2" rx="6" filter="url(#shadow)" data-step="diagnostics"/>
+      <text x="150" y="672" font-family="Outfit" font-size="13" font-weight="700" fill="#002A5C" text-anchor="middle">⑦ Run Advanced Checks</text>
+      <text x="150" y="688" font-family="Outfit" font-size="10" fill="#5a6a7a" text-anchor="middle">Deeper system analysis</text>
+
+      <!-- Arrow from Step 6 back to Decision -->
+      <path d="M 670 540 Q 700 500 500 540" fill="none" stroke="#0077C8" stroke-width="2" stroke-dasharray="4 4" marker-end="url(#arrowhead)"/>
+
+      <!-- Step 8: Document Findings & Close -->
+      <rect x="30" y="250" width="240" height="60" fill="#FFFFFF" stroke="#0077C8" stroke-width="2" rx="6" filter="url(#shadow)" data-step="document"/>
+      <text x="150" y="272" font-family="Outfit" font-size="13" font-weight="700" fill="#002A5C" text-anchor="middle">⑧ Document & Close Visit</text>
+      <text x="150" y="288" font-family="Outfit" font-size="10" fill="#5a6a7a" text-anchor="middle">Generate report, next steps</text>
+
+      <!-- Final arrow to document step -->
+      <path d="M 670 540 Q 620 400 270 280" fill="none" stroke="#0077C8" stroke-width="2" stroke-dasharray="4 4" marker-end="url(#arrowhead)"/>
+    </svg>
+
+    <div class="swim-lane-label">Click any step to view details</div>
+  </div>
+
+  <div class="detail-section">
+    <div class="detail-header">
+      <h2>Step Details</h2>
+      <button class="reset-btn" onclick="resetDetail()">Reset</button>
+    </div>
+
+    <div id="detail-panel" class="detail-placeholder">
+      ← Click a step to see details
+    </div>
+  </div>
+
+</div>
+
+<script>
+const stepData = {
+  arrive: {
+    name: "Arrive at Site",
+    description: "Service technician arrives at customer location due to report of unstable pump operation. Greet customer and conduct initial visual assessment of the pump system.",
+    actor: "Service Technician",
+    inputs: "Customer report of unstable operation",
+    outputs: "Preliminary observations, system photos",
+    status: "ACTIVE"
+  },
+  gather: {
+    name: "Gather Information",
+    description: "Document customer's detailed description of symptoms, system history, operating conditions, and any recent changes. Understand what 'unstable operation' means in context.",
+    actor: "Service Technician",
+    inputs: "Customer interview, visual inspection",
+    outputs: "Problem statement, context documentation",
+    status: "ACTIVE"
+  },
+  "access-tool": {
+    name: "Launch Support Tool",
+    description: "Access the digital support tool prototype to retrieve pump system data, configuration, and historical performance records. This is the main support tool during the visit.",
+    actor: "Service Technician + System",
+    inputs: "System ID, authentication",
+    outputs: "System data loaded, real-time connection established",
+    status: "ACTIVE"
+  },
+  "review-status": {
+    name: "Review System Status",
+    description: "Examine real-time metrics from the pump system: flow rate, pressure, power consumption, efficiency, and operational status. Check for any active alarms or warnings.",
+    actor: "Service Technician (reads System)",
+    inputs: "Real-time sensor data",
+    outputs: "Current system state assessment",
+    status: "ACTIVE"
+  },
+  analyze: {
+    name: "Analyze Performance Data",
+    description: "Compare current system performance against baseline or expected values. Identify anomalies, trends, or deviations that explain the reported unstable operation.",
+    actor: "Service Technician",
+    inputs: "Real-time data + historical baseline",
+    outputs: "Root cause hypothesis, data-backed insights",
+    status: "ACTIVE"
+  },
+  decision: {
+    name: "Decision: Issue Found?",
+    description: "Based on data analysis, determine if the root cause is clearly identified. YES leads to recommendation. NO leads to advanced diagnostics.",
+    actor: "Service Technician (decision point)",
+    inputs: "Analysis results",
+    outputs: "Decision path (Yes/No)",
+    status: "PENDING"
+  },
+  recommend: {
+    name: "Recommend Action",
+    description: "If issue is identified, prepare actionable recommendation: repair on-site, schedule service, replace component, or reconfigure system. Present options to customer.",
+    actor: "Service Technician",
+    inputs: "Root cause, technical assessment",
+    outputs: "Repair/service recommendation, estimate, timeline",
+    status: "PENDING"
+  },
+  diagnostics: {
+    name: "Run Advanced Checks",
+    description: "If root cause is unclear, use the digital tool to perform deeper diagnostics: isolation tests, parameter sweeps, or trigger additional sensor logging for detailed analysis.",
+    actor: "Service Technician + System",
+    inputs: "Initial analysis inconclusive",
+    outputs: "Extended diagnostic data, refined hypothesis",
+    status: "PENDING"
+  },
+  document: {
+    name: "Document Findings & Close Visit",
+    description: "Generate visit report documenting findings, actions taken, recommendations, and next steps. Provide customer with clear guidance and ensure proper handoff.",
+    actor: "Service Technician",
+    inputs: "All analysis and recommendations",
+    outputs: "Visit report, customer documentation, job closure",
+    status: "PENDING"
+  }
+};
+
+function showDetail(stepId) {
+  const step = stepData[stepId];
+  if (!step) return;
+
+  const html = `
+    <div class="detail-content">
+      <div class="detail-field">
+        <div class="detail-label">Step Name</div>
+        <div class="detail-value">${step.name}</div>
+      </div>
+      <div class="detail-field">
+        <div class="detail-label">Description</div>
+        <div class="detail-value secondary">${step.description}</div>
+      </div>
+      <div class="detail-field">
+        <div class="detail-label">Actor/Responsible</div>
+        <div class="actor-chip">${step.actor}</div>
+      </div>
+      <div class="detail-field">
+        <div class="detail-label">Inputs</div>
+        <div class="detail-value secondary">${step.inputs}</div>
+      </div>
+      <div class="detail-field">
+        <div class="detail-label">Outputs</div>
+        <div class="detail-value secondary">${step.outputs}</div>
+      </div>
+      <div class="detail-field">
+        <div class="detail-label">Status</div>
+        <div class="status-chip ${step.status.toLowerCase() === 'active' ? 'active' : 'pending'}">${step.status}</div>
+      </div>
+    </div>
+  `;
+
+  document.getElementById('detail-panel').innerHTML = html;
+
+  // Highlight the clicked node
+  document.querySelectorAll('[data-step]').forEach(node => {
+    node.style.filter = 'drop-shadow(0 0 0px rgba(0,42,92,0.1))';
+    node.style.opacity = '0.5';
+  });
+
+  const clickedNode = document.querySelector(`[data-step="${stepId}"]`);
+  if (clickedNode) {
+    clickedNode.style.opacity = '1';
+    clickedNode.style.filter = 'drop-shadow(0 0 12px rgba(0, 119, 200, 0.6))';
+    clickedNode.style.stroke = '#0077C8';
+    clickedNode.style.strokeWidth = '3';
+  }
+}
+
+function resetDetail() {
+  document.getElementById('detail-panel').innerHTML = '← Click a step to see details';
+  document.querySelectorAll('[data-step]').forEach(node => {
+    node.style.filter = 'drop-shadow(0 2px 3px rgba(0,42,92,0.12))';
+    node.style.opacity = '1';
+    node.style.stroke = '#0077C8';
+    node.style.strokeWidth = '2';
+  });
+}
+
+// Add click handlers to all step nodes
+document.querySelectorAll('[data-step]').forEach(node => {
+  node.style.cursor = 'pointer';
+  node.addEventListener('click', function() {
+    showDetail(this.getAttribute('data-step'));
+  });
+  node.addEventListener('mouseover', function() {
+    if (document.getElementById('detail-panel').textContent.includes('Click a step')) {
+      this.style.filter = 'drop-shadow(0 4px 12px rgba(0, 119, 200, 0.3))';
+    }
+  });
+  node.addEventListener('mouseout', function() {
+    if (document.getElementById('detail-panel').textContent.includes('Click a step')) {
+      this.style.filter = 'drop-shadow(0 2px 3px rgba(0,42,92,0.12))';
+    }
+  });
+});
+</script>
+
+</body>
+</html>
+```

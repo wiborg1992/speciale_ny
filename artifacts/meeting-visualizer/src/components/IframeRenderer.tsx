@@ -598,7 +598,9 @@ export function IframeRenderer({
   pendingHtmlRef.current = html;
 
   const renderable = isHtmlRenderable(html);
-  const showSkeleton = isStreaming && !renderable;
+  // Show skeleton during active streaming (generation) OR in idle empty state when a predicted family is provided
+  const isEmpty = !html || html.trim() === "";
+  const showSkeleton = (isStreaming && !renderable) || (!isStreaming && isEmpty && !!pendingFamily);
 
   function stripCodeFences(s: string): string {
     let t = s.trim();
@@ -782,8 +784,6 @@ ${t}
     const html = iframeDoc.documentElement.outerHTML;
     onAnnotate(html || "");
   }, [onAnnotate]);
-
-  const isEmpty = !html || html.trim() === "";
 
   return (
     <div className={cn(

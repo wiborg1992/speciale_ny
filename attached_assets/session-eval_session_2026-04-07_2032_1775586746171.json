@@ -1,0 +1,241 @@
+{
+  "schemaVersion": 2,
+  "exportedAt": "2026-04-07T18:32:19.852Z",
+  "session": {
+    "roomId": "15HR27",
+    "meetingTitle": "",
+    "workspaceDomain": "grundfos",
+    "sessionStartedAt": "2026-04-07T18:22:40.190Z",
+    "sessionEndedAt": "2026-04-07T18:32:19.852Z"
+  },
+  "summary": {
+    "transcriptWordCountApprox": 504,
+    "segmentCount": 3,
+    "participantNames": [
+      "Speaker 1"
+    ],
+    "visualizationEventCount": 6,
+    "skippedCount": 0,
+    "errorCount": 0
+  },
+  "reviewerNotes": "",
+  "events": [
+    {
+      "kind": "visualization",
+      "at": "2026-04-07T18:22:40.203Z",
+      "source": "local_stream",
+      "version": 1,
+      "vizName": "Service Technician Workflow",
+      "htmlChars": 18829,
+      "debug": {
+        "timestamp": "2026-04-07T18:17:53.843Z",
+        "resolvedFamily": "workflow_process",
+        "userPickedType": false,
+        "vizType": "auto",
+        "vizModel": "haiku",
+        "isIncremental": false,
+        "isRefinement": false,
+        "refinementDirective": null,
+        "hasPreviousHtml": false,
+        "focusSegment": null,
+        "workspaceDomain": "grundfos",
+        "transcriptTotalWords": 205,
+        "roomId": "15HR27",
+        "performanceMs": null,
+        "classification": {
+          "inputMode": "tail",
+          "inputWords": 205,
+          "totalWords": 205,
+          "inputText": "[Speaker 1]: Thank you all for taking part in the session. Today, I'm testing a digital prototype that has been developed as part of my thesis. The purpose is to evaluate the product, not you. So there's no right or wrong answers. I'm interested in seeing how you move through the workflow. What you expect to find, what feels intuitive, where you anything becomes unclear. During the session, I would to ask you to contribute as much as possible. And let's warm up with some easy questions. You brie",
+          "family": "workflow_process",
+          "topic": "Process / workflow / flowchart",
+          "lead": 26,
+          "ambiguous": false,
+          "topScores": [
+            {
+              "family": "workflow_process",
+              "score": 65
+            },
+            {
+              "family": "physical_product",
+              "score": 39
+            },
+            {
+              "family": "hmi_interface",
+              "score": 0
+            },
+            {
+              "family": "user_journey",
+              "score": 0
+            },
+            {
+              "family": "requirements_matrix",
+              "score": 0
+            },
+            {
+              "family": "engagement_analytics",
+              "score": 0
+            }
+          ]
+        }
+      }
+    },
+    {
+      "kind": "visualization",
+      "at": "2026-04-07T18:22:40.391Z",
+      "source": "sse_peer",
+      "version": 2,
+      "vizName": "Service Technician Workflow",
+      "htmlChars": 18817,
+      "debug": null
+    },
+    {
+      "kind": "visualization",
+      "at": "2026-04-07T18:24:44.504Z",
+      "source": "local_stream",
+      "version": 2,
+      "vizName": "Grundfos CU 362 Controller",
+      "htmlChars": 20422,
+      "debug": {
+        "timestamp": "2026-04-07T18:23:08.078Z",
+        "resolvedFamily": "physical_product",
+        "userPickedType": false,
+        "vizType": "auto",
+        "vizModel": "opus",
+        "isIncremental": false,
+        "isRefinement": false,
+        "refinementDirective": null,
+        "hasPreviousHtml": false,
+        "focusSegment": null,
+        "workspaceDomain": "grundfos",
+        "transcriptTotalWords": 309,
+        "roomId": "15HR27",
+        "performanceMs": null,
+        "classification": {
+          "inputMode": "tail",
+          "inputWords": 280,
+          "totalWords": 309,
+          "inputText": "to evaluate the product, not you. So there's no right or wrong answers. I'm interested in seeing how you move through the workflow. What you expect to find, what feels intuitive, where you anything becomes unclear. During the session, I would to ask you to contribute as much as possible. And let's warm up with some easy questions. You briefly describe your experience with service tools? Let's now move on to the actual scenario. So please imagine that you're a service technician working with the ",
+          "family": "physical_product",
+          "topic": "Physical product / pump hardware",
+          "lead": 14,
+          "ambiguous": false,
+          "topScores": [
+            {
+              "family": "physical_product",
+              "score": 39
+            },
+            {
+              "family": "workflow_process",
+              "score": 25
+            },
+            {
+              "family": "hmi_interface",
+              "score": 0
+            },
+            {
+              "family": "user_journey",
+              "score": 0
+            },
+            {
+              "family": "requirements_matrix",
+              "score": 0
+            },
+            {
+              "family": "engagement_analytics",
+              "score": 0
+            }
+          ]
+        }
+      }
+    },
+    {
+      "kind": "visualization",
+      "at": "2026-04-07T18:24:44.504Z",
+      "source": "sse_peer",
+      "version": 3,
+      "vizName": "Service Technician Workflow",
+      "htmlChars": 18817,
+      "debug": null
+    },
+    {
+      "kind": "visualization",
+      "at": "2026-04-07T18:30:02.653Z",
+      "source": "local_stream",
+      "version": 4,
+      "vizName": "Service Technician Field Workflow",
+      "htmlChars": 24450,
+      "debug": {
+        "timestamp": "2026-04-07T18:28:12.543Z",
+        "resolvedFamily": "workflow_process",
+        "userPickedType": false,
+        "vizType": "auto",
+        "vizModel": "opus",
+        "isIncremental": true,
+        "isRefinement": false,
+        "refinementDirective": null,
+        "hasPreviousHtml": true,
+        "focusSegment": null,
+        "workspaceDomain": "grundfos",
+        "transcriptTotalWords": 496,
+        "roomId": "15HR27",
+        "performanceMs": null,
+        "classification": {
+          "inputMode": "tail",
+          "inputWords": 280,
+          "totalWords": 496,
+          "inputText": "overview, your next step is to find the technique technical information you need before assessing the issue further. So please show me you would how you will find the relevant information about the pump and in the end and the installation practice, And where would you expect to find the technical details. What information do we need in order to feel confident? Is this distinguished between case information and private information? Is anything missing, or is the task too difficult? And in that ca",
+          "family": "workflow_process",
+          "topic": "Process / workflow / flowchart",
+          "lead": 14,
+          "ambiguous": false,
+          "topScores": [
+            {
+              "family": "workflow_process",
+              "score": 65
+            },
+            {
+              "family": "physical_product",
+              "score": 51
+            },
+            {
+              "family": "hmi_interface",
+              "score": 0
+            },
+            {
+              "family": "user_journey",
+              "score": 0
+            },
+            {
+              "family": "requirements_matrix",
+              "score": 0
+            },
+            {
+              "family": "engagement_analytics",
+              "score": 0
+            }
+          ]
+        }
+      },
+      "facit": {
+        "expectedIntent": "incremental",
+        "actualIntentNotes": "Der mangler en del af visualieringen i denne case \"Step detaljs\"",
+        "disambiguationShown": false,
+        "severity": "p0",
+        "legacyHypothesis": "room_reload"
+      }
+    },
+    {
+      "kind": "visualization",
+      "at": "2026-04-07T18:30:02.653Z",
+      "source": "sse_peer",
+      "version": 5,
+      "vizName": "Service Technician Workflow",
+      "htmlChars": 18817,
+      "debug": null,
+      "facit": {
+        "actualIntentNotes": "Der bliver denne bliver dob"
+      }
+    }
+  ]
+}
