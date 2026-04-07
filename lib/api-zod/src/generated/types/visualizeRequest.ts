@@ -30,4 +30,31 @@ export interface VisualizeRequest {
    * @nullable
    */
   workspaceDomain?: string | null;
+  /**
+   * Visualization kind (auto, journey, workflow, product, …) or null for auto-detect.
+   * @nullable
+   */
+  vizType?: string | null;
+  /**
+   * Model tier (haiku, sonnet, opus, gemini-flash, gemini-pro).
+   * @nullable
+   */
+  vizModel?: string | null;
+  /**
+   * Optional meeting title.
+   * @nullable
+   */
+  title?: string | null;
+  /**
+   * Optional structured context for the model.
+   * @nullable
+   */
+  context?: string | null;
+  /** If true, do not refine from previous HTML. */
+  freshStart?: boolean;
+  /**
+   * Segment that triggered generation, format "Speaker: text".
+   * @nullable
+   */
+  focusSegment?: string | null;
 }

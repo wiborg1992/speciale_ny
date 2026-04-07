@@ -41,6 +41,29 @@ export const VisualizeBody = zod.object({
     .describe(
       "Workspace corpus — grundfos (industrial pumps default), gabriel (furniture\/textiles), or generic\/neutral\/other. Omitted or null defaults to grundfos on the server.\n",
     ),
+  vizType: zod
+    .string()
+    .nullish()
+    .describe(
+      "Visualization kind (auto, journey, workflow, product, …) or null for auto-detect.",
+    ),
+  vizModel: zod
+    .string()
+    .nullish()
+    .describe("Model tier (haiku, sonnet, opus, gemini-flash, gemini-pro)."),
+  title: zod.string().nullish().describe("Optional meeting title."),
+  context: zod
+    .string()
+    .nullish()
+    .describe("Optional structured context for the model."),
+  freshStart: zod
+    .boolean()
+    .optional()
+    .describe("If true, do not refine from previous HTML."),
+  focusSegment: zod
+    .string()
+    .nullish()
+    .describe('Segment that triggered generation, format \"Speaker: text\".'),
 });
 
 /**
@@ -52,17 +75,43 @@ export const GetDeepgramTokenResponse = zod.object({
 });
 
 /**
+ * Returns a short-lived client_secret for the OpenAI Realtime WebSocket API (gpt-4o-transcribe)
+ * @summary Get OpenAI Realtime ephemeral client secret
+ */
+export const GetOpenAIRealtimeTokenResponse = zod.object({
+  clientSecret: zod
+    .string()
+    .describe(
+      "Ephemeral client secret for OpenAI Realtime WebSocket authentication",
+    ),
+  expiresAt: zod
+    .number()
+    .optional()
+    .describe("Unix timestamp (seconds) when the secret expires"),
+});
+
+/**
  * Sends a transcript segment to the room, which is broadcast to all participants
  * @summary Post transcript segment to room
  */
 export const PostSegmentBody = zod.object({
+  id: zod
+    .string()
+    .optional()
+    .describe("Optional client-generated segment ID (UUID)"),
   roomId: zod.string().describe("The room to post to"),
   speakerName: zod.string().describe("Name of the speaker"),
   text: zod.string().describe("The transcribed text segment"),
   timestamp: zod.number().describe("Unix timestamp (ms) of the segment"),
   isFinal: zod.boolean().describe("Whether the segment is final (not interim)"),
-  provider: zod.string().optional().describe("Transcription provider: browser | deepgram | openai"),
-  latencyMs: zod.number().optional().describe("End-to-end transcription latency in milliseconds"),
+  provider: zod
+    .string()
+    .optional()
+    .describe("Transcription provider: browser | deepgram | openai"),
+  latencyMs: zod
+    .number()
+    .optional()
+    .describe("End-to-end transcription latency in milliseconds"),
 });
 
 export const PostSegmentResponse = zod.object({

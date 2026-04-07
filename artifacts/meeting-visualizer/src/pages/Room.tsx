@@ -823,15 +823,15 @@ export default function Room() {
       try {
         await postSegment({
           data: {
+            id: newSegment.id,
             roomId,
             speakerName: effectiveSpeaker,
             text,
             timestamp: newSegment.timestamp,
             isFinal: true,
-            id: newSegment.id,
             provider: transcriptionModeRef.current,
             ...(latencyMs != null ? { latencyMs } : {}),
-          } as any,
+          },
         });
       } catch (err) {
         console.error("Failed to post segment", err);

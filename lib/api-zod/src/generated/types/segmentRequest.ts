@@ -7,6 +7,8 @@
  */
 
 export interface SegmentRequest {
+  /** Optional client-generated segment ID (UUID) */
+  id?: string;
   /** The room to post to */
   roomId: string;
   /** Name of the speaker */
@@ -17,4 +19,8 @@ export interface SegmentRequest {
   timestamp: number;
   /** Whether the segment is final (not interim) */
   isFinal: boolean;
+  /** Transcription provider: browser | deepgram | openai */
+  provider?: string;
+  /** End-to-end transcription latency in milliseconds */
+  latencyMs?: number;
 }

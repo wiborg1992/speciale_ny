@@ -88,6 +88,26 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /openai-realtime-token:
+    get:
+      operationId: getOpenAIRealtimeToken
+      tags: [deepgram]
+      summary: Get OpenAI Realtime ephemeral client secret
+      description: Returns a short-lived client_secret for the OpenAI Realtime WebSocket API (gpt-4o-transcribe)
+      responses:
+        "200":
+          description: Token response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OpenAIRealtimeTokenResponse"
+        "503":
+          description: OpenAI integration not configured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /segment:
     post:
       operationId: postSegment
@@ -196,9 +216,24 @@ components:
       required:
         - key
 
+    OpenAIRealtimeTokenResponse:
+      type: object
+      properties:
+        clientSecret:
+          type: string
+          description: Ephemeral client secret for OpenAI Realtime WebSocket authentication
+        expiresAt:
+          type: number
+          description: Unix timestamp (seconds) when the secret expires
+      required:
+        - clientSecret
+
     SegmentRequest:
       type: object
       properties:
+        id:
+          type: string
+          description: Optional client-generated segment ID (UUID)
         roomId:
           type: string
           description: The room to post to
@@ -214,6 +249,12 @@ components:
         isFinal:
           type: boolean
           description: Whether the segment is final (not interim)
+        provider:
+          type: string
+          description: "Transcription provider: browser | deepgram | openai"
+        latencyMs:
+          type: number
+          description: End-to-end transcription latency in milliseconds
       required:
         - roomId
         - speakerName

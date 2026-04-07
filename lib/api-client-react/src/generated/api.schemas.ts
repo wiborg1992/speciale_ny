@@ -38,13 +38,7 @@ export interface VisualizeRequest {
    */
   workspaceDomain?: string | null;
   /**
-   * A specific transcript segment that the user manually selected as the focus trigger.
-   * Format: "SpeakerName: segment text". Tells the model which statement drove this generation.
-   * @nullable
-   */
-  focusSegment?: string | null;
-  /**
-   * Visualization kind (auto, journey, workflow, …) or null for auto-detect.
+   * Visualization kind (auto, journey, workflow, product, …) or null for auto-detect.
    * @nullable
    */
   vizType?: string | null;
@@ -65,6 +59,11 @@ export interface VisualizeRequest {
   context?: string | null;
   /** If true, do not refine from previous HTML. */
   freshStart?: boolean;
+  /**
+   * Segment that triggered generation, format "Speaker: text".
+   * @nullable
+   */
+  focusSegment?: string | null;
 }
 
 export interface DeepgramTokenResponse {
@@ -72,7 +71,16 @@ export interface DeepgramTokenResponse {
   key: string;
 }
 
+export interface OpenAIRealtimeTokenResponse {
+  /** Ephemeral client secret for OpenAI Realtime WebSocket authentication */
+  clientSecret: string;
+  /** Unix timestamp (seconds) when the secret expires */
+  expiresAt?: number;
+}
+
 export interface SegmentRequest {
+  /** Optional client-generated segment ID (UUID) */
+  id?: string;
   /** The room to post to */
   roomId: string;
   /** Name of the speaker */
@@ -83,6 +91,10 @@ export interface SegmentRequest {
   timestamp: number;
   /** Whether the segment is final (not interim) */
   isFinal: boolean;
+  /** Transcription provider: browser | deepgram | openai */
+  provider?: string;
+  /** End-to-end transcription latency in milliseconds */
+  latencyMs?: number;
 }
 
 export interface SegmentResponse {

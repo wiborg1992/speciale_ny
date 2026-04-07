@@ -21,6 +21,7 @@ import type {
   ErrorResponse,
   HealthStatus,
   HistoryResponse,
+  OpenAIRealtimeTokenResponse,
   SegmentRequest,
   SegmentResponse,
   VisualizeRequest,
@@ -266,6 +267,86 @@ export function useGetDeepgramToken<
   request?: SecondParameter<typeof customFetch>;
 }): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getGetDeepgramTokenQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * Returns a short-lived client_secret for the OpenAI Realtime WebSocket API (gpt-4o-transcribe)
+ * @summary Get OpenAI Realtime ephemeral client secret
+ */
+export const getGetOpenAIRealtimeTokenUrl = () => {
+  return `/api/openai-realtime-token`;
+};
+
+export const getOpenAIRealtimeToken = async (
+  options?: RequestInit,
+): Promise<OpenAIRealtimeTokenResponse> => {
+  return customFetch<OpenAIRealtimeTokenResponse>(
+    getGetOpenAIRealtimeTokenUrl(),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetOpenAIRealtimeTokenQueryKey = () => {
+  return [`/api/openai-realtime-token`] as const;
+};
+
+export const getGetOpenAIRealtimeTokenQueryOptions = <
+  TData = Awaited<ReturnType<typeof getOpenAIRealtimeToken>>,
+  TError = ErrorType<ErrorResponse>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getOpenAIRealtimeToken>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetOpenAIRealtimeTokenQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getOpenAIRealtimeToken>>
+  > = ({ signal }) => getOpenAIRealtimeToken({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getOpenAIRealtimeToken>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetOpenAIRealtimeTokenQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getOpenAIRealtimeToken>>
+>;
+export type GetOpenAIRealtimeTokenQueryError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Get OpenAI Realtime ephemeral client secret
+ */
+
+export function useGetOpenAIRealtimeToken<
+  TData = Awaited<ReturnType<typeof getOpenAIRealtimeToken>>,
+  TError = ErrorType<ErrorResponse>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getOpenAIRealtimeToken>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetOpenAIRealtimeTokenQueryOptions(options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

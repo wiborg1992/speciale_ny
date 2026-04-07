@@ -11,6 +11,7 @@ export * from "./errorResponse";
 export * from "./healthStatus";
 export * from "./historyResponse";
 export * from "./meetingRecord";
+export * from "./openAIRealtimeTokenResponse";
 export * from "./segmentRequest";
 export * from "./segmentResponse";
 export * from "./transcriptSegment";
