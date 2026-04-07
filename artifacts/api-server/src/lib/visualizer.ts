@@ -205,6 +205,20 @@ TYPE: WORKFLOW / PROCESS DIAGRAM — best practices:
   • Background: white or #F8FAFC; nodes: white cards with colored left-border accent
   • Grid/column structure — not a free-floating diagram
 
+SVG ATTRIBUTE TYPO PREVENTION — always double-check these:
+  • <circle> uses cx/cy — NEVER x/y. Writing y="…" instead of cy="…" places the circle at cy=0 (top of canvas), causing it to float over unrelated content.
+  • <rect> uses x/y/width/height — correct.
+  • <ellipse> uses cx/cy/rx/ry — NEVER x/y.
+  • Before writing any <circle> element: confirm both cx= and cy= are present. There are no exceptions.
+
+SVG STEP INDICATOR / FLOW BAR — geometry rules (prevents a common clipping bug):
+  When drawing colored milestone dots with labels inside or below a containing <rect>:
+  ① Never place dots at the bottom edge of the rect — leave at least (r + 18)px of space below the dot center to fit the label.
+  ② Formula: rect height ≥ (dot_cy − rect_y) + dot_r + 16 (16px minimum for font-size 9–11 label below the dot).
+  ③ Better: use a <g transform="translate(x, y)"> for each step — draw the dot at cy=0, the label at y=r+10 — then position each <g> at the same baseline so all labels are aligned.
+  ④ The connecting <line> runs between dot centers (same y); it is drawn BEFORE the circles so it appears behind them.
+  ⑤ Minimum: if text overflows a rect, enlarge the rect — never let labels clip outside the background shape.
+
 TYPE: PHYSICAL PUMP HARDWARE — best practices:
   • Dedicate 60%+ of viewport to the SVG pump drawing
   • Alpha GO: circular white control face + LED arc ring (most distinctive feature) + GO App panel
