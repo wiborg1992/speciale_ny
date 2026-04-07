@@ -1036,7 +1036,7 @@ OUTPUT THE EXACT HTML STRUCTURE BELOW — only fill in the TITLE and MERMAID DIA
 <body>
 <h1>WORKFLOW TITLE HERE</h1>
 <div class="mermaid">
-flowchart TD
+flowchart LR
 
   FILL IN MERMAID DIAGRAM HERE
 
@@ -1049,18 +1049,20 @@ flowchart TD
 \`\`\`
 
 MERMAID SYNTAX RULES:
+  • Direction: ALWAYS use "flowchart LR" — flow goes LEFT TO RIGHT like a professional process diagram
   • Start/End nodes:   A([START]) and Z([END])  — stadium shape
   • Process steps:     B[Step label]              — rectangle
   • Decisions:         C{Question?}               — diamond
   • Arrows:            A --> B                    — basic arrow
   • Labelled arrows:   C -->|YES| D  and C -->|NO| E
-  • Swim lanes (when 2+ distinct roles): use subgraph blocks:
+  • Swim lanes (when 2+ distinct roles): use subgraph blocks — they become HORIZONTAL BANDS stacked top-to-bottom:
       subgraph TECHNICIAN
-        B[Step] --> C{Decision?}
+        A([START]) --> B[Receive Pump] --> C{Manual?}
       end
       subgraph CUSTOMER
-        D[Step] --> Z([END])
+        D[Set PIN] --> Z([END])
       end
+      C -->|YES| D
   • Keep node labels SHORT: max 4 words per line, use <br/> for line breaks if needed: B["Line 1<br/>Line 2"]
   • Back-edges for loops: use --> with the target ID (Mermaid handles routing automatically)
 

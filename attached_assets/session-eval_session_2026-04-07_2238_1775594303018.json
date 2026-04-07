@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "exportedAt": "2026-04-07T20:38:21.322Z",
+  "session": {
+    "roomId": "AA07R9",
+    "meetingTitle": "",
+    "workspaceDomain": "grundfos",
+    "sessionStartedAt": "2026-04-07T20:37:04.914Z",
+    "sessionEndedAt": "2026-04-07T20:38:21.322Z"
+  },
+  "summary": {
+    "transcriptWordCountApprox": 155,
+    "segmentCount": 2,
+    "participantNames": [
+      "Speaker 1",
+      "Speaker 2"
+    ],
+    "visualizationEventCount": 0,
+    "skippedCount": 0,
+    "errorCount": 0
+  },
+  "reviewerNotes": "",
+  "events": []
+}
