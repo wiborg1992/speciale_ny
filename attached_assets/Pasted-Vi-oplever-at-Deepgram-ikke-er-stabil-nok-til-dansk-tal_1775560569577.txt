@@ -1,0 +1,29 @@
+Vi oplever, at Deepgram ikke er stabil nok til dansk tale i vores nuværende setup, især når talen primært er dansk men indeholder engelske fagtermer som fx “user journey”, “service blueprint” og lignende.
+
+Jeg vil derfor have, at du tilføjer OpenAI Realtime API som en tredje valgmulighed til transskription, så vi kan skifte mellem flere transskriptionsmotorer og benchmarke dem direkte i appen.
+
+Målet er, at OpenAI-transskription skal kunne bruges til realtime transcription fra mikrofoninput, ikke fil-upload.
+
+Implementér OpenAI Realtime transcription som en separat provider i samme mønster som de øvrige STT-providers, så den kan vælges i UI og i konfigurationen.
+
+Krav til implementeringen:
+
+1. Tilføj OpenAI Realtime transcription som ny provider.
+2. Brug OpenAI’s realtime transcription flow, ikke batch transcription.
+3. Konfigurer den eksplicit til dansk som basissprog, men gør det muligt at teste engelsk også.
+4. Gør det muligt at sende en transcription prompt, så modellen kan guides med forventede ord og domæneord.
+5. Brug de bedste tilgængelige settings til nær- eller fjernfelt afhængigt af mikrofontype. Standard skal være far_field, fordi vi ofte tester fra laptop eller konferencemikrofon.
+6. Sørg for at løsningen er bygget, så vi senere kan teste både:
+   - dansk som fast language
+   - engelsk som fast language
+   - eventuelt en dynamisk strategi, hvis vi senere ønsker at skifte provider ved mixed-language problemer
+7. Gem provider-navn, latency og transcript-resultater, så vi kan sammenligne OpenAI, Deepgram og andre providers på samme input.
+8. Byg det som en ren provider-abstraktion, så resten af visualiseringsflowet ikke skal ændres.
+
+Vigtigt:
+- OpenAI skal ikke behandles som en generel voice assistant i dette flow, men som transcription-only provider.
+- Hvis OpenAI ikke har direkte ækvivalenter til Deepgrams “meeting” model eller keyword-parameter, så brug de nærmeste officielle alternativer i stedet for at opfinde egne felter.
+- Hvis OpenAI tilbyder prompt og language, så brug disse korrekt.
+- Hvis OpenAI tilbyder noise reduction eller audio settings, så brug dem.
+- Hvis OpenAI-transskription i realtime er asynkron i forhold til modelens egentlige lydforståelse, så strukturér koden, så det er tydeligt adskilt i providerlaget.
+
