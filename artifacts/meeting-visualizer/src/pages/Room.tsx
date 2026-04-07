@@ -90,6 +90,101 @@ import {
 } from "./room/viz-helpers";
 import { RoomOutputPanels } from "./room/RoomOutputPanels";
 
+// ─── VizVersionStrip ─────────────────────────────────────────────────────────
+
+interface VizVersionEntry {
+  version: number;
+  name: string;
+  timestamp: string;
+  debugSnapshot?: boolean;
+}
+
+function VizVersionStrip({
+  vizHistory,
+  activeVersion,
+  loadVizVersion,
+}: {
+  vizHistory: VizVersionEntry[];
+  activeVersion: number | null;
+  loadVizVersion: (v: number) => void;
+}) {
+  const pillsRef = useRef<HTMLDivElement>(null);
+  const [isDropdown, setIsDropdown] = useState(false);
+
+  useEffect(() => {
+    const el = pillsRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => {
+      setIsDropdown(el.scrollWidth > el.clientWidth + 2);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [vizHistory]);
+
+  return (
+    <div className="shrink-0 flex items-center gap-2 px-4 py-1.5 border-b border-border bg-card/10">
+      <History className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+      <span className="text-[10px] font-mono text-muted-foreground shrink-0">
+        Versions:
+      </span>
+
+      {/* Pill row — hidden when overflowing, but always measured */}
+      <div
+        ref={pillsRef}
+        className={cn(
+          "flex items-center gap-2 overflow-hidden",
+          isDropdown ? "invisible absolute pointer-events-none" : "flex-1",
+        )}
+        aria-hidden={isDropdown}
+      >
+        {vizHistory.map((v) => (
+          <button
+            key={v.version}
+            onClick={() => loadVizVersion(v.version)}
+            title={
+              (v.debugSnapshot ? "DBG · " : "") +
+              v.name +
+              " · " +
+              format(new Date(v.timestamp), "HH:mm")
+            }
+            className={cn(
+              "shrink-0 flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono border transition-colors",
+              activeVersion === v.version
+                ? "border-primary text-primary bg-primary/10"
+                : "border-border text-muted-foreground hover:text-white hover:border-white/40",
+            )}
+          >
+            <span className="font-bold">v{v.version}</span>
+            <span className="max-w-[80px] truncate opacity-70">{v.name}</span>
+            {v.debugSnapshot && (
+              <span className="text-[8px] text-amber-500/90 font-bold">
+                DBG
+              </span>
+            )}
+          </button>
+        ))}
+      </div>
+
+      {/* Dropdown — shown when pills overflow */}
+      {isDropdown && (
+        <select
+          value={activeVersion ?? ""}
+          onChange={(e) => loadVizVersion(Number(e.target.value))}
+          className="flex-1 min-w-0 bg-secondary/40 border border-border rounded px-2 py-0.5 text-[10px] font-mono text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40"
+        >
+          {vizHistory.map((v) => (
+            <option key={v.version} value={v.version}>
+              v{v.version}
+              {v.debugSnapshot ? " [DBG]" : ""} · {v.name} ·{" "}
+              {format(new Date(v.timestamp), "HH:mm")}
+            </option>
+          ))}
+        </select>
+      )}
+    </div>
+  );
+}
+
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export default function Room() {
@@ -2904,40 +2999,11 @@ export default function Room() {
 
             {/* Version history strip (viz tab only) */}
             {outputTab === "viz" && vizHistory.length > 0 && (
-              <div className="shrink-0 flex items-center gap-2 px-4 py-1.5 border-b border-border overflow-x-auto bg-card/10 min-h-0">
-                <History className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                <span className="text-[10px] font-mono text-muted-foreground shrink-0">
-                  Versions:
-                </span>
-                {vizHistory.map((v) => (
-                  <button
-                    key={v.version}
-                    onClick={() => loadVizVersion(v.version)}
-                    title={
-                      (v.debugSnapshot ? "DBG · " : "") +
-                      v.name +
-                      " · " +
-                      format(new Date(v.timestamp), "HH:mm")
-                    }
-                    className={cn(
-                      "shrink-0 flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono border transition-colors",
-                      activeVersion === v.version
-                        ? "border-primary text-primary bg-primary/10"
-                        : "border-border text-muted-foreground hover:text-white hover:border-white/40",
-                    )}
-                  >
-                    <span className="font-bold">v{v.version}</span>
-                    <span className="max-w-[80px] truncate opacity-70">
-                      {v.name}
-                    </span>
-                    {v.debugSnapshot && (
-                      <span className="text-[8px] text-amber-500/90 font-bold">
-                        DBG
-                      </span>
-                    )}
-                  </button>
-                ))}
-              </div>
+              <VizVersionStrip
+                vizHistory={vizHistory}
+                activeVersion={activeVersion}
+                loadVizVersion={loadVizVersion}
+              />
             )}
 
             {/* Debug panel */}
