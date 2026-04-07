@@ -146,7 +146,7 @@ export default function Home() {
                 <Button
                   type="submit"
                   variant="secondary"
-                  className="w-full h-14 text-base"
+                  className="w-full h-14 text-base hover:bg-primary hover:text-primary-foreground"
                   disabled={!speakerName.trim()}
                 >
                   <Play className="w-5 h-5 mr-2 text-orange-400" />
@@ -158,7 +158,7 @@ export default function Home() {
                 <Button
                   type="submit"
                   variant="secondary"
-                  className="w-full h-14 text-base"
+                  className="w-full h-14 text-base hover:bg-primary hover:text-primary-foreground"
                   disabled={!speakerName.trim()}
                 >
                   <PenLine className="w-5 h-5 mr-2 text-orange-400" />
