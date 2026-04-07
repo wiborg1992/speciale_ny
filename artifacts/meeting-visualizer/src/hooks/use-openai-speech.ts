@@ -218,7 +218,6 @@ export function useOpenAISpeech({
                 silence_duration_ms: 700,
                 threshold: 0.5,
                 prefix_padding_ms: 300,
-                noise_reduction: { type: "far_field" },
                 create_response: false,
               },
             },

@@ -1,0 +1,91 @@
+{
+  "schemaVersion": 2,
+  "exportedAt": "2026-04-07T18:21:28.132Z",
+  "session": {
+    "roomId": "15HR27",
+    "meetingTitle": "",
+    "workspaceDomain": "grundfos",
+    "sessionStartedAt": "2026-04-07T18:16:41.487Z",
+    "sessionEndedAt": "2026-04-07T18:21:28.132Z"
+  },
+  "summary": {
+    "transcriptWordCountApprox": 206,
+    "segmentCount": 1,
+    "participantNames": [
+      "Speaker 1"
+    ],
+    "visualizationEventCount": 1,
+    "skippedCount": 0,
+    "errorCount": 0
+  },
+  "reviewerNotes": "God og hurtig visualisering.\n\nmen der er noget af selve site visit Sceenario'et der er skåret fra så man ikke kan se det sidste step.",
+  "events": [
+    {
+      "kind": "visualization",
+      "at": "2026-04-07T18:18:31.999Z",
+      "source": "local_stream",
+      "version": 1,
+      "vizName": "Service Technician Workflow",
+      "htmlChars": 18829,
+      "debug": {
+        "timestamp": "2026-04-07T18:17:53.843Z",
+        "resolvedFamily": "workflow_process",
+        "userPickedType": false,
+        "vizType": "auto",
+        "vizModel": "haiku",
+        "isIncremental": false,
+        "isRefinement": false,
+        "refinementDirective": null,
+        "hasPreviousHtml": false,
+        "focusSegment": null,
+        "workspaceDomain": "grundfos",
+        "transcriptTotalWords": 205,
+        "roomId": "15HR27",
+        "performanceMs": null,
+        "classification": {
+          "inputMode": "tail",
+          "inputWords": 205,
+          "totalWords": 205,
+          "inputText": "[Speaker 1]: Thank you all for taking part in the session. Today, I'm testing a digital prototype that has been developed as part of my thesis. The purpose is to evaluate the product, not you. So there's no right or wrong answers. I'm interested in seeing how you move through the workflow. What you expect to find, what feels intuitive, where you anything becomes unclear. During the session, I would to ask you to contribute as much as possible. And let's warm up with some easy questions. You brie",
+          "family": "workflow_process",
+          "topic": "Process / workflow / flowchart",
+          "lead": 26,
+          "ambiguous": false,
+          "topScores": [
+            {
+              "family": "workflow_process",
+              "score": 65
+            },
+            {
+              "family": "physical_product",
+              "score": 39
+            },
+            {
+              "family": "hmi_interface",
+              "score": 0
+            },
+            {
+              "family": "user_journey",
+              "score": 0
+            },
+            {
+              "family": "requirements_matrix",
+              "score": 0
+            },
+            {
+              "family": "engagement_analytics",
+              "score": 0
+            }
+          ]
+        }
+      },
+      "facit": {
+        "expectedIntent": "new_viz",
+        "actualIntentNotes": "Der blevet lavet en ny visualsering som der skulle - dog er der fejl i både sceenario og i step details, hvor tekten er for langt oppe ",
+        "disambiguationShown": false,
+        "severity": "p0",
+        "legacyHypothesis": "other"
+      }
+    }
+  ]
+}
