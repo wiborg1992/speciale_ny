@@ -135,7 +135,14 @@ export function useOpenAISpeech({
         const body = await tokenRes.json().catch(() => ({})) as { error?: string };
         throw new Error(body.error ?? "Could not fetch OpenAI Realtime token");
       }
-      const { clientSecret } = (await tokenRes.json()) as { clientSecret: string; expiresAt?: number };
+      const tokenData = (await tokenRes.json()) as {
+        clientSecret: string;
+        expiresAt?: number;
+        model?: string;
+      };
+      const { clientSecret } = tokenData;
+      // Use the model the backend actually created the session with (keeps both in sync)
+      const backendModel = tokenData.model || "gpt-4o-realtime-preview";
 
       if (!isRecordingRef.current) return; // stopped before token returned
 
@@ -179,7 +186,8 @@ export function useOpenAISpeech({
       silencer.connect(audioCtx.destination);
 
       // 4. Open WebSocket to OpenAI Realtime API with ephemeral key
-      const wsUrl = "wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview";
+      // backendModel comes from the token response — matches the session the backend created.
+      const wsUrl = `wss://api.openai.com/v1/realtime?model=${backendModel}`;
       const ws = new WebSocket(wsUrl, [
         "realtime",
         `openai-insecure-api-key.${clientSecret}`,
@@ -202,6 +210,13 @@ export function useOpenAISpeech({
         if (!isRecordingRef.current) { ws.close(); return; }
         console.info("[openai-realtime] Connected — sending session.update");
 
+        // OpenAI Realtime API caps input_audio_transcription.prompt at 1024 chars.
+        const rawPrompt = promptRef.current ?? "";
+        const prompt = rawPrompt.length > 1024 ? rawPrompt.slice(0, 1021) + "..." : rawPrompt;
+        if (rawPrompt.length > 1024) {
+          console.warn(`[openai-realtime] prompt truncated ${rawPrompt.length} → 1024 chars`);
+        }
+
         ws.send(
           JSON.stringify({
             type: "session.update",
@@ -211,7 +226,7 @@ export function useOpenAISpeech({
               input_audio_transcription: {
                 model: "gpt-4o-transcribe",
                 language: languageRef.current,
-                ...(promptRef.current ? { prompt: promptRef.current } : {}),
+                ...(prompt ? { prompt } : {}),
               },
               turn_detection: {
                 type: "server_vad",

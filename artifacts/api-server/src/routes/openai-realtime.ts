@@ -26,6 +26,9 @@ router.get("/openai-realtime-token", async (_req, res): Promise<void> => {
     return;
   }
 
+  const realtimeModel =
+    process.env.OPENAI_REALTIME_MODEL || "gpt-4o-realtime-preview";
+
   try {
     const r = await fetch("https://api.openai.com/v1/realtime/sessions", {
       method: "POST",
@@ -33,7 +36,7 @@ router.get("/openai-realtime-token", async (_req, res): Promise<void> => {
         "Content-Type": "application/json",
         Authorization: `Bearer ${apiKey}`,
       },
-      body: JSON.stringify({ model: "gpt-4o-realtime-preview" }),
+      body: JSON.stringify({ model: realtimeModel }),
     });
 
     if (!r.ok) {
@@ -66,7 +69,7 @@ router.get("/openai-realtime-token", async (_req, res): Promise<void> => {
       return;
     }
 
-    res.json({ clientSecret: secret, expiresAt });
+    res.json({ clientSecret: secret, expiresAt, model: realtimeModel });
   } catch (err: any) {
     console.error("[openai-realtime] Token fetch error:", err);
     res.status(500).json({
