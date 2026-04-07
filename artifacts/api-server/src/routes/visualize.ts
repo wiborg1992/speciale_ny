@@ -117,6 +117,12 @@ function stripCodeFences(text: string): string {
   return t.trim();
 }
 
+/** Force flowchart LR for workflow_process — LLMs tend to revert to TD */
+function postProcessHtml(html: string, family: string | null): string {
+  if (family !== "workflow_process") return html;
+  return html.replace(/\bflowchart\s+(TD|TB|BT)\b/g, "flowchart LR");
+}
+
 function checkRateLimit(ip: string): boolean {
   const now = Date.now();
   const timestamps = rateLimitMap.get(ip) ?? [];
@@ -843,7 +849,7 @@ router.post("/visualize", async (req, res, next): Promise<void> => {
         workspaceDomain: workspaceDomain ?? null,
       };
 
-      const cleanHtml = stripCodeFences(fullHtml);
+      const cleanHtml = postProcessHtml(stripCodeFences(fullHtml), resolvedFamily ?? classification?.family ?? null);
       const qualityOk = isHtmlQualityOk(cleanHtml);
 
       if (qualityOk) {

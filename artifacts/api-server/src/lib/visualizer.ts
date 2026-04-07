@@ -1049,32 +1049,46 @@ flowchart LR
 \`\`\`
 
 MERMAID SYNTAX RULES:
-  • Direction: ALWAYS use "flowchart LR" — flow goes LEFT TO RIGHT like a professional process diagram
-  • Start/End nodes:   A([START]) and Z([END])  — stadium shape
-  • Process steps:     B[Step label]              — rectangle
-  • Decisions:         C{Question?}               — diamond
-  • Arrows:            A --> B                    — basic arrow
-  • Labelled arrows:   C -->|YES| D  and C -->|NO| E
-  • Swim lanes (when 2+ distinct roles): use subgraph blocks — they become HORIZONTAL BANDS stacked top-to-bottom:
-      subgraph TECHNICIAN
-        A([START]) --> B[Receive Pump] --> C{Manual?}
+  • Direction: ALWAYS write "flowchart LR" — NEVER "flowchart TD" or "flowchart TB"
+  • Start/End:    A([START])  Z([END])  — stadium shape, assigned class "endpoint"
+  • Process step: B[Short Label]        — rectangle, assigned class "proc"
+  • Decision:     C{Check?}             — diamond, assigned class "dec"
+  • Error/retry:  ERR["Retry"]          — rectangle, assigned class "err"
+  • Arrows:       A --> B  or  C -->|YES| D  and  C -->|NO| E
+  • Swim lanes:   subgraph blocks become HORIZONTAL BANDS (perfect for LR flow):
+      subgraph ACTOR_A ["ACTOR A"]
+        A([START]) --> B[Step] --> C{Check?}
       end
-      subgraph CUSTOMER
-        D[Set PIN] --> Z([END])
+      subgraph ACTOR_B ["ACTOR B"]
+        D[Step] --> Z([END])
       end
       C -->|YES| D
-  • Keep node labels SHORT: max 4 words per line, use <br/> for line breaks if needed: B["Line 1<br/>Line 2"]
-  • Back-edges for loops: use --> with the target ID (Mermaid handles routing automatically)
+
+  • Node labels: MAX 3 WORDS — keep them tiny. Use \\n for line break if needed: B["Receive\\nPump"]
+  • Total nodes: aim for 6–10 max — merge minor steps, do NOT list every sub-action
+  • Back-edges: ERR --> B  (Mermaid routes automatically)
+
+  AFTER all node/edge definitions, add these two blocks verbatim:
+
+  classDef proc fill:#DBEAFE,stroke:#0077C8,stroke-width:1.5,color:#1E293B,rx:4
+  classDef dec fill:#FEF3C7,stroke:#F59E0B,stroke-width:1.5,color:#78350F
+  classDef endpoint fill:#002A5C,stroke:#001A3E,color:#fff,font-weight:700
+  classDef err fill:#FEE2E2,stroke:#EF4444,stroke-width:1.5,color:#991B1B
+
+  class START,END_NODE endpoint
+  class [LIST ALL PROCESS STEP IDs HERE] proc
+  class [LIST ALL DECISION IDs HERE] dec
+  class [LIST ALL ERROR IDs HERE] err
 
 EXTRACT FROM TRANSCRIPT:
   • Process name → use as the page title (h1) AND the HTML title
-  • Steps in sequence → process rectangles
+  • Main steps in sequence → process rectangles (merge trivial sub-steps)
   • Decision gates (if/check/verify/approve/correct?) → diamond shapes
-  • YES/NO outcomes on decision branches → labelled arrows |YES| and |NO|
-  • Distinct roles/actors → subgraph swim lanes (only if 2+ roles explicitly mentioned)
+  • YES/NO outcomes → labelled arrows |YES| and |NO|
+  • Distinct roles/actors → subgraph swim lanes (only if 2+ roles mentioned)
 
-DO NOT generate raw SVG. DO NOT invent steps not mentioned. DO NOT generate sidebars or tables.
-Target ~800–1,200 tokens of HTML output (the diagram syntax is very compact).`,
+DO NOT generate raw SVG. DO NOT write "flowchart TD". DO NOT generate sidebars or tables.
+Target ~900–1,300 tokens of HTML output.`,
 
   physical_product: `GENERATE: GRUNDFOS PUMP FRONT PANEL — the control face / display IS the visualization. NOT the full pump body.
 
