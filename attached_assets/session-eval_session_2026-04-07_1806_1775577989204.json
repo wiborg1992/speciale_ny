@@ -1,0 +1,95 @@
+{
+  "schemaVersion": 2,
+  "exportedAt": "2026-04-07T16:06:27.026Z",
+  "session": {
+    "roomId": "ZMK2KR",
+    "meetingTitle": "",
+    "workspaceDomain": "grundfos",
+    "sessionStartedAt": "2026-04-07T15:50:19.561Z",
+    "sessionEndedAt": "2026-04-07T16:06:27.026Z"
+  },
+  "summary": {
+    "transcriptWordCountApprox": 0,
+    "segmentCount": 0,
+    "participantNames": [],
+    "visualizationEventCount": 1,
+    "skippedCount": 0,
+    "errorCount": 0
+  },
+  "reviewerNotes": "",
+  "events": [
+    {
+      "kind": "visualization",
+      "at": "2026-04-07T15:50:21.603Z",
+      "source": "local_stream",
+      "version": 8,
+      "vizName": "Version 8",
+      "htmlChars": 20863,
+      "debug": {
+        "timestamp": "2026-04-07T15:48:51.375Z",
+        "resolvedFamily": "physical_product",
+        "userPickedType": false,
+        "vizType": "auto",
+        "vizModel": "opus",
+        "isIncremental": true,
+        "isRefinement": false,
+        "refinementDirective": null,
+        "hasPreviousHtml": true,
+        "focusSegment": null,
+        "workspaceDomain": "grundfos",
+        "transcriptTotalWords": 10,
+        "roomId": "ZMK2KR",
+        "performanceMs": 89866,
+        "classification": {
+          "inputMode": "tail",
+          "inputWords": 10,
+          "totalWords": 10,
+          "inputText": "Anvend annotationerne på den eksisterende visualisering og opdater den tilsvarende.",
+          "family": "generic",
+          "topic": "General visualization",
+          "lead": 0,
+          "ambiguous": true,
+          "topScores": [
+            {
+              "id": "hmi_interface",
+              "label": "HMI / SCADA interface",
+              "score": 0
+            },
+            {
+              "id": "user_journey",
+              "label": "User journey / experience map",
+              "score": 0
+            },
+            {
+              "id": "workflow_process",
+              "label": "Process / workflow / flowchart",
+              "score": 0
+            },
+            {
+              "id": "physical_product",
+              "label": "Physical product / pump hardware",
+              "score": 0
+            },
+            {
+              "id": "requirements_matrix",
+              "label": "Requirements / traceability",
+              "score": 0
+            },
+            {
+              "id": "engagement_analytics",
+              "label": "Engagement analytics / traffic dashboard",
+              "score": 0
+            }
+          ]
+        }
+      },
+      "facit": {
+        "expectedIntent": "incremental",
+        "actualIntentNotes": "Der blev anvendt annotering med sketching hvilket fungerede som det skal - der er dog nogle små brugs med teksten under og en grøn knap der svæver over selve front panelet",
+        "disambiguationShown": false,
+        "severity": "p3",
+        "legacyHypothesis": "other"
+      }
+    }
+  ]
+}

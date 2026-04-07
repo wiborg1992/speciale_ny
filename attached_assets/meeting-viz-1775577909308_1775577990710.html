@@ -1,0 +1,382 @@
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap');
+
+@keyframes fadeIn { from{opacity:0;transform:translateY(5px)} to{opacity:1;transform:none} }
+@keyframes fadeUp { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:none} }
+@keyframes ledPulse { 0%,100%{opacity:1} 50%{opacity:0.7} }
+@keyframes ledAlarm { 0%,100%{opacity:1} 50%{opacity:.25} }
+@keyframes spin { to{transform:rotate(360deg)} }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  background: #F8FAFC;
+  font-family: 'Outfit', sans-serif;
+  color: #333;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 32px 24px 16px;
+}
+
+.product-title {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #002A5C;
+  text-align: center;
+  animation: fadeUp 0.5s ease both;
+  margin-bottom: 4px;
+}
+
+.product-subtitle {
+  font-size: 0.88rem;
+  color: #6B7280;
+  font-weight: 400;
+  text-align: center;
+  animation: fadeUp 0.5s ease both 0.08s;
+  margin-bottom: 24px;
+}
+
+.pump-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  animation: fadeUp 0.6s ease both 0.15s;
+  position: relative;
+  margin-bottom: 28px;
+  width: min(90vw, 520px);
+}
+
+.pump-container svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.info-row {
+  display: flex;
+  gap: 20px;
+  justify-content: center;
+  flex-wrap: wrap;
+  animation: fadeUp 0.5s ease both 0.3s;
+  margin-bottom: 24px;
+}
+
+.info-box {
+  background: #FFFFFF;
+  border-left: 4px solid #0077C8;
+  border-radius: 8px;
+  padding: 14px 22px;
+  box-shadow: 0 2px 8px rgba(0,42,92,0.08), 0 0 0 1px rgba(0,42,92,0.06);
+  min-width: 180px;
+}
+
+.info-box .label {
+  font-size: 0.62rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #6B7280;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.info-box .value {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #002A5C;
+}
+
+.info-box .value span {
+  font-size: 0.82rem;
+  color: #0077C8;
+  font-weight: 400;
+  margin-left: 4px;
+}
+
+.footer {
+  font-size: 0.62rem;
+  color: #B0B8C1;
+  text-align: center;
+  margin-top: auto;
+  padding-top: 12px;
+}
+</style>
+
+<div class="product-title">Grundfos Alpha GO</div>
+<div class="product-subtitle">CRA Pin Code Access — Front Panel with Security Authentication</div>
+
+<div class="pump-container">
+<svg viewBox="0 0 440 500" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="pumpBody" x1="0" y1="0" x2="1" y2="0.3">
+      <stop offset="0%" stop-color="#A01825"/>
+      <stop offset="40%" stop-color="#BE1E2D"/>
+      <stop offset="80%" stop-color="#D42234"/>
+      <stop offset="100%" stop-color="#BE1E2D"/>
+    </linearGradient>
+    <linearGradient id="flangeGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#C8CED4"/>
+      <stop offset="50%" stop-color="#B0B8C1"/>
+      <stop offset="100%" stop-color="#9BA3AF"/>
+    </linearGradient>
+    <linearGradient id="ledArc" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#16A34A"/>
+      <stop offset="100%" stop-color="#22C55E"/>
+    </linearGradient>
+    <linearGradient id="pinScreenBg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0A1628"/>
+      <stop offset="100%" stop-color="#06101E"/>
+    </linearGradient>
+    <linearGradient id="btnFaceNav" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#484848"/>
+      <stop offset="100%" stop-color="#323232"/>
+    </linearGradient>
+    <filter id="pShadow"><feDropShadow dx="2" dy="4" stdDeviation="6" flood-color="#000" flood-opacity="0.4"/></filter>
+    <filter id="ledGlow"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    <filter id="discShadow"><feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#000" flood-opacity="0.25"/></filter>
+    <filter id="softGlow"><feGaussianBlur stdDeviation="1.5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    <filter id="screenGlow"><feGaussianBlur stdDeviation="1" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    <marker id="calloutDot" markerWidth="6" markerHeight="6" refX="3" refY="3"><circle cx="3" cy="3" r="2.5" fill="#0077C8" opacity="0.7"/></marker>
+  </defs>
+
+  <!-- TOP OUTLET PIPE -->
+  <rect x="138" y="18" width="44" height="55" rx="2" fill="url(#flangeGrad)"/>
+  <rect x="128" y="18" width="64" height="14" rx="2" fill="url(#flangeGrad)" stroke="#8A929A" stroke-width="0.5"/>
+  <circle cx="136" cy="25" r="3" fill="#7A828A" stroke="#6B7280" stroke-width="0.5"/>
+  <circle cx="184" cy="25" r="3" fill="#7A828A" stroke="#6B7280" stroke-width="0.5"/>
+  <rect x="132" y="64" width="56" height="10" rx="1" fill="#A8AEB5" stroke="#8A929A" stroke-width="0.5"/>
+  <line x1="140" y1="66" x2="140" y2="72" stroke="#8A929A" stroke-width="0.3"/>
+  <line x1="150" y1="66" x2="150" y2="72" stroke="#8A929A" stroke-width="0.3"/>
+  <line x1="160" y1="66" x2="160" y2="72" stroke="#8A929A" stroke-width="0.3"/>
+  <line x1="170" y1="66" x2="170" y2="72" stroke="#8A929A" stroke-width="0.3"/>
+  <line x1="180" y1="66" x2="180" y2="72" stroke="#8A929A" stroke-width="0.3"/>
+
+  <!-- PUMP BODY -->
+  <rect x="100" y="73" width="120" height="200" rx="14" fill="url(#pumpBody)" filter="url(#pShadow)"/>
+  <rect x="102" y="75" width="116" height="196" rx="13" fill="none" stroke="#D42234" stroke-width="0.5" opacity="0.3"/>
+  <rect x="100" y="88" width="3" height="170" fill="#8B1520" opacity="0.5" rx="1"/>
+
+  <!-- GRUNDFOS text vertical -->
+  <text x="112" y="208" fill="#FFFFFF" font-family="Arial,sans-serif" font-size="9" font-weight="700" letter-spacing="0.15em" transform="rotate(-90 112 208)" opacity="0.85">GRUNDFOS</text>
+
+  <!-- Product badge -->
+  <rect x="185" y="238" width="28" height="12" rx="2" fill="#0077C8"/>
+  <text x="199" y="247" text-anchor="middle" fill="#FFFFFF" font-family="Arial,sans-serif" font-size="6" font-weight="700">αGO</text>
+
+  <!-- WHITE CONTROL DISC -->
+  <circle cx="160" cy="155" r="46" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5" filter="url(#discShadow)"/>
+  <circle cx="160" cy="155" r="44" fill="none" stroke="#F0F0F0" stroke-width="1"/>
+
+  <!-- LED RING — AMBER (awaiting PIN) -->
+  <circle cx="160" cy="155" r="52" fill="none" stroke="#E5E7EB" stroke-width="7" stroke-dasharray="245 82" stroke-dashoffset="-131" stroke-linecap="round"/>
+  <circle cx="160" cy="155" r="52" fill="none" stroke="#FFB800" stroke-width="7" stroke-dasharray="160 168" stroke-dashoffset="-131" stroke-linecap="round" filter="url(#ledGlow)">
+    <animate attributeName="opacity" values="1;0.6;1" dur="2s" repeatCount="indefinite"/>
+  </circle>
+
+  <!-- CENTER DIAL BUTTON -->
+  <circle cx="160" cy="155" r="18" fill="#F3F4F6" stroke="#D1D5DB" stroke-width="1.5"/>
+  <circle cx="160" cy="155" r="14" fill="#E9EAEC"/>
+  <circle cx="157" cy="151" r="6" fill="white" opacity="0.3"/>
+  <text x="160" y="159" text-anchor="middle" fill="#374151" font-family="Arial,sans-serif" font-size="12">▶</text>
+
+  <!-- BLUETOOTH indicator -->
+  <circle cx="188" cy="125" r="6" fill="#0077C8" opacity="0.9"/>
+  <text x="188" y="128" text-anchor="middle" fill="white" font-family="Arial,sans-serif" font-size="7" font-weight="700">B</text>
+
+  <!-- MINI DISPLAY — showing LOCKED -->
+  <rect x="136" y="180" width="48" height="18" rx="3" fill="#002A5C"/>
+  <text x="160" y="190" text-anchor="middle" fill="#FFB800" font-family="'Courier New',monospace" font-size="7" font-weight="700">🔒 LOCKED</text>
+
+  <!-- ELECTRICAL CONNECTION -->
+  <rect x="220" y="148" width="22" height="8" rx="1" fill="#1C1C1C"/>
+  <circle cx="242" cy="152" r="5" fill="#1C1C1C" stroke="#333" stroke-width="0.5"/>
+  <rect x="242" y="149" width="18" height="6" rx="1" fill="#1C1C1C"/>
+
+  <!-- BOTTOM INLET PIPE -->
+  <rect x="132" y="273" width="56" height="10" rx="1" fill="#A8AEB5" stroke="#8A929A" stroke-width="0.5"/>
+  <line x1="140" y1="275" x2="140" y2="281" stroke="#8A929A" stroke-width="0.3"/>
+  <line x1="150" y1="275" x2="150" y2="281" stroke="#8A929A" stroke-width="0.3"/>
+  <line x1="160" y1="275" x2="160" y2="281" stroke="#8A929A" stroke-width="0.3"/>
+  <line x1="170" y1="275" x2="170" y2="281" stroke="#8A929A" stroke-width="0.3"/>
+  <line x1="180" y1="275" x2="180" y2="281" stroke="#8A929A" stroke-width="0.3"/>
+  <rect x="138" y="283" width="44" height="55" rx="2" fill="url(#flangeGrad)"/>
+  <rect x="128" y="324" width="64" height="14" rx="2" fill="url(#flangeGrad)" stroke="#8A929A" stroke-width="0.5"/>
+  <circle cx="136" cy="331" r="3" fill="#7A828A" stroke="#6B7280" stroke-width="0.5"/>
+  <circle cx="184" cy="331" r="3" fill="#7A828A" stroke="#6B7280" stroke-width="0.5"/>
+
+  <!-- FLOW DIRECTION ARROW -->
+  <line x1="160" y1="268" x2="160" y2="88" stroke="white" stroke-width="1.5" opacity="0.15" stroke-dasharray="4 3"/>
+  <polygon points="154,98 166,98 160,84" fill="white" opacity="0.15"/>
+
+  <!-- ENERGY LABEL -->
+  <rect x="105" y="348" width="110" height="20" rx="4" fill="#002A5C"/>
+  <text x="130" y="362" fill="white" font-family="Arial,sans-serif" font-size="8" font-weight="600">IE5</text>
+  <text x="145" y="362" fill="#00C8FF" font-family="Arial,sans-serif" font-size="7">Ultra Premium</text>
+
+  <!-- STATUS -->
+  <circle cx="195" cy="355" r="4" fill="#FFB800" filter="url(#softGlow)"/>
+  <text x="202" y="358" fill="#FFB800" font-family="Arial,sans-serif" font-size="6.5" font-weight="600">PIN REQUIRED</text>
+
+  <!-- ═══════════════════════════════════════════════════ -->
+  <!-- CRA PIN CODE ENTRY SCREEN — Floating panel right   -->
+  <!-- ═══════════════════════════════════════════════════ -->
+
+  <!-- Connection line from pump disc to PIN screen -->
+  <line x1="206" y1="155" x2="248" y2="155" stroke="#0077C8" stroke-width="1.2" stroke-dasharray="4 2"/>
+  <polygon points="246,152 252,155 246,158" fill="#0077C8"/>
+
+  <!-- PIN SCREEN ENCLOSURE -->
+  <rect x="256" y="62" width="172" height="230" rx="10" fill="#1A1D22" stroke="#333" stroke-width="1.5" filter="url(#pShadow)"/>
+  <rect x="258" y="64" width="168" height="226" rx="9" fill="none" stroke="#444" stroke-width="0.5" opacity="0.4"/>
+
+  <!-- Screen header bar -->
+  <rect x="262" y="68" width="160" height="28" rx="6" fill="#002A5C"/>
+  <text x="284" y="80" fill="#FFB800" font-family="Arial,sans-serif" font-size="8">◉</text>
+  <text x="296" y="86" fill="white" font-family="Arial,sans-serif" font-size="11" font-weight="700">Pin Code</text>
+
+  <!-- CRA badge -->
+  <rect x="378" y="72" width="38" height="16" rx="3" fill="#D42234"/>
+  <text x="397" y="83" text-anchor="middle" fill="white" font-family="Arial,sans-serif" font-size="6.5" font-weight="700">CRA</text>
+
+  <!-- PIN display area -->
+  <rect x="270" y="102" width="144" height="32" rx="5" fill="url(#pinScreenBg)" stroke="rgba(0,200,255,0.2)" stroke-width="1"/>
+
+  <!-- PIN dots (4 digit entry — 2 entered, 2 remaining) -->
+  <circle cx="308" cy="118" r="7" fill="#00C8FF" filter="url(#screenGlow)"/>
+  <circle cx="330" cy="118" r="7" fill="#00C8FF" filter="url(#screenGlow)"/>
+  <circle cx="352" cy="118" r="7" fill="none" stroke="#3A5A7A" stroke-width="1.5"/>
+  <circle cx="374" cy="118" r="7" fill="none" stroke="#3A5A7A" stroke-width="1.5"/>
+
+  <!-- Blinking cursor on 3rd position -->
+  <line x1="352" y1="112" x2="352" y2="124" stroke="#00C8FF" stroke-width="1.5" opacity="0.8">
+    <animate attributeName="opacity" values="0.8;0;0.8" dur="1s" repeatCount="indefinite"/>
+  </line>
+
+  <!-- CRA BUTTON (left of nav pad) -->
+  <circle cx="286" cy="172" r="16" fill="#2A2D32" stroke="#555" stroke-width="0.8"/>
+  <circle cx="286" cy="172" r="13" fill="#333" stroke="#444" stroke-width="0.5"/>
+  <text x="286" y="169" text-anchor="middle" fill="#FFB800" font-family="Arial,sans-serif" font-size="5.5" font-weight="700">CRA</text>
+  <text x="286" y="178" text-anchor="middle" fill="#8A929A" font-family="Arial,sans-serif" font-size="5">Button</text>
+
+  <!-- NAVIGATION PAD -->
+  <!-- Circular base -->
+  <circle cx="362" cy="178" r="34" fill="#252729" stroke="#3A3D42" stroke-width="1"/>
+
+  <!-- UP -->
+  <rect x="352" y="148" width="20" height="16" rx="3" fill="url(#btnFaceNav)" stroke="#555" stroke-width="0.5"/>
+  <text x="362" y="160" text-anchor="middle" fill="#a8b8cc" font-family="Arial,sans-serif" font-size="9">▲</text>
+  <!-- DOWN -->
+  <rect x="352" y="196" width="20" height="16" rx="3" fill="url(#btnFaceNav)" stroke="#555" stroke-width="0.5"/>
+  <text x="362" y="208" text-anchor="middle" fill="#a8b8cc" font-family="Arial,sans-serif" font-size="9">▼</text>
+  <!-- LEFT -->
+  <rect x="330" y="170" width="16" height="16" rx="3" fill="url(#btnFaceNav)" stroke="#555" stroke-width="0.5"/>
+  <text x="338" y="182" text-anchor="middle" fill="#a8b8cc" font-family="Arial,sans-serif" font-size="9">◄</text>
+  <!-- RIGHT -->
+  <rect x="378" y="170" width="16" height="16" rx="3" fill="url(#btnFaceNav)" stroke="#555" stroke-width="0.5"/>
+  <text x="386" y="182" text-anchor="middle" fill="#a8b8cc" font-family="Arial,sans-serif" font-size="9">►</text>
+  <!-- OK center -->
+  <circle cx="362" cy="178" r="11" fill="url(#btnFaceNav)" stroke="#555" stroke-width="0.5"/>
+  <text x="362" y="182" text-anchor="middle" fill="#00C8FF" font-family="Arial,sans-serif" font-size="7.5" font-weight="700">OK</text>
+
+  <!-- Instruction text -->
+  <text x="342" y="228" text-anchor="middle" fill="#5A6A7A" font-family="Arial,sans-serif" font-size="6.5">Use ▲▼ to select digit</text>
+  <text x="342" y="238" text-anchor="middle" fill="#5A6A7A" font-family="Arial,sans-serif" font-size="6.5">Press ► to advance</text>
+  <text x="342" y="248" text-anchor="middle" fill="#5A6A7A" font-family="Arial,sans-serif" font-size="6.5">Press OK to confirm</text>
+
+  <!-- PIN entry LED indicators (below nav) -->
+  <circle cx="322" y="262" r="3" fill="#22C55E" filter="url(#softGlow)"/>
+  <circle cx="338" cy="262" r="3" fill="#22C55E" filter="url(#softGlow)"/>
+  <circle cx="354" cy="262" r="3" fill="#3A4A5A"/>
+  <circle cx="370" cy="262" r="3" fill="#3A4A5A"/>
+
+  <!-- Attempt counter -->
+  <rect x="270" y="272" width="144" height="16" rx="3" fill="#1A1D22" stroke="#333" stroke-width="0.5"/>
+  <text x="342" y="283" text-anchor="middle" fill="#5A6A7A" font-family="'Courier New',monospace" font-size="6.5">Attempts: 0/3  |  Lockout: OFF</text>
+
+  <!-- ═══════════════════════════════════════ -->
+  <!-- CALLOUT ANNOTATIONS                     -->
+  <!-- ═══════════════════════════════════════ -->
+
+  <!-- CALLOUT: LED Ring (amber = auth required) -->
+  <line x1="118" y1="115" x2="50" y2="78" stroke="#0077C8" stroke-width="0.8" stroke-dasharray="3 2" marker-start="url(#calloutDot)"/>
+  <rect x="2" y="62" width="88" height="34" rx="4" fill="#EFF6FF" stroke="#0077C8" stroke-width="0.5"/>
+  <text x="46" y="75" text-anchor="middle" fill="#002A5C" font-family="'Outfit',sans-serif" font-size="7" font-weight="600">LED Ring</text>
+  <text x="46" y="85" text-anchor="middle" fill="#D97706" font-family="'Outfit',sans-serif" font-size="6">Amber — Auth Required</text>
+
+  <!-- CALLOUT: CRA Button -->
+  <line x1="286" y1="188" x2="286" y2="310" stroke="#0077C8" stroke-width="0.8" stroke-dasharray="3 2" marker-start="url(#calloutDot)"/>
+  <rect x="248" y="312" width="76" height="34" rx="4" fill="#FEF3C7" stroke="#D97706" stroke-width="0.5"/>
+  <text x="286" y="325" text-anchor="middle" fill="#92400E" font-family="'Outfit',sans-serif" font-size="7" font-weight="600">CRA Button</text>
+  <text x="286" y="335" text-anchor="middle" fill="#92400E" font-family="'Outfit',sans-serif" font-size="6">Triggers PIN entry</text>
+
+  <!-- CALLOUT: Nav Pad -->
+  <line x1="394" y1="178" x2="424" y2="178" stroke="#0077C8" stroke-width="0.8" stroke-dasharray="3 2" marker-start="url(#calloutDot)"/>
+  <rect x="396" y="154" width="42" height="48" rx="4" fill="#EFF6FF" stroke="#0077C8" stroke-width="0.5"/>
+  <text x="417" y="168" text-anchor="middle" fill="#002A5C" font-family="'Outfit',sans-serif" font-size="6.5" font-weight="600">Nav Pad</text>
+  <text x="417" y="178" text-anchor="middle" fill="#6B7280" font-family="'Outfit',sans-serif" font-size="5.5">▲▼ digits</text>
+  <text x="417" y="188" text-anchor="middle" fill="#6B7280" font-family="'Outfit',sans-serif" font-size="5.5">◄► position</text>
+  <text x="417" y="198" text-anchor="middle" fill="#6B7280" font-family="'Outfit',sans-serif" font-size="5.5">OK confirm</text>
+
+  <!-- CALLOUT: Pin Code Screen -->
+  <line x1="342" y1="102" x2="342" y2="50" stroke="#0077C8" stroke-width="0.8" stroke-dasharray="3 2" marker-start="url(#calloutDot)"/>
+  <rect x="302" y="30" width="80" height="26" rx="4" fill="#EFF6FF" stroke="#0077C8" stroke-width="0.5"/>
+  <text x="342" y="42" text-anchor="middle" fill="#002A5C" font-family="'Outfit',sans-serif" font-size="7" font-weight="600">Pin Code Display</text>
+  <text x="342" y="51" text-anchor="middle" fill="#6B7280" font-family="'Outfit',sans-serif" font-size="6">4-digit CRA entry</text>
+
+  <!-- CALLOUT: Bluetooth -->
+  <line x1="188" y1="119" x2="188" y2="30" stroke="#0077C8" stroke-width="0.8" stroke-dasharray="3 2" marker-start="url(#calloutDot)"/>
+  <rect x="156" y="14" width="64" height="26" rx="4" fill="#EFF6FF" stroke="#0077C8" stroke-width="0.5"/>
+  <text x="188" y="26" text-anchor="middle" fill="#002A5C" font-family="'Outfit',sans-serif" font-size="7" font-weight="600">Bluetooth</text>
+  <text x="188" y="35" text-anchor="middle" fill="#6B7280" font-family="'Outfit',sans-serif" font-size="6">Grundfos GO App</text>
+
+  <!-- CALLOUT: Control Disc -->
+  <line x1="113" y1="160" x2="40" y2="185" stroke="#0077C8" stroke-width="0.8" stroke-dasharray="3 2" marker-start="url(#calloutDot)"/>
+  <rect x="2" y="174" width="74" height="26" rx="4" fill="#EFF6FF" stroke="#0077C8" stroke-width="0.5"/>
+  <text x="39" y="186" text-anchor="middle" fill="#002A5C" font-family="'Outfit',sans-serif" font-size="7" font-weight="600">Control Disc</text>
+  <text x="39" y="195" text-anchor="middle" fill="#6B7280" font-family="'Outfit',sans-serif" font-size="6">Locked until PIN OK</text>
+
+  <!-- CALLOUT: Flanges -->
+  <line x1="192" y1="326" x2="232" y2="370" stroke="#0077C8" stroke-width="0.8" stroke-dasharray="3 2" marker-start="url(#calloutDot)"/>
+  <rect x="216" y="362" width="78" height="26" rx="4" fill="#EFF6FF" stroke="#0077C8" stroke-width="0.5"/>
+  <text x="255" y="374" text-anchor="middle" fill="#002A5C" font-family="'Outfit',sans-serif" font-size="7" font-weight="600">Union Flanges</text>
+  <text x="255" y="383" text-anchor="middle" fill="#6B7280" font-family="'Outfit',sans-serif" font-size="6">In/Out connections</text>
+
+  <!-- CRA Flow indicator: arrow from CRA button to PIN screen -->
+  <path d="M286,156 Q286,140 308,140 L342,140 L342,134" fill="none" stroke="#FFB800" stroke-width="1" stroke-dasharray="3 2" opacity="0.6"/>
+  <polygon points="339,136 345,136 342,131" fill="#FFB800" opacity="0.6"/>
+
+  <!-- Access state flow text -->
+  <rect x="2" y="398" width="436" height="44" rx="6" fill="#FEFCE8" stroke="#EAB308" stroke-width="0.5"/>
+  <text x="220" y="414" text-anchor="middle" fill="#92400E" font-family="'Outfit',sans-serif" font-size="8" font-weight="600">CRA Access Control Flow</text>
+  <text x="220" y="428" text-anchor="middle" fill="#78716C" font-family="'Outfit',sans-serif" font-size="7">Press CRA Button → LED turns Amber → Enter 4-digit PIN via ▲▼►◄ → OK to Confirm → LED turns Green → Access Granted</text>
+
+  <!-- Flow arrows inside access bar -->
+  <line x1="54" y1="436" x2="386" y2="436" stroke="#D97706" stroke-width="1" opacity="0.3"/>
+  <circle cx="62" cy="436" r="3" fill="#FFB800"/>
+  <text x="62" y="444" text-anchor="middle" fill="#78716C" font-family="Arial,sans-serif" font-size="5">CRA Btn</text>
+  <circle cx="138" cy="436" r="3" fill="#FFB800"/>
+  <text x="138" y="444" text-anchor="middle" fill="#78716C" font-family="Arial,sans-serif" font-size="5">Amber</text>
+  <circle cx="220" cy="436" r="3" fill="#00C8FF"/>
+  <text x="220" y="444" text-anchor="middle" fill="#78716C" font-family="Arial,sans-serif" font-size="5">PIN Entry</text>
+  <circle cx="302" cy="436" r="3" fill="#00C8FF"/>
+  <text x="302" y="444" text-anchor="middle" fill="#78716C" font-family="Arial,sans-serif" font-size="5">OK Confirm</text>
+  <circle cx="380" cy="436" r="3" fill="#22C55E"/>
+  <text x="380" y="444" text-anchor="middle" fill="#78716C" font-family="Arial,sans-serif" font-size="5">Access ✓</text>
+
+</svg>
+</div>
+
+<div class="info-row">
+  <div class="info-box">
+    <div class="label">CRA Compliance</div>
+    <div class="value">PIN Code<span>4-digit</span></div>
+  </div>
+  <div class="info-box">
+    <div class="label">Access Method</div>
+    <div class="value">Nav Pad<span>▲▼◄► + OK</span></div>
+  </div>
+</div>
+
+<div class="footer">Generated by Meeting AI Visualizer</div>
