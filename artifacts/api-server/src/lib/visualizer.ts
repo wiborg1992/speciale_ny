@@ -1004,38 +1004,45 @@ OUTPUT THE EXACT HTML STRUCTURE BELOW — only fill in the TITLE and MERMAID DIA
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>WORKFLOW TITLE HERE</title>
 <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<script>
+  mermaid.initialize({
+    startOnLoad: false,
+    theme: 'base',
+    themeVariables: {
+      primaryColor: '#EFF6FF',
+      primaryBorderColor: '#0077C8',
+      primaryTextColor: '#1E293B',
+      lineColor: '#94A3B8',
+      secondaryColor: '#FEF3C7',
+      tertiaryColor: '#D1FAE5',
+      edgeLabelBackground: '#ffffff',
+      clusterBkg: '#F0F9FF',
+      clusterBorder: '#BAE6FD',
+      fontFamily: 'Outfit, sans-serif',
+      fontSize: '14px'
+    },
+    flowchart: { curve: 'orthogonal', padding: 24 }
+  });
+</script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&display=swap');
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Outfit', sans-serif; background: #fff; padding: 24px 28px; min-height: 100vh; }
   h1 { font-size: 1.05rem; font-weight: 700; color: #002A5C; margin-bottom: 20px; letter-spacing: 0.02em; }
   .mermaid { width: 100%; }
-  .mermaid svg { width: 100% !important; height: auto !important; }
+  .mermaid svg { width: 100% !important; height: auto !important; min-height: 400px; }
 </style>
 </head>
 <body>
 <h1>WORKFLOW TITLE HERE</h1>
 <div class="mermaid">
-%%{init: {'theme': 'base', 'themeVariables': {
-  'primaryColor': '#EFF6FF',
-  'primaryBorderColor': '#0077C8',
-  'primaryTextColor': '#1E293B',
-  'lineColor': '#94A3B8',
-  'secondaryColor': '#FEF3C7',
-  'tertiaryColor': '#D1FAE5',
-  'edgeLabelBackground': '#ffffff',
-  'clusterBkg': '#F0F9FF',
-  'clusterBorder': '#BAE6FD',
-  'fontFamily': 'Outfit, sans-serif',
-  'fontSize': '14px'
-}}}%%
 flowchart TD
 
   FILL IN MERMAID DIAGRAM HERE
 
 </div>
 <script>
-  mermaid.initialize({ startOnLoad: true, flowchart: { curve: 'orthogonal', padding: 20 } });
+  mermaid.run();
 </script>
 </body>
 </html>
