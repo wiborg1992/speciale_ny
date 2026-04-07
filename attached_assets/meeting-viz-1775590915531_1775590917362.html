@@ -1,0 +1,682 @@
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CRA Compliance Workflow — Pump Lifecycle</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Outfit:wght@300;400;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { font-family: 'Outfit', sans-serif; background: #F8FAFC; color: #333; }
+    
+    .workflow-container {
+      display: flex;
+      height: 100vh;
+      overflow: hidden;
+      background: #F8FAFC;
+    }
+    
+    .workflow-main {
+      flex: 0 0 65%;
+      display: flex;
+      flex-direction: column;
+      background: #FFFFFF;
+      border-right: 1px solid #CBD5E1;
+      overflow-y: auto;
+    }
+    
+    .workflow-header {
+      padding: 28px 32px;
+      border-bottom: 1px solid #E2E8F0;
+      background: linear-gradient(135deg, #002A5C 0%, #0077C8 100%);
+      color: white;
+    }
+    
+    .workflow-header h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: 2.4rem;
+      font-weight: 900;
+      margin-bottom: 6px;
+      letter-spacing: -0.015em;
+    }
+    
+    .workflow-header p {
+      font-size: 0.85rem;
+      opacity: 0.92;
+      font-weight: 300;
+    }
+    
+    .phase-tabs {
+      display: flex;
+      gap: 0;
+      padding: 0 32px;
+      border-bottom: 1px solid #E2E8F0;
+      background: #F8FAFC;
+    }
+    
+    [role="tab"] {
+      padding: 12px 20px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 0.8rem;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      color: #64748B;
+      border-bottom: 3px solid transparent;
+      transition: all 0.2s ease;
+    }
+    
+    [role="tab"]:hover {
+      color: #0077C8;
+      background: rgba(0, 119, 200, 0.05);
+    }
+    
+    [role="tab"][aria-selected="true"] {
+      color: #002A5C;
+      border-bottom-color: #0077C8;
+      background: rgba(0, 119, 200, 0.08);
+    }
+    
+    .workflow-canvas {
+      flex: 1;
+      padding: 32px;
+      overflow-y: auto;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+    }
+    
+    svg.flowchart {
+      max-width: 100%;
+      height: auto;
+      filter: drop-shadow(0 2px 8px rgba(0, 42, 92, 0.1));
+    }
+    
+    .process-rect {
+      fill: #FFFFFF;
+      stroke: #CBD5E1;
+      stroke-width: 2;
+      transition: all 0.2s ease;
+      cursor: pointer;
+    }
+    
+    .process-rect:hover {
+      filter: drop-shadow(0 4px 12px rgba(0, 119, 200, 0.3));
+      stroke: #0077C8;
+      stroke-width: 2.5;
+    }
+    
+    .process-rect.active {
+      fill: #EFF6FF;
+      stroke: #0077C8;
+      stroke-width: 3;
+      filter: drop-shadow(0 4px 16px rgba(0, 119, 200, 0.4));
+    }
+    
+    .decision-diamond {
+      fill: #FEF3C7;
+      stroke: #F59E0B;
+      stroke-width: 2;
+      transition: all 0.2s ease;
+      cursor: pointer;
+    }
+    
+    .decision-diamond:hover {
+      filter: drop-shadow(0 4px 12px rgba(245, 158, 11, 0.35));
+      stroke: #D97706;
+      stroke-width: 2.5;
+    }
+    
+    .decision-diamond.active {
+      fill: #FCD34D;
+      stroke: #D97706;
+      stroke-width: 3;
+      filter: drop-shadow(0 4px 16px rgba(217, 119, 6, 0.4));
+    }
+    
+    .flow-arrow {
+      stroke: #94A3B8;
+      stroke-width: 2;
+      fill: none;
+      marker-end: url(#arrowhead);
+    }
+    
+    .step-number {
+      fill: #002A5C;
+      font-family: 'Space Mono', monospace;
+      font-size: 12px;
+      font-weight: 700;
+      text-anchor: middle;
+      dominant-baseline: central;
+    }
+    
+    .step-label {
+      fill: #1E293B;
+      font-family: 'Outfit', sans-serif;
+      font-size: 13px;
+      font-weight: 600;
+      text-anchor: middle;
+      dominant-baseline: central;
+    }
+    
+    .swim-lane-label {
+      fill: #5A6A7A;
+      font-family: 'Outfit', sans-serif;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-anchor: end;
+      writing-mode: tb-rl;
+      transform: rotate(180deg);
+    }
+    
+    .detail-panel {
+      flex: 0 0 35%;
+      background: #F8FAFC;
+      border-left: 1px solid #CBD5E1;
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+    }
+    
+    .detail-header {
+      padding: 24px;
+      border-bottom: 1px solid #E2E8F0;
+      background: linear-gradient(135deg, rgba(0, 42, 92, 0.05) 0%, rgba(0, 119, 200, 0.05) 100%);
+      border-left: 4px solid #0077C8;
+    }
+    
+    .detail-header h2 {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: #002A5C;
+      margin-bottom: 4px;
+    }
+    
+    .detail-header p {
+      font-size: 0.75rem;
+      color: #64748B;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+    
+    .detail-content {
+      flex: 1;
+      padding: 24px;
+      overflow-y: auto;
+    }
+    
+    .detail-placeholder {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      text-align: center;
+      color: #94A3B8;
+      font-size: 0.9rem;
+      font-weight: 300;
+    }
+    
+    .detail-section {
+      margin-bottom: 20px;
+    }
+    
+    .detail-section-title {
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: #64748B;
+      margin-bottom: 8px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid #E2E8F0;
+    }
+    
+    .detail-value {
+      font-size: 0.9rem;
+      color: #1E293B;
+      line-height: 1.5;
+      margin-bottom: 6px;
+    }
+    
+    .detail-chip {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      margin-right: 6px;
+      margin-bottom: 6px;
+    }
+    
+    .chip-actor {
+      background: rgba(0, 119, 200, 0.15);
+      color: #0077C8;
+      border: 1px solid rgba(0, 119, 200, 0.3);
+    }
+    
+    .chip-status-pending {
+      background: rgba(245, 158, 11, 0.15);
+      color: #D97706;
+      border: 1px solid rgba(245, 158, 11, 0.3);
+    }
+    
+    .chip-status-critical {
+      background: rgba(239, 68, 68, 0.15);
+      color: #DC2626;
+      border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+    
+    .chip-status-done {
+      background: rgba(34, 197, 94, 0.15);
+      color: #16A34A;
+      border: 1px solid rgba(34, 197, 94, 0.3);
+    }
+    
+    .reset-button {
+      padding: 24px;
+      border-top: 1px solid #E2E8F0;
+      background: #F8FAFC;
+    }
+    
+    .reset-button button {
+      width: 100%;
+      padding: 10px 16px;
+      background: #002A5C;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    
+    .reset-button button:hover {
+      background: #0077C8;
+      box-shadow: 0 4px 12px rgba(0, 119, 200, 0.3);
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .detail-content > div {
+      animation: fadeIn 0.3s ease;
+    }
+    
+    .footer {
+      padding: 12px 32px;
+      text-align: center;
+      font-size: 0.62rem;
+      color: #94A3B8;
+      border-top: 1px solid #E2E8F0;
+      background: #FFFFFF;
+    }
+  </style>
+</head>
+<body>
+  <div class="workflow-container">
+    <div class="workflow-main">
+      <div class="workflow-header">
+        <h1>CRA Compliance Workflow</h1>
+        <p>Pump Lifecycle — Manufacturing to Customer Setup</p>
+      </div>
+      
+      <div class="phase-tabs" role="tablist">
+        <button type="button" role="tab" data-viz-tab="manufacturing" aria-selected="true">Manufacturing</button>
+        <button type="button" role="tab" data-viz-tab="installation" aria-selected="false">Installation & Setup</button>
+        <button type="button" role="tab" data-viz-tab="handover" aria-selected="false">Handover & Compliance</button>
+      </div>
+      
+      <div class="workflow-canvas">
+        <section data-viz-tab-panel="manufacturing" style="display: block; width: 100%;">
+          <svg class="flowchart" viewBox="0 0 880 420" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <marker id="arrowhead" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+                <path d="M0,0 L0,6 L8,3 z" fill="#94A3B8"/>
+              </marker>
+            </defs>
+            
+            <!-- Swim lane background -->
+            <rect x="0" y="0" width="880" height="420" fill="#FFFFFF" stroke="none"/>
+            
+            <!-- Step 1: Pump Manufacturing -->
+            <rect x="40" y="80" width="140" height="80" rx="6" class="process-rect" data-step="pump-mfg"/>
+            <text x="110" y="110" class="step-number">①</text>
+            <text x="110" y="145" class="step-label" style="font-size: 12px;">Pump</text>
+            <text x="110" y="158" class="step-label" style="font-size: 12px;">Manufacturing</text>
+            
+            <!-- Arrow -->
+            <line x1="180" y1="120" x2="220" y2="120" class="flow-arrow"/>
+            
+            <!-- Step 2: Assign PIN Code (Manufacturing) -->
+            <rect x="220" y="80" width="140" height="80" rx="6" class="process-rect" data-step="assign-pin-mfg"/>
+            <text x="290" y="110" class="step-number">②</text>
+            <text x="290" y="145" class="step-label" style="font-size: 12px;">Assign PIN Code</text>
+            <text x="290" y="158" class="step-label" style="font-size: 11px;">(Manufacturing)</text>
+            
+            <!-- Arrow -->
+            <line x1="360" y1="120" x2="400" y2="120" class="flow-arrow"/>
+            
+            <!-- Step 3: Warehouse Holding -->
+            <rect x="400" y="80" width="140" height="80" rx="6" class="process-rect" data-step="warehouse"/>
+            <text x="470" y="110" class="step-number">③</text>
+            <text x="470" y="145" class="step-label" style="font-size: 12px;">Warehouse</text>
+            <text x="470" y="158" class="step-label" style="font-size: 12px;">Storage</text>
+            
+            <!-- Arrow -->
+            <line x1="540" y1="120" x2="580" y2="120" class="flow-arrow"/>
+            
+            <!-- Step 4: Delivery to Site -->
+            <rect x="580" y="80" width="140" height="80" rx="6" class="process-rect" data-step="delivery-site"/>
+            <text x="650" y="110" class="step-number">④</text>
+            <text x="650" y="145" class="step-label" style="font-size: 12px;">Delivery to</text>
+            <text x="650" y="158" class="step-label" style="font-size: 12px;">Installation Site</text>
+            
+            <!-- Arrow -->
+            <line x1="720" y1="120" x2="760" y2="120" class="flow-arrow"/>
+            
+            <!-- Step 5: Technician Arrives -->
+            <rect x="760" y="80" width="100" height="80" rx="6" class="process-rect" data-step="tech-arrives"/>
+            <text x="810" y="125" class="step-label" style="font-size: 11px;">Technician</text>
+            <text x="810" y="138" class="step-label" style="font-size: 11px;">Arrives</text>
+          </svg>
+        </section>
+        
+        <section data-viz-tab-panel="installation" style="display: none; width: 100%;" hidden>
+          <svg class="flowchart" viewBox="0 0 900 450" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <marker id="arrowhead" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+                <path d="M0,0 L0,6 L8,3 z" fill="#94A3B8"/>
+              </marker>
+            </defs>
+            
+            <rect x="0" y="0" width="900" height="450" fill="#FFFFFF" stroke="none"/>
+            
+            <!-- Step 1: Technician Enters PIN -->
+            <rect x="50" y="80" width="140" height="80" rx="6" class="process-rect" data-step="tech-pin-entry"/>
+            <text x="120" y="110" class="step-number">①</text>
+            <text x="120" y="145" class="step-label" style="font-size: 11px;">Technician</text>
+            <text x="120" y="158" class="step-label" style="font-size: 11px;">Enters PIN</text>
+            
+            <line x1="190" y1="120" x2="230" y2="120" class="flow-arrow"/>
+            
+            <!-- Decision: Correct PIN? -->
+            <polygon points="320,120 360,80 400,120 360,160" class="decision-diamond" data-step="pin-verify"/>
+            <text x="360" y="125" class="step-label" style="font-size: 11px;">PIN</text>
+            <text x="360" y="138" class="step-label" style="font-size: 11px;">Correct?</text>
+            
+            <!-- NO path: down -->
+            <line x1="360" y1="160" x2="360" y2="220" class="flow-arrow"/>
+            <text x="375" y="190" style="fill: #DC2626; font-size: 10px; font-weight: 600;">NO</text>
+            
+            <!-- Block/Alarm -->
+            <rect x="290" y="220" width="140" height="80" rx="6" class="process-rect" data-step="access-denied"/>
+            <text x="360" y="255" class="step-label" style="font-size: 11px;">Access Denied</text>
+            <text x="360" y="268" class="step-label" style="font-size: 10px;">⚠ Alarm</text>
+            
+            <!-- YES path: right -->
+            <line x1="400" y1="120" x2="460" y2="120" class="flow-arrow"/>
+            <text x="420" y="110" style="fill: #16A34A; font-size: 10px; font-weight: 600;">YES</text>
+            
+            <!-- Step 2: Install Pump -->
+            <rect x="460" y="80" width="140" height="80" rx="6" class="process-rect" data-step="install-pump"/>
+            <text x="530" y="110" class="step-number">②</text>
+            <text x="530" y="145" class="step-label" style="font-size: 12px;">Install Pump</text>
+            <text x="530" y="158" class="step-label" style="font-size: 12px;"> + Hardware</text>
+            
+            <line x1="600" y1="120" x2="640" y2="120" class="flow-arrow"/>
+            
+            <!-- Step 3: Configure System -->
+            <rect x="640" y="80" width="140" height="80" rx="6" class="process-rect" data-step="config-system"/>
+            <text x="710" y="110" class="step-number">③</text>
+            <text x="710" y="145" class="step-label" style="font-size: 11px;">Configure</text>
+            <text x="710" y="158" class="step-label" style="font-size: 11px;">System Setup</text>
+            
+            <line x1="780" y1="120" x2="820" y2="120" class="flow-arrow"/>
+            
+            <!-- Step 4: CRA Compliance Check -->
+            <polygon points="850,120 890,80 930,120 890,160" class="decision-diamond" data-step="cra-compliant"/>
+            <text x="890" y="125" class="step-label" style="font-size: 10px;">CRA</text>
+            <text x="890" y="138" class="step-label" style="font-size: 10px;">Compliant?</text>
+          </svg>
+        </section>
+        
+        <section data-viz-tab-panel="handover" style="display: none; width: 100%;" hidden>
+          <svg class="flowchart" viewBox="0 0 900 450" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <marker id="arrowhead" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+                <path d="M0,0 L0,6 L8,3 z" fill="#94A3B8"/>
+              </marker>
+            </defs>
+            
+            <rect x="0" y="0" width="900" height="450" fill="#FFFFFF" stroke="none"/>
+            
+            <!-- Step 1: System Ready -->
+            <rect x="50" y="80" width="140" height="80" rx="6" class="process-rect" data-step="system-ready"/>
+            <text x="120" y="110" class="step-number">①</text>
+            <text x="120" y="145" class="step-label" style="font-size: 12px;">System Ready</text>
+            <text x="120" y="158" class="step-label" style="font-size: 11px;">for Handover</text>
+            
+            <line x1="190" y1="120" x2="230" y2="120" class="flow-arrow"/>
+            
+            <!-- Step 2: Deliver to Customer -->
+            <rect x="230" y="80" width="140" height="80" rx="6" class="process-rect" data-step="deliver-customer"/>
+            <text x="300" y="110" class="step-number">②</text>
+            <text x="300" y="145" class="step-label" style="font-size: 11px;">Deliver to</text>
+            <text x="300" y="158" class="step-label" style="font-size: 11px;">Customer</text>
+            
+            <line x1="370" y1="120" x2="410" y2="120" class="flow-arrow"/>
+            
+            <!-- Step 3: Customer Sets PIN -->
+            <rect x="410" y="80" width="140" height="80" rx="6" class="process-rect" data-step="customer-pin"/>
+            <text x="480" y="110" class="step-number">③</text>
+            <text x="480" y="145" class="step-label" style="font-size: 11px;">Customer Sets</text>
+            <text x="480" y="158" class="step-label" style="font-size: 11px;">Own PIN Code</text>
+            
+            <line x1="550" y1="120" x2="590" y2="120" class="flow-arrow"/>
+            
+            <!-- Step 4: Submit to EU Registry -->
+            <rect x="590" y="80" width="140" height="80" rx="6" class="process-rect" data-step="eu-registry"/>
+            <text x="660" y="110" class="step-number">④</text>
+            <text x="660" y="145" class="step-label" style="font-size: 11px;">Submit to EU</text>
+            <text x="660" y="158" class="step-label" style="font-size: 11px;">Registry/NANDO</text>
+            
+            <line x1="730" y1="120" x2="770" y2="120" class="flow-arrow"/>
+            
+            <!-- Step 5: Compliance Verified -->
+            <rect x="770" y="80" width="110" height="80" rx="6" class="process-rect" data-step="compliance-verified"/>
+            <text x="825" y="125" class="step-label" style="font-size: 11px;">Compliance</text>
+            <text x="825" y="138" class="step-label" style="font-size: 11px;">Verified ✓</text>
+          </svg>
+        </section>
+      </div>
+      
+      <div class="footer">
+        Generated by Meeting AI Visualizer
+      </div>
+    </div>
+    
+    <div class="detail-panel">
+      <div class="detail-header">
+        <h2>Step Details</h2>
+        <p>Click any step above</p>
+      </div>
+      
+      <div class="detail-content">
+        <div class="detail-placeholder">← Click a step to see details</div>
+      </div>
+      
+      <div class="reset-button">
+        <button type="button" id="reset-detail">Reset</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function() {
+      // Step data sourced from transcript
+      const stepData = {
+        'pump-mfg': {
+          title: 'Pump Manufacturing',
+          actor: 'Manufacturing',
+          description: 'Pump is produced at the manufacturing facility.',
+          inputs: 'Raw materials, specifications',
+          outputs: 'Manufactured pump unit',
+          status: 'Complete'
+        },
+        'assign-pin-mfg': {
+          title: 'Assign PIN Code',
+          actor: 'Manufacturing',
+          description: 'Manufacturing assigns an initial PIN code to the pump for CRA compliance verification.',
+          inputs: 'Manufactured pump',
+          outputs: 'Pump with factory PIN',
+          status: 'Complete',
+          critical: true
+        },
+        'warehouse': {
+          title: 'Warehouse Storage',
+          actor: 'Logistics',
+          description: 'Pump is stored in warehouse awaiting delivery to installation site.',
+          inputs: 'Pump with factory PIN',
+          outputs: 'Ready for delivery',
+          status: 'In Progress'
+        },
+        'delivery-site': {
+          title: 'Delivery to Site',
+          actor: 'Logistics',
+          description: 'Pump is transported to the customer installation site.',
+          inputs: 'Warehouse pump',
+          outputs: 'Pump on-site, ready for installation',
+          status: 'In Progress'
+        },
+        'tech-arrives': {
+          title: 'Technician Arrives',
+          actor: 'Technician',
+          description: 'Technician arrives at installation site with pump and factory PIN.',
+          inputs: 'Pump on-site',
+          outputs: 'Technician ready to configure',
+          status: 'Pending'
+        },
+        'tech-pin-entry': {
+          title: 'Technician PIN Entry',
+          actor: 'Technician',
+          description: 'Technician uses factory PIN code to unlock and configure the pump for manufacturing site setup.',
+          inputs: 'Pump on-site, factory PIN',
+          outputs: 'Pump access unlocked',
+          status: 'Pending',
+          critical: true
+        },
+        'pin-verify': {
+          title: 'PIN Verification',
+          actor: 'System',
+          description: 'System verifies that the PIN code is correct. If incorrect, access is denied and alarm is triggered.',
+          inputs: 'Entered PIN',
+          outputs: 'Access granted or denied',
+          status: 'Pending'
+        },
+        'access-denied': {
+          title: 'Access Denied',
+          actor: 'System',
+          description: 'Incorrect PIN triggers alarm. Technician cannot proceed without correct factory PIN. Major compliance issue identified.',
+          inputs: 'Incorrect PIN',
+          outputs: 'Alarm triggered, access blocked',
+          status: 'Critical'
+        },
+        'install-pump': {
+          title: 'Install Pump',
+          actor: 'Technician',
+          description: 'Technician installs the pump and integrates hardware into the manufacturing site system.',
+          inputs: 'Pump, mounting hardware',
+          outputs: 'Installed pump unit',
+          status: 'Pending'
+        },
+        'config-system': {
+          title: 'Configure System',
+          actor: 'Technician',
+          description: 'Technician configures pump settings, integrations, and system parameters for the manufacturing site.',
+          inputs: 'Installed pump',
+          outputs: 'Configured system',
+          status: 'Pending'
+        },
+        'cra-compliant': {
+          title: 'CRA Compliance Check',
+          actor: 'System',
+          description: 'System verifies that all CRA compliance functions are operational and the pump meets regulatory requirements.',
+          inputs: 'Configured system',
+          outputs: 'Compliance status',
+          status: 'Pending',
+          critical: true
+        },
+        'system-ready': {
+          title: 'System Ready',
+          actor: 'Technician',
+          description: 'System is fully installed, configured, and compliant. Ready for customer handover.',
+          inputs: 'Verified system',
+          outputs: 'Ready system',
+          status: 'Pending'
+        },
+        'deliver-customer': {
+          title: 'Deliver to Customer',
+          actor: 'Technician',
+          description: 'Technician delivers the pump system to customer and provides handover documentation.',
+          inputs: 'Verified system',
+          outputs: 'System with customer',
+          status: 'Pending'
+        },
+        'customer-pin': {
+          title: 'Customer Sets PIN',
+          actor: 'Customer',
+          description: 'Customer sets their own PIN code for ongoing operation and access control. Must be documented for EU Regulation Acts.',
+          inputs: 'System, documentation',
+          outputs: 'Customer PIN set',
+          status: 'Pending',
+          critical: true
+        },
+        'eu-registry': {
+          title: 'Submit to EU Registry',
+          actor: 'Customer',
+          description: 'Customer submits pump compliance information and PIN details to European Regulation Acts (NANDO) for verification.',
+          inputs: 'Customer PIN, compliance docs',
+          outputs: 'Submission confirmation',
+          status: 'Pending'
+        },
+        'compliance-verified': {
+          title: 'Compliance Verified',
+          actor: 'EU Authority',
+          description: 'EU verifies that the pump and PIN code setup comply with CRA regulations. Final compliance confirmation.',
+          inputs: 'Submission, verification',
+          outputs: 'CRA compliance confirmed',
+          status: 'Pending'
+        }
+      };
+
+      function getStatusChipClass(status) {
+        if (status === 'Complete') return 'chip-status-done';
+        if (status === 'Critical') return 'chip-status-critical';
+        return 'chip-status-pending';
+      }
+
+      function renderDetailPanel(stepId) {
+        const step = stepData[stepId];
+        if (!step) return;
+
+        let html = `
+          <div class="detail-section">
+            <div class="detail-section-title">Description</div>
+            <div class="detail-value">${step.description}</div>
+          </div>
+          
+          <div class="detail-section">
+            <div class="detail-section-title">Actor / Role</div>
+            <span class="detail-chip chip-actor">${step.actor}</span>
+          </div>
+          
+          <div class

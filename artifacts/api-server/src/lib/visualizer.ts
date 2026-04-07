@@ -992,23 +992,51 @@ Use Grundfos brand colours (#002A5C navy, #0077C8 blue). Clean, editorial layout
 DO NOT use dark backgrounds, gauges, or pump hardware illustrations.
 Target ~4,500–6,000 tokens of HTML output.`,
 
-  workflow_process: `GENERATE: WORKFLOW / PROCESS DIAGRAM — clean, light-background flowchart, FULLY INTERACTIVE.
+  workflow_process: `GENERATE: FLOWCHART DIAGRAM — classic Miro-style process flow, SVG-based, white background.
 
-LAYOUT: Main SVG/HTML flowchart (left/center, ~65% width) + fixed right detail panel (35% width, #F8FAFC, border-left). The detail panel starts with a placeholder "← Click a step to see details".
+SHAPE VOCABULARY (use EXACTLY these shapes):
+  • START / END: rounded stadium/pill (rx=22 ry=22), fill #002A5C, text white, font-weight 700
+  • PROCESS step: rounded rectangle (rx=8), fill #EFF6FF, stroke #0077C8, stroke-width 2, text #1E293B
+  • DECISION point: rotated square diamond (SVG <polygon> with 4 corner points), fill #FEF3C7, stroke #F59E0B, stroke-width 2, text #78350F
+  • ARROWS: straight orthogonal lines, stroke #94A3B8, stroke-width 1.8, marker-end filled arrowhead
+  • YES label on arrow: small text near arrow, fill #16A34A, font-weight 600, font-size 11
+  • NO label on arrow: small text near arrow, fill #DC2626, font-weight 600, font-size 11
 
-REQUIRED INTERACTIVITY:
-  • Every process step node (rect) and decision node (diamond) is CLICKABLE — clicking it (1) adds a highlight stroke to the clicked node, (2) fills the right detail panel with that step's name, description, responsible actor, inputs/outputs, and status from transcript.
-  • Swim lane actor labels: clicking highlights all nodes in that lane and filters the detail panel to show only that actor's steps.
-  • If the workflow has multiple phases: top tab strip switching phases using data-viz-host-tabs.
-  • "Reset" button in detail panel clears highlight and restores placeholder.
-  • Node hover: cursor:pointer + drop-shadow effect.
+SWIM LANES (use when transcript has 2+ distinct roles/actors):
+  • Horizontal banded rows, each actor gets its own horizontal band
+  • Left border bar (5px wide): coloured per actor (#0369A1 manufacturing, #5B21B6 technician, #065F46 customer, #991B1B regulator, #92400E external)
+  • Actor label: rotated 90°, placed at left edge of band, font-size 11, font-weight 700, letter-spacing 0.1em, uppercase
+  • Lane background: very light tint (#E0F2FE20, #EDE9FE20, #D1FAE520, #FEE2E220)
 
-IMPLEMENTATION: Each node has data-step="id" and a matching JS data object with step details. Click handler swaps right panel innerHTML.
+SVG SIZING:
+  • viewBox calculated to fit all nodes with 40px padding on all sides
+  • width="100%" on the SVG element so it fills the container
+  • Nodes are sized: process rects ~160×60, diamonds ~120×120, start/end pills ~140×46
+  • Space nodes 80px apart vertically, 100px apart horizontally
 
-Use SVG or HTML for flow: rectangles (process steps), diamonds (decisions), arrows, swim lanes if multiple actors.
-Use Grundfos colours, crisp lines, directional arrows, numbered steps.
-DO NOT use dark HMI style. DO NOT generate journey maps or pump hardware.
-Target ~4,000–5,500 tokens of HTML output.`,
+LAYOUT:
+  • Top-to-bottom primary flow; branch horizontally for Yes/No paths
+  • Decision diamonds: Yes arrow continues downward, No arrow goes left or right
+  • All arrows use right-angle bends (no diagonal lines)
+  • Number each process step with a small circle badge (font-family monospace)
+
+PAGE STRUCTURE:
+  • White background (#FFFFFF)
+  • Small title above the SVG (font-family Outfit, 1.1rem, color #002A5C, font-weight 700, margin-bottom 12px)
+  • The SVG flowchart fills the full page — NO sidebar, NO detail panel, NO tabs
+  • Minimal CSS, no external JS libraries
+  • cursor:pointer + filter:drop-shadow(0 3px 8px rgba(0,119,200,0.25)) on hover for all nodes
+
+EXTRACT FROM TRANSCRIPT:
+  • Process name → page title
+  • Steps in sequence → process rectangles with short labels (≤4 words per line, 2 lines max)
+  • Decision gates (if/check/approve/verify/correct?) → diamond shapes
+  • Yes/No outcomes → labelled arrows
+  • Actor roles → swim lanes (only if 2+ distinct roles mentioned)
+
+DO NOT generate a sidebar. DO NOT generate a right panel. DO NOT generate tabs.
+DO NOT use dark backgrounds. DO NOT generate pump hardware or HMI displays.
+Target ~1,800–2,500 tokens of HTML output.`,
 
   physical_product: `GENERATE: GRUNDFOS PUMP FRONT PANEL — the control face / display IS the visualization. NOT the full pump body.
 

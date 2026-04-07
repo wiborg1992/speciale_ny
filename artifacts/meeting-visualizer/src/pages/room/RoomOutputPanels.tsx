@@ -24,8 +24,6 @@ interface RoomOutputPanelsProps {
   reasoningText: string;
   isLoadingActions: boolean;
   debugInfo: VizDebugInfo | null | undefined;
-  /** Resolved viz family from the stream hook — drives the loading skeleton variant. Null when not generating. */
-  streamFamily?: string | null;
   onAnnotate?: (screenshotDataUrl: string) => void;
 }
 
@@ -283,7 +281,6 @@ export function RoomOutputPanels({
   reasoningText,
   isLoadingActions,
   debugInfo,
-  streamFamily,
   onAnnotate,
 }: RoomOutputPanelsProps) {
   return (
@@ -298,7 +295,6 @@ export function RoomOutputPanels({
             title={meetingTitle || null}
             context={meetingContextForIframe}
             workspaceDomain={workspaceDomain}
-            pendingFamily={streamFamily ?? null}
             onAnnotate={onAnnotate}
           />
         </div>

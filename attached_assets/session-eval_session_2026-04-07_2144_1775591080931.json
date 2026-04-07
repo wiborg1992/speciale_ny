@@ -1,0 +1,151 @@
+{
+  "schemaVersion": 2,
+  "exportedAt": "2026-04-07T19:44:39.330Z",
+  "session": {
+    "roomId": "UTPB48",
+    "meetingTitle": "",
+    "workspaceDomain": "grundfos",
+    "sessionStartedAt": "2026-04-07T19:34:14.858Z",
+    "sessionEndedAt": "2026-04-07T19:44:39.330Z"
+  },
+  "summary": {
+    "transcriptWordCountApprox": 372,
+    "segmentCount": 4,
+    "participantNames": [
+      "Speaker 1",
+      "Speaker 2"
+    ],
+    "visualizationEventCount": 2,
+    "skippedCount": 0,
+    "errorCount": 0
+  },
+  "reviewerNotes": "I forhold til transkriptionen var den slet ikke detlajeret nok go step detaljs fylder for meget og virker derudover ikke",
+  "events": [
+    {
+      "kind": "visualization",
+      "at": "2026-04-07T19:36:52.325Z",
+      "source": "local_stream",
+      "version": 1,
+      "vizName": "CRA Compliance Workflow",
+      "htmlChars": 24857,
+      "debug": {
+        "timestamp": "2026-04-07T19:36:08.459Z",
+        "resolvedFamily": "workflow_process",
+        "userPickedType": false,
+        "vizType": "auto",
+        "vizModel": "haiku",
+        "isIncremental": false,
+        "isRefinement": false,
+        "refinementDirective": null,
+        "hasPreviousHtml": false,
+        "focusSegment": null,
+        "workspaceDomain": "grundfos",
+        "transcriptTotalWords": 219,
+        "roomId": "UTPB48",
+        "performanceMs": null,
+        "classification": {
+          "inputMode": "tail",
+          "inputWords": 219,
+          "totalWords": 219,
+          "inputText": "[Speaker 1]: Alright then. Let's have a talk about how we're going to look at this product. We're going to need establish some workflow for how we're going to implement the CRA functions into the design of the pumps. And in this regard, we need to look at how the flow is going to be from when the pump is being produced. To to when the technician is arriving, and he needs to use his zones, PIN code in some way to set it up for the manufacturing site. And after that, he he needs to make sure that ",
+          "family": "workflow_process",
+          "topic": "Process / workflow / flowchart",
+          "lead": 10,
+          "ambiguous": false,
+          "topScores": [
+            {
+              "family": "workflow_process",
+              "score": 25
+            },
+            {
+              "family": "physical_product",
+              "score": 15
+            },
+            {
+              "family": "hmi_interface",
+              "score": 0
+            },
+            {
+              "family": "user_journey",
+              "score": 0
+            },
+            {
+              "family": "requirements_matrix",
+              "score": 0
+            },
+            {
+              "family": "engagement_analytics",
+              "score": 0
+            }
+          ]
+        }
+      },
+      "facit": {
+        "expectedIntent": "new_viz",
+        "actualIntentNotes": "Der laves et workflow - men med minimum detaljer. Der er gået flere tokens og usage på at lave header og lignende hvilket ikke er meningen. Derudover er navigationsmenuenerne ikke itneratkive ",
+        "transcriptSnippetUser": "Alright then. Let's have a talk about how we're going to look at this product. We're going to need establish some sort of workflow for for how we're going to implement the CRA functions into into the design of the pumps. And in this regard, we need to look at how the flow is going to be from when the pump is actually being produced. To to when the technician is arriving, and he needs to use his zones, PIN code in some way to set it up for the manufacturing site. And after that, he he needs to make sure that the device is still compliant, but there's a major issue because how are we going to make the technicians do this every time? So can make sure and verify that this is compliant. But in in total, he needs to install the pump. He needs set up the pump, afterwards, make sure that it compliant with the correct PIN code from the manufacturing model. And, afterwards, wash, make a delivery and hand over to the customer. And then they can actually they they need to set up their own PIN code and send those informations to the European Regulation Acts so that they can verify that this pump and this unit is indeed compliant with the with how the regulation is managed.\n",
+        "severity": "p1"
+      }
+    },
+    {
+      "kind": "visualization",
+      "at": "2026-04-07T19:41:35.542Z",
+      "source": "local_stream",
+      "version": 2,
+      "vizName": "Version 2",
+      "htmlChars": 20454,
+      "debug": {
+        "timestamp": "2026-04-07T19:40:02.750Z",
+        "resolvedFamily": "workflow_process",
+        "userPickedType": false,
+        "vizType": "auto",
+        "vizModel": "sonnet",
+        "isIncremental": false,
+        "isRefinement": false,
+        "refinementDirective": null,
+        "hasPreviousHtml": false,
+        "focusSegment": null,
+        "workspaceDomain": "grundfos",
+        "transcriptTotalWords": 219,
+        "roomId": "UTPB48",
+        "performanceMs": null,
+        "classification": {
+          "inputMode": "tail",
+          "inputWords": 219,
+          "totalWords": 219,
+          "inputText": "[Speaker 1]: Alright then. Let's have a talk about how we're going to look at this product. We're going to need establish some workflow for how we're going to implement the CRA functions into the design of the pumps. And in this regard, we need to look at how the flow is going to be from when the pump is being produced. To to when the technician is arriving, and he needs to use his zones, PIN code in some way to set it up for the manufacturing site. And after that, he he needs to make sure that ",
+          "family": "workflow_process",
+          "topic": "Process / workflow / flowchart",
+          "lead": 10,
+          "ambiguous": false,
+          "topScores": [
+            {
+              "family": "workflow_process",
+              "score": 25
+            },
+            {
+              "family": "physical_product",
+              "score": 15
+            },
+            {
+              "family": "hmi_interface",
+              "score": 0
+            },
+            {
+              "family": "user_journey",
+              "score": 0
+            },
+            {
+              "family": "requirements_matrix",
+              "score": 0
+            },
+            {
+              "family": "engagement_analytics",
+              "score": 0
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

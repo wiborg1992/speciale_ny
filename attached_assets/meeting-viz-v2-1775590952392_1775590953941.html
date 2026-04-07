@@ -1,0 +1,584 @@
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Outfit:wght@300;400;600;700&family=Space+Mono:wght@400;700&display=swap');
+
+@keyframes ledAlarm { 0%,100%{opacity:1} 50%{opacity:.25} }
+@keyframes fadeIn   { from{opacity:0;transform:translateY(5px)} to{opacity:1;transform:none} }
+@keyframes fadeUp   { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:none} }
+@keyframes spin     { to{transform:rotate(360deg)} }
+@keyframes pulseGlow { 0%,100%{box-shadow:0 0 0 0 rgba(0,119,200,0.15)} 50%{box-shadow:0 0 0 6px rgba(0,119,200,0.08)} }
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Outfit', sans-serif;
+  background: #F0F4F8;
+  background-image: repeating-linear-gradient(45deg, rgba(0,42,92,0.025) 0px, rgba(0,42,92,0.025) 1px, transparent 1px, transparent 16px);
+  min-height: 100vh;
+  color: #1E293B;
+}
+
+.page-wrapper {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 24px 28px;
+}
+
+.page-header {
+  margin-bottom: 24px;
+  display: flex;
+  align-items: flex-end;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.page-header-left { flex: 1; }
+
+.page-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 2.1rem;
+  font-weight: 900;
+  color: #002A5C;
+  line-height: 1.1;
+  margin-bottom: 6px;
+}
+
+.page-subtitle {
+  font-size: 0.82rem;
+  color: #64748B;
+  letter-spacing: 0.04em;
+}
+
+.cra-badge {
+  background: #002A5C;
+  color: #fff;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.cra-badge::before {
+  content: '◈';
+  color: #00c8ff;
+  font-size: 0.7rem;
+}
+
+.eu-badge {
+  background: #EFF6FF;
+  color: #0077C8;
+  border: 1px solid #BFDBFE;
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: 6px;
+}
+
+.main-layout {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+}
+
+.flow-panel {
+  flex: 1;
+  min-width: 0;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 2px 16px rgba(0,42,92,0.08), 0 0 0 1px rgba(0,42,92,0.06);
+  overflow: hidden;
+}
+
+.flow-panel-header {
+  background: #002A5C;
+  padding: 14px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.flow-panel-title {
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.flow-panel-title::before {
+  content: '⊞';
+  color: #00c8ff;
+  font-size: 0.9rem;
+}
+
+.legend-row {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  padding: 10px 20px;
+  background: #F8FAFC;
+  border-bottom: 1px solid #E2E8F0;
+  flex-wrap: wrap;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.65rem;
+  color: #64748B;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+}
+
+.legend-rect {
+  width: 18px;
+  height: 12px;
+  border-radius: 3px;
+  border: 2px solid #CBD5E1;
+  background: #fff;
+}
+
+.legend-diamond {
+  width: 12px;
+  height: 12px;
+  background: #FEF3C7;
+  border: 2px solid #F59E0B;
+  transform: rotate(45deg);
+}
+
+.legend-start {
+  width: 26px;
+  height: 12px;
+  border-radius: 6px;
+  background: #002A5C;
+}
+
+.legend-end {
+  width: 26px;
+  height: 12px;
+  border-radius: 6px;
+  background: #BE1E2D;
+}
+
+.svg-scroll {
+  overflow-x: auto;
+  padding: 0;
+}
+
+.detail-panel {
+  width: 340px;
+  flex-shrink: 0;
+  background: #F8FAFC;
+  border-radius: 12px;
+  box-shadow: 0 2px 16px rgba(0,42,92,0.08), 0 0 0 1px rgba(0,42,92,0.06);
+  overflow: hidden;
+  position: sticky;
+  top: 24px;
+}
+
+.detail-panel-header {
+  background: #0077C8;
+  padding: 14px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.detail-panel-title {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.reset-btn {
+  background: rgba(255,255,255,0.15);
+  border: 1px solid rgba(255,255,255,0.3);
+  color: #fff;
+  font-size: 0.62rem;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  letter-spacing: 0.06em;
+  transition: background 0.15s;
+  font-family: 'Outfit', sans-serif;
+}
+
+.reset-btn:hover { background: rgba(255,255,255,0.28); }
+
+.detail-body {
+  padding: 18px;
+  min-height: 420px;
+  animation: fadeIn 0.25s ease;
+}
+
+.detail-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 340px;
+  text-align: center;
+  gap: 10px;
+}
+
+.detail-placeholder-icon {
+  font-size: 2.4rem;
+  color: #CBD5E1;
+}
+
+.detail-placeholder-text {
+  font-size: 0.82rem;
+  color: #94A3B8;
+  max-width: 200px;
+  line-height: 1.5;
+}
+
+.detail-step-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #002A5C;
+  color: #fff;
+  font-family: 'Space Mono', monospace;
+  font-size: 0.7rem;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.detail-step-name {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #002A5C;
+  margin-bottom: 6px;
+}
+
+.detail-actor-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+
+.detail-divider {
+  height: 1px;
+  background: linear-gradient(90deg, #0077C8 0%, transparent 100%);
+  opacity: 0.2;
+  margin: 12px 0;
+}
+
+.detail-section-label {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #94A3B8;
+  margin-bottom: 5px;
+}
+
+.detail-desc {
+  font-size: 0.82rem;
+  color: #334155;
+  line-height: 1.55;
+  margin-bottom: 10px;
+}
+
+.detail-io-row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.detail-io-box {
+  flex: 1;
+  background: #fff;
+  border: 1px solid #E2E8F0;
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+
+.detail-io-box-label {
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #94A3B8;
+  margin-bottom: 4px;
+}
+
+.detail-io-box-val {
+  font-size: 0.75rem;
+  color: #1E293B;
+  line-height: 1.4;
+}
+
+.detail-status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.status-pending { background: #FEF3C7; color: #92400E; border: 1px solid #FCD34D; }
+.status-risk    { background: #FEE2E2; color: #991B1B; border: 1px solid #FCA5A5; }
+.status-ok      { background: #D1FAE5; color: #065F46; border: 1px solid #6EE7B7; }
+.status-info    { background: #EFF6FF; color: #1D4ED8; border: 1px solid #BFDBFE; }
+
+.cra-ref-box {
+  background: #EFF6FF;
+  border: 1px solid #BFDBFE;
+  border-left: 3px solid #0077C8;
+  border-radius: 6px;
+  padding: 8px 10px;
+  margin-top: 10px;
+  font-size: 0.7rem;
+  color: #1D4ED8;
+  line-height: 1.45;
+}
+
+.cra-ref-box strong {
+  display: block;
+  font-size: 0.6rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #0077C8;
+  margin-bottom: 2px;
+}
+
+.actor-mfg   { background: #E0F2FE; color: #0369A1; border: 1px solid #BAE6FD; }
+.actor-tech  { background: #EDE9FE; color: #5B21B6; border: 1px solid #C4B5FD; }
+.actor-cust  { background: #D1FAE5; color: #065F46; border: 1px solid #6EE7B7; }
+.actor-reg   { background: #FEE2E2; color: #991B1B; border: 1px solid #FCA5A5; }
+
+.swim-label-mfg  { fill: #0369A1; }
+.swim-label-tech { fill: #5B21B6; }
+.swim-label-cust { fill: #065F46; }
+.swim-label-reg  { fill: #991B1B; }
+
+svg .node-rect {
+  cursor: pointer;
+  transition: filter 0.18s;
+}
+svg .node-rect:hover { filter: drop-shadow(0 4px 10px rgba(0,119,200,0.28)); }
+svg .node-diamond {
+  cursor: pointer;
+  transition: filter 0.18s;
+}
+svg .node-diamond:hover { filter: drop-shadow(0 4px 10px rgba(245,158,11,0.35)); }
+
+svg .node-active-rect { stroke: #0077C8 !important; stroke-width: 3 !important; filter: drop-shadow(0 0 10px rgba(0,119,200,0.45)); }
+svg .node-active-diamond { stroke: #F59E0B !important; stroke-width: 3 !important; filter: drop-shadow(0 0 10px rgba(245,158,11,0.45)); }
+
+.footer {
+  text-align: center;
+  margin-top: 28px;
+  font-size: 0.62rem;
+  color: #94A3B8;
+  letter-spacing: 0.06em;
+}
+</style>
+
+<div class="page-wrapper">
+  <div class="page-header">
+    <div class="page-header-left">
+      <div class="page-title">CRA Compliance Workflow</div>
+      <div class="page-subtitle">
+        Grundfos Pump Lifecycle — CRA Function Implementation &amp; Access Control
+        <span class="cra-badge" style="margin-left:10px">CRA EU 2024/2847</span>
+        <span class="eu-badge">Access Control · PIN · Commissioning</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="main-layout">
+    <div class="flow-panel">
+      <div class="flow-panel-header">
+        <span class="flow-panel-title">CRA Implementation Process — Pump Lifecycle</span>
+      </div>
+      <div class="legend-row">
+        <span class="legend-item"><span class="legend-start"></span> Start / End</span>
+        <span class="legend-item"><span class="legend-rect"></span> Process Step</span>
+        <span class="legend-item"><span class="legend-diamond"></span> Decision</span>
+        <span class="legend-item" style="margin-left:auto">
+          <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#0369A1;margin-right:2px"></span>Manufacturing
+          &nbsp;
+          <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#5B21B6;margin-right:2px"></span>Technician
+          &nbsp;
+          <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#065F46;margin-right:2px"></span>Customer
+          &nbsp;
+          <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#991B1B;margin-right:2px"></span>EU Regulator
+        </span>
+      </div>
+      <div class="svg-scroll">
+        <svg id="flow-svg" viewBox="0 0 860 980" width="860" height="980" xmlns="http://www.w3.org/2000/svg" style="display:block">
+          <defs>
+            <marker id="arrow" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto">
+              <path d="M0,0 L0,6 L9,3 z" fill="#94A3B8"/>
+            </marker>
+            <marker id="arrow-ok" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto">
+              <path d="M0,0 L0,6 L9,3 z" fill="#22C55E"/>
+            </marker>
+            <marker id="arrow-no" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto">
+              <path d="M0,0 L0,6 L9,3 z" fill="#EF4444"/>
+            </marker>
+          </defs>
+
+          <!-- Swim lane backgrounds -->
+          <!-- Lane 1: Manufacturing -->
+          <rect x="0" y="70" width="860" height="195" fill="#E0F2FE" fill-opacity="0.35"/>
+          <rect x="0" y="70" width="5" height="195" fill="#0369A1"/>
+          <text x="18" y="170" font-family="Outfit,sans-serif" font-size="11" font-weight="700" fill="#0369A1" letter-spacing="1" transform="rotate(-90,18,170)">MANUFACTURING</text>
+
+          <!-- Lane 2: Technician -->
+          <rect x="0" y="265" width="860" height="360" fill="#EDE9FE" fill-opacity="0.35"/>
+          <rect x="0" y="265" width="5" height="360" fill="#5B21B6"/>
+          <text x="18" y="448" font-family="Outfit,sans-serif" font-size="11" font-weight="700" fill="#5B21B6" letter-spacing="1" transform="rotate(-90,18,448)">TECHNICIAN / INSTALLER</text>
+
+          <!-- Lane 3: Customer -->
+          <rect x="0" y="625" width="860" height="190" fill="#D1FAE5" fill-opacity="0.3"/>
+          <rect x="0" y="625" width="5" height="190" fill="#065F46"/>
+          <text x="18" y="722" font-family="Outfit,sans-serif" font-size="11" font-weight="700" fill="#065F46" letter-spacing="1" transform="rotate(-90,18,722)">CUSTOMER</text>
+
+          <!-- Lane 4: EU Regulator -->
+          <rect x="0" y="815" width="860" height="155" fill="#FEE2E2" fill-opacity="0.3"/>
+          <rect x="0" y="815" width="5" height="155" fill="#991B1B"/>
+          <text x="18" y="900" font-family="Outfit,sans-serif" font-size="11" font-weight="700" fill="#991B1B" letter-spacing="1" transform="rotate(-90,18,900)">EU REGULATOR</text>
+
+          <!-- Lane dividers -->
+          <line x1="30" y1="265" x2="860" y2="265" stroke="#CBD5E1" stroke-width="1.5" stroke-dasharray="6,4"/>
+          <line x1="30" y1="625" x2="860" y2="625" stroke="#CBD5E1" stroke-width="1.5" stroke-dasharray="6,4"/>
+          <line x1="30" y1="815" x2="860" y2="815" stroke="#CBD5E1" stroke-width="1.5" stroke-dasharray="6,4"/>
+
+          <!-- ===== STEP 0: START ===== -->
+          <g id="node-start" data-step="start">
+            <rect x="330" y="10" width="200" height="38" rx="19" fill="#002A5C" class="node-rect"/>
+            <text x="430" y="34" text-anchor="middle" font-family="Outfit,sans-serif" font-size="12" font-weight="700" fill="#fff">PUMP PRODUCTION START</text>
+          </g>
+
+          <!-- Arrow start -> s1 -->
+          <line x1="430" y1="48" x2="430" y2="78" stroke="#94A3B8" stroke-width="1.8" marker-end="url(#arrow)"/>
+
+          <!-- ===== STEP 1: Manufacture Pump with CRA Functions ===== -->
+          <g id="node-s1" data-step="s1">
+            <rect x="250" y="80" width="360" height="56" rx="8" fill="#fff" stroke="#CBD5E1" stroke-width="1.8" class="node-rect"/>
+            <rect x="250" y="80" width="6" height="56" rx="3" fill="#0369A1"/>
+            <text x="290" y="100" font-family="Outfit,sans-serif" font-size="9.5" font-weight="700" fill="#94A3B8" letter-spacing="1">STEP 1</text>
+            <text x="290" y="118" font-family="Outfit,sans-serif" font-size="12" font-weight="600" fill="#1E293B">Manufacture Pump with CRA Functions</text>
+            <text x="290" y="130" font-family="Outfit,sans-serif" font-size="9" fill="#64748B">Embed: access control, secure boot, logging, PIN seed</text>
+          </g>
+
+          <!-- Arrow s1 -> s2 -->
+          <line x1="430" y1="136" x2="430" y2="152" stroke="#94A3B8" stroke-width="1.8" marker-end="url(#arrow)"/>
+
+          <!-- ===== STEP 2: Set Manufacturer Default PIN ===== -->
+          <g id="node-s2" data-step="s2">
+            <rect x="250" y="154" width="360" height="56" rx="8" fill="#fff" stroke="#CBD5E1" stroke-width="1.8" class="node-rect"/>
+            <rect x="250" y="154" width="6" height="56" rx="3" fill="#0369A1"/>
+            <text x="290" y="174" font-family="Outfit,sans-serif" font-size="9.5" font-weight="700" fill="#94A3B8" letter-spacing="1">STEP 2</text>
+            <text x="290" y="192" font-family="Outfit,sans-serif" font-size="12" font-weight="600" fill="#1E293B">Assign Manufacturing-Phase PIN Code</text>
+            <text x="290" y="204" font-family="Outfit,sans-serif" font-size="9" fill="#64748B">Set secure default PIN per CRA Art. 13 — no generic defaults</text>
+          </g>
+
+          <!-- Arrow s2 -> d1 -->
+          <line x1="430" y1="210" x2="430" y2="236" stroke="#94A3B8" stroke-width="1.8" marker-end="url(#arrow)"/>
+
+          <!-- ===== STEP 3: Technician Arrives — Authenticate ===== -->
+          <g id="node-s3" data-step="s3">
+            <rect x="250" y="280" width="360" height="56" rx="8" fill="#fff" stroke="#CBD5E1" stroke-width="1.8" class="node-rect"/>
+            <rect x="250" y="280" width="6" height="56" rx="3" fill="#5B21B6"/>
+            <text x="290" y="300" font-family="Outfit,sans-serif" font-size="9.5" font-weight="700" fill="#94A3B8" letter-spacing="1">STEP 3</text>
+            <text x="290" y="318" font-family="Outfit,sans-serif" font-size="12" font-weight="600" fill="#1E293B">Technician Arrives &amp; Authenticates</text>
+            <text x="290" y="330" font-family="Outfit,sans-serif" font-size="9" fill="#64748B">Enters manufacturer PIN via HMI / Grundfos GO App</text>
+          </g>
+
+          <!-- Arrow s3 -> d1 -->
+          <line x1="430" y1="268" x2="430" y2="280" stroke="#94A3B8" stroke-width="1.8"/>
+          <line x1="430" y1="237" x2="430" y2="267" stroke="#94A3B8" stroke-width="1.8" marker-end="url(#arrow)"/>
+
+          <!-- DECISION D1: PIN Valid? -->
+          <g id="node-d1" data-step="d1">
+            <polygon points="430,238 520,267 430,296 340,267" fill="#FEF3C7" stroke="#F59E0B" stroke-width="1.8" class="node-diamond"/>
+            <text x="430" y="263" text-anchor="middle" font-family="Outfit,sans-serif" font-size="10.5" font-weight="700" fill="#92400E">PIN Valid?</text>
+          </g>
+
+          <!-- D1 NO arrow left loop -->
+          <line x1="340" y1="267" x2="200" y2="267" stroke="#EF4444" stroke-width="1.8"/>
+          <line x1="200" y1="267" x2="200" y2="318" stroke="#EF4444" stroke-width="1.8"/>
+          <line x1="200" y1="318" x2="250" y2="318" stroke="#EF4444" stroke-width="1.8" marker-end="url(#arrow-no)"/>
+          <text x="138" y="262" font-family="Outfit,sans-serif" font-size="9.5" font-weight="700" fill="#EF4444">Retry</text>
+
+          <!-- D1 YES arrow down -->
+          <line x1="430" y1="296" x2="430" y2="280" stroke="#22C55E" stroke-width="1.8" marker-end="url(#arrow-ok)"/>
+
+          <!-- ===== STEP 4: Install Pump ===== -->
+          <g id="node-s4" data-step="s4">
+            <rect x="250" y="356" width="360" height="56" rx="8" fill="#fff" stroke="#CBD5E1" stroke-width="1.8" class="node-rect"/>
+            <rect x="250" y="356" width="6" height="56" rx="3" fill="#5B21B6"/>
+            <text x="290" y="376" font-family="Outfit,sans-serif" font-size="9.5" font-weight="700" fill="#94A3B8" letter-spacing="1">STEP 4</text>
+            <text x="290" y="394" font-family="Outfit,sans-serif" font-size="12" font-weight="600" fill="#1E293B">Install Pump at Site</text>
+            <text x="290" y="406" font-family="Outfit,sans-serif" font-size="9" fill="#64748B">Physical installation, wiring, hydraulic connections</text>
+          </g>
+
+          <line x1="430" y1="336" x2="430" y2="356" stroke="#94A3B8" stroke-width="1.8" marker-end="url(#arrow)"/>
+
+          <!-- ===== STEP 5: Configure & Set Up Pump ===== -->
+          <g id="node-s5" data-step="s5">
+            <rect x="250" y="432" width="360" height="56" rx="8" fill="#fff" stroke="#CBD5E1" stroke-width="1.8" class="node-rect"/>
+            <rect x="250" y="432" width="6" height="56" rx="3" fill="#5B21B6"/>
+            <text x="290" y="452" font-family="Outfit,sans-serif" font-size="9.5" font-weight="700" fill="#94A3B8" letter-spacing="1">STEP 5</text>
+            <text x="290" y="470" font-family="Outfit,sans-serif" font-size="12" font-weight="600" fill="#1E293B">Configure &amp; Commission Pump</text>
+            <text x="290" y="482" font-family="Outfit,sans-serif" font-size="9" fill="#64748B">Set operating parameters, modes, network settings</text>
+          </g>
+
+          <line x1="430" y1="412" x2="430" y2="432" stroke="#94A3B8" stroke-width="1.8" marker-end="url(#arrow)"/>
+
+          <!-- DECISION D2: CRA Compliant? -->
+          <g id="node-d2" data-step="d2">
+            <polygon points="430,502 540,534 430,566 320,534" fill="#FEF3C7" stroke="#F59E0B" stroke-width="1.8" class="node-diamond"/>
+            <text x="430" y="528" text-anchor="middle" font-family="Outfit,sans-serif" font-size="10.5" font-weight="700" fill="#92400E">CRA Compliant?</text>
+            <text x="430" y="543" text-anchor="middle" font-family="Outfit,sans-serif" font-size="8.5" fill="#92400E">Verify PIN, logging, update</text>
+          </g>
+
+          <line x1="430" y1="488" x2="430" y2="502" stroke="#94A3B8" stroke-width="1.8" marker-end="url(#arrow)"/>
+
+          <!-- D2 NO loop left -->
+          <line x1="320" y1="534" x2="185" y2="534" stroke="#EF4444" stroke-width="1.8"/>
+          <line x1="185" y1="534" x2="185" y2="460" stroke="#EF4444" stroke-width="1.8"/>
+          <line x1="185" y1="460" x2="250" y2="460" stroke="#EF4444" stroke-width="1.8" marker-end="url(#arrow-no)"/>
+          <text x="118" y="530" font-family="Outfit,sans-serif" font-size="9.5" font-weight="700" fill="#EF4444">Reconfigure</text>
+
+          <!-- D2 YES down -->
+          <line x1="430" y1="566" x2="430" y2="586" stroke="#22C55E" stroke-width="1.8" marker-end="url(#arrow-ok)"/>
+
+          <!-- ===== STEP 6: Handover — Delivery ===== -->

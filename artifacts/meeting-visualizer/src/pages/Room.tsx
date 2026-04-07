@@ -542,28 +542,6 @@ export default function Room() {
     [fullText],
   );
 
-  /**
-   * Client-side family prediction from transcript keywords.
-   * Used to show a matching skeleton in the empty output panel BEFORE the first generation starts.
-   * Only activates when we have enough words (≥50) and no visualization exists yet.
-   */
-  const predictedFamily = useMemo((): string | null => {
-    if (currentWordCount < 50) return null;
-    if (displayHtml) return null;
-    const text = fullText.toLowerCase();
-    if (/\bhmi\b|human.machine interface|control panel display|pump controller ui/.test(text)) return "hmi_interface";
-    if (/user journey|customer journey|journey map|touchpoint/.test(text)) return "user_journey";
-    if (/service blueprint|backstage process|frontstage|service design/.test(text)) return "service_blueprint";
-    if (/moscow|must have.*should have|could have.*won.t have|krav.?spec/.test(text)) return "requirements_matrix";
-    if (/analytics|engagement metric|click.through rate|ctr\b|retention rate|kpi\b|cdp\b/.test(text)) return "engagement_analytics";
-    if (/\bpersona\b|user research|user interview|target user|user profile/.test(text)) return "persona_research";
-    if (/\bpump\b.*\b(motor|valve|impeller|bearing)|centrifugal pump|motor pump|pump system/.test(text)) return "physical_product";
-    if (/design system|component library|style guide|design token/.test(text)) return "design_system";
-    if (/prototype|wireframe|mockup|ux flow|ui flow/.test(text)) return "ux_prototype";
-    if (/status report|executive summary|mileston|gantt|resource allocation/.test(text)) return "management_summary";
-    if (/workflow|process flow|swim.?lane|step by step procedure|how it works/.test(text)) return "workflow_process";
-    return null;
-  }, [currentWordCount, fullText, displayHtml]);
 
   const workshopQuickNames = useMemo(
     () =>
@@ -3305,7 +3283,6 @@ export default function Room() {
               reasoningText={reasoningText}
               isLoadingActions={isLoadingActions}
               debugInfo={displayDebug}
-              streamFamily={isGenerating ? streamFamily : (!displayHtml ? predictedFamily : null)}
               onAnnotate={handleVizAnnotate}
             />
           </div>
