@@ -1588,6 +1588,13 @@ ${snippet}${tail}`;
   }
 
   // ── Gemini direct path ──────────────────────────────────────────────────
+  // NOTE: Gemini context caching (@google/genai v1.47.0 supports gemini.caches.create())
+  // was evaluated for Task #7 but intentionally skipped here. Reason: Gemini's context
+  // caching requires explicit cache lifecycle management — create a CachedContent object,
+  // persist its name, and reference it in subsequent requests. This is incompatible with the
+  // current stateless request architecture where there is no shared cache-name store between
+  // requests. Additionally, the minimum token threshold (~32 768 tokens) may not be met by
+  // all family system prompts. Anthropic prompt caching (above) covers the primary use case.
   if (GEMINI_MODELS.has(vizModel as VizModel)) {
     const gemini = getGeminiClient();
     if (!gemini) throw new Error("GEMINI_API_KEY is not configured");
