@@ -162,13 +162,13 @@ async function main() {
   const kb = (totalChars / 1024).toFixed(1);
   const included = files.length - skippedBinary;
   console.log(`\nDone!`);
-  console.log(`  Files included : ${included}`);
+  console.log(`  Files included     : ${included}`);
   if (skippedBinary > 0) {
-    console.log(`  Skipped binary : ${skippedBinary}`);
+    console.log(`  Skipped binary     : ${skippedBinary}`);
     skippedPaths.forEach((p) => console.log(`    - ${p}`));
   }
-  console.log(`  Total size     : ~${kb} KB`);
-  console.log(`  Output         : ${relative(ROOT, OUTPUT)}`);
+  console.log(`  Total characters   : ${totalChars.toLocaleString()} (~${kb} KB)`);
+  console.log(`  Output             : ${relative(ROOT, OUTPUT)}`);
   console.log(`\nTip: Upload repo-context.txt to your AI assistant for full codebase context.`);
 }
 
