@@ -1,0 +1,59 @@
+you asked
+
+Nu var filen for stor til at du kunne læse det men du fik da indsigt i noget af det.. er der en anden måde du kan få det på eller kan du give mig en vurdering af hvordan programmet kan optimeres på denne baggrund og også en vurdering af de bedste transcript værktøj til min case og hvordan jeg får bragt latency ned på visualiseringerne
+
+
+gemini response
+
+Det er helt rigtigt – store kodebaser rammer hurtigt loftet for, hvor meget tekst der kan processeres på én gang i et enkelt vindue. Men de filer, jeg fik læst (særligt din CLAUDE.md, package.json og scripts), gav mig et fantastisk indblik. 
+
+At det er dit Speciale (AAU Cand.IT), og at du undersøger "vibe-coding som design research-metode", sætter tingene i et utrolig spændende perspektiv! Det betyder, at systemets følelse (responsivitet og flow) er lige så vigtig som den rå kode.
+
+Her er hvordan vi løser fil-problemet, og mine vurderinger af din arkitektur, transskription og latency:
+
+
+1. Hvordan du deler koden bedst fremover
+
+I stedet for hele repoet på én gang, så del det op i tre logiske bidder, når du prompter Claude (eller mig):
+
+Frontend-filerne: Kun koden fra artifacts/meeting-visualizer/src/ (komponenterne).
+Backend/AI-filerne: Koden fra artifacts/api-server/src/ (især controller og AI-kald).
+Database/Contracts: lib/api-zod og lib/db.
+
+Du kan køre dit repo2txt.mjs script og ændre lidt i det, så det kun tager én mappe ad gangen. Så får AI'en den fulde kontekst uden at "glemme" starten af filen.
+
+
+2. Sådan bringer du Latency NED på visualiseringerne
+
+For at "vibe-coding" og "co-creation" skal virke i et møde, må folk ikke sidde og vente 10 sekunder på et diagram. Her er de mest effektive teknikker til din arkitektur:
+
+A. Asynkron "Speculative Execution" (Gæt hvad brugeren vil)
+
+Lige nu er dit flow nok serielt: Lyt $\rightarrow$ Vent på stilhed $\rightarrow$ Analysér intent $\rightarrow$ Generér visuelt.
+
+Optimering: Når din "Disambiguation Gate" (WAIT/REFINE/NEW) mærker, at samtalen drejer ind på en "User Journey", skal du udløse NEW mens brugeren stadig taler. Få Claude til at generere en "tom" skabelon på skærmen (loading state), så brugeren øjeblikkeligt ser, at systemet er med.
+
+B. Streaming af UI-komponenter (Server-Sent Events)
+
+Da du bruger Claude (som spytter tokens ud én ad gangen), skal du streame outputtet hele vejen til frontenden.
+
+Optimering: Hvis Claude genererer HTML eller Mermaid, så send det via SSE (Server-Sent Events) fra din Express-server til din React-app. Frontenden kan bruge et bibliotek, der live-renderer Mermaid-koden efterhånden som den dumper ind, frem for at vente på, at hele JSON-objektet er færdigt.
+
+C. Model-Routing (Brug den rigtige hjerne)
+
+Brug ikke Claude 3.5 Sonnet til alt.
+
+Routing-laget: Brug Claude 3 Haiku (eller OpenAI gpt-4o-mini) udelukkende til at afgøre Intent (WAIT, REFINE, NEW). Haiku svarer på under et halvt sekund.
+Genererings-laget: Kun når Intent = NEW/REFINE, kaster du den opsamlede tekst videre til Claude 3.5 Sonnet, som står for at skrive selve HTML/Mermaid-koden.
+
+D. Latenstid i Infrastrukturen (Railway)
+
+Jeg så, at du deployer til Railway.
+
+Advarsel: Railway kan af og til lukke inaktive WebSocket forbindelser (som STT kræver), og hvis din Postgres (Drizzle) ligger på en server i USA, mens din Express-server ligger i Europa, koster det dyre millisekunder hver gang du gemmer. Sørg for at både database og applikation er deployet i samme region (f.eks. eu-west).
+
+Næste skridt i dit workflow
+
+Da du arbejder med AI direkte i Replit/Cursor, så prøv at fodre den med dette prompt, næste gang du åbner din api-server:
+
+"Med udgangspunkt i mit speciale om vibe-coding, vil jeg reducere latency på mine visualiseringer. Hjælp mig med at implementere en streaming-opsætning i Express, hvor Claude 3.5 Sonnets output (Mermaid/HTML) sendes direkte til React-frontenden via Server-Sent Events (SSE) stykke for stykke, i stedet for at afvente hele svaret."
