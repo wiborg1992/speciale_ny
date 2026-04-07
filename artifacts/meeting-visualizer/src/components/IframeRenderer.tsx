@@ -76,7 +76,13 @@ const STREAMING_IFRAME_THROTTLE_MS = 1100;
 
 function isHtmlRenderable(html: string | null): boolean {
   if (!html || html.length < 300) return false;
-  return html.includes("<div") || html.includes("<section") || html.includes("<table");
+  return (
+    html.includes("<div") ||
+    html.includes("<section") ||
+    html.includes("<table") ||
+    html.includes("<body") ||
+    html.includes("class=\"mermaid\"")
+  );
 }
 
 function GeneratingSkeleton({ progress }: { progress: number }) {

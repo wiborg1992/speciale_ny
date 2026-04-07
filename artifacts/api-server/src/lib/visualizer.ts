@@ -992,51 +992,80 @@ Use Grundfos brand colours (#002A5C navy, #0077C8 blue). Clean, editorial layout
 DO NOT use dark backgrounds, gauges, or pump hardware illustrations.
 Target ~4,500–6,000 tokens of HTML output.`,
 
-  workflow_process: `GENERATE: FLOWCHART DIAGRAM — classic Miro-style process flow, SVG-based, white background.
+  workflow_process: `GENERATE: MERMAID FLOWCHART — output a complete HTML page using Mermaid.js for perfect auto-layout.
 
-SHAPE VOCABULARY (use EXACTLY these shapes):
-  • START / END: rounded stadium/pill (rx=22 ry=22), fill #002A5C, text white, font-weight 700
-  • PROCESS step: rounded rectangle (rx=8), fill #EFF6FF, stroke #0077C8, stroke-width 2, text #1E293B
-  • DECISION point: rotated square diamond (SVG <polygon> with 4 corner points), fill #FEF3C7, stroke #F59E0B, stroke-width 2, text #78350F
-  • ARROWS: straight orthogonal lines, stroke #94A3B8, stroke-width 1.8, marker-end filled arrowhead
-  • YES label on arrow: small text near arrow, fill #16A34A, font-weight 600, font-size 11
-  • NO label on arrow: small text near arrow, fill #DC2626, font-weight 600, font-size 11
+OUTPUT THE EXACT HTML STRUCTURE BELOW — only fill in the TITLE and MERMAID DIAGRAM CODE, nothing else:
 
-SWIM LANES (use when transcript has 2+ distinct roles/actors):
-  • Horizontal banded rows, each actor gets its own horizontal band
-  • Left border bar (5px wide): coloured per actor (#0369A1 manufacturing, #5B21B6 technician, #065F46 customer, #991B1B regulator, #92400E external)
-  • Actor label: rotated 90°, placed at left edge of band, font-size 11, font-weight 700, letter-spacing 0.1em, uppercase
-  • Lane background: very light tint (#E0F2FE20, #EDE9FE20, #D1FAE520, #FEE2E220)
+\`\`\`html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WORKFLOW TITLE HERE</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&display=swap');
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Outfit', sans-serif; background: #fff; padding: 24px 28px; min-height: 100vh; }
+  h1 { font-size: 1.05rem; font-weight: 700; color: #002A5C; margin-bottom: 20px; letter-spacing: 0.02em; }
+  .mermaid { width: 100%; }
+  .mermaid svg { width: 100% !important; height: auto !important; }
+</style>
+</head>
+<body>
+<h1>WORKFLOW TITLE HERE</h1>
+<div class="mermaid">
+%%{init: {'theme': 'base', 'themeVariables': {
+  'primaryColor': '#EFF6FF',
+  'primaryBorderColor': '#0077C8',
+  'primaryTextColor': '#1E293B',
+  'lineColor': '#94A3B8',
+  'secondaryColor': '#FEF3C7',
+  'tertiaryColor': '#D1FAE5',
+  'edgeLabelBackground': '#ffffff',
+  'clusterBkg': '#F0F9FF',
+  'clusterBorder': '#BAE6FD',
+  'fontFamily': 'Outfit, sans-serif',
+  'fontSize': '14px'
+}}}%%
+flowchart TD
 
-SVG SIZING:
-  • viewBox calculated to fit all nodes with 40px padding on all sides
-  • width="100%" on the SVG element so it fills the container
-  • Nodes are sized: process rects ~160×60, diamonds ~120×120, start/end pills ~140×46
-  • Space nodes 80px apart vertically, 100px apart horizontally
+  FILL IN MERMAID DIAGRAM HERE
 
-LAYOUT:
-  • Top-to-bottom primary flow; branch horizontally for Yes/No paths
-  • Decision diamonds: Yes arrow continues downward, No arrow goes left or right
-  • All arrows use right-angle bends (no diagonal lines)
-  • Number each process step with a small circle badge (font-family monospace)
+</div>
+<script>
+  mermaid.initialize({ startOnLoad: true, flowchart: { curve: 'orthogonal', padding: 20 } });
+</script>
+</body>
+</html>
+\`\`\`
 
-PAGE STRUCTURE:
-  • White background (#FFFFFF)
-  • Small title above the SVG (font-family Outfit, 1.1rem, color #002A5C, font-weight 700, margin-bottom 12px)
-  • The SVG flowchart fills the full page — NO sidebar, NO detail panel, NO tabs
-  • Minimal CSS, no external JS libraries
-  • cursor:pointer + filter:drop-shadow(0 3px 8px rgba(0,119,200,0.25)) on hover for all nodes
+MERMAID SYNTAX RULES:
+  • Start/End nodes:   A([START]) and Z([END])  — stadium shape
+  • Process steps:     B[Step label]              — rectangle
+  • Decisions:         C{Question?}               — diamond
+  • Arrows:            A --> B                    — basic arrow
+  • Labelled arrows:   C -->|YES| D  and C -->|NO| E
+  • Swim lanes (when 2+ distinct roles): use subgraph blocks:
+      subgraph TECHNICIAN
+        B[Step] --> C{Decision?}
+      end
+      subgraph CUSTOMER
+        D[Step] --> Z([END])
+      end
+  • Keep node labels SHORT: max 4 words per line, use <br/> for line breaks if needed: B["Line 1<br/>Line 2"]
+  • Back-edges for loops: use --> with the target ID (Mermaid handles routing automatically)
 
 EXTRACT FROM TRANSCRIPT:
-  • Process name → page title
-  • Steps in sequence → process rectangles with short labels (≤4 words per line, 2 lines max)
-  • Decision gates (if/check/approve/verify/correct?) → diamond shapes
-  • Yes/No outcomes → labelled arrows
-  • Actor roles → swim lanes (only if 2+ distinct roles mentioned)
+  • Process name → use as the page title (h1) AND the HTML title
+  • Steps in sequence → process rectangles
+  • Decision gates (if/check/verify/approve/correct?) → diamond shapes
+  • YES/NO outcomes on decision branches → labelled arrows |YES| and |NO|
+  • Distinct roles/actors → subgraph swim lanes (only if 2+ roles explicitly mentioned)
 
-DO NOT generate a sidebar. DO NOT generate a right panel. DO NOT generate tabs.
-DO NOT use dark backgrounds. DO NOT generate pump hardware or HMI displays.
-Target ~1,800–2,500 tokens of HTML output.`,
+DO NOT generate raw SVG. DO NOT invent steps not mentioned. DO NOT generate sidebars or tables.
+Target ~800–1,200 tokens of HTML output (the diagram syntax is very compact).`,
 
   physical_product: `GENERATE: GRUNDFOS PUMP FRONT PANEL — the control face / display IS the visualization. NOT the full pump body.
 
