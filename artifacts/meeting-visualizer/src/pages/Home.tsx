@@ -3,9 +3,8 @@ import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import {
-  Mic,
-  ArrowRight,
   Play,
+  PenLine,
   Clock,
   Users,
   MessageSquare,
@@ -46,7 +45,6 @@ export default function Home() {
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
   const [speakerName, setSpeakerName] = useLocalStorage("meetingVisualizer_speakerName", "");
-  const [roomCode, setRoomCode] = useState("");
   const [localLogVersion, setLocalLogVersion] = useState(0);
   const [deletingRoomId, setDeletingRoomId] = useState<string | null>(null);
 
@@ -97,17 +95,18 @@ export default function Home() {
     return merged.slice(0, 5);
   }, [data?.meetings, localLogVersion]);
 
-  const handleCreate = (e: React.FormEvent) => {
+  const handleNewSession = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!speakerName.trim()) return;
+    const newRoom = generateRoomCode();
+    setLocation(`/room/${newRoom}`);
+  };
+
+  const handleStartSketching = (e: React.FormEvent) => {
     e.preventDefault();
     if (!speakerName.trim()) return;
     const newRoom = generateRoomCode();
     setLocation(`/room/${newRoom}?sketch=new`);
-  };
-
-  const handleJoin = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!speakerName.trim() || !roomCode.trim()) return;
-    setLocation(`/room/${roomCode.toUpperCase()}`);
   };
 
   return (
@@ -142,9 +141,8 @@ export default function Home() {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <form onSubmit={handleCreate} className="space-y-4">
-                <label className="text-sm font-display font-bold text-muted-foreground uppercase tracking-widest block opacity-0">Action</label>
+            <div className="flex gap-3">
+              <form onSubmit={handleNewSession} className="flex-1">
                 <Button
                   type="submit"
                   className="w-full h-14 text-base"
@@ -155,25 +153,16 @@ export default function Home() {
                 </Button>
               </form>
 
-              <form onSubmit={handleJoin} className="space-y-4">
-                <label className="text-sm font-display font-bold text-muted-foreground uppercase tracking-widest block">Join Existing</label>
-                <div className="flex gap-2">
-                  <Input
-                    placeholder="CODE"
-                    value={roomCode}
-                    onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
-                    maxLength={6}
-                    className="h-14 text-center font-bold tracking-widest placeholder:tracking-normal"
-                  />
-                  <Button
-                    type="submit"
-                    variant="secondary"
-                    className="h-14 px-4"
-                    disabled={!speakerName.trim() || roomCode.length < 3}
-                  >
-                    <ArrowRight className="w-5 h-5" />
-                  </Button>
-                </div>
+              <form onSubmit={handleStartSketching} className="flex-1">
+                <Button
+                  type="submit"
+                  variant="secondary"
+                  className="w-full h-14 text-base"
+                  disabled={!speakerName.trim()}
+                >
+                  <PenLine className="w-5 h-5 mr-2" />
+                  Start Sketching
+                </Button>
               </form>
             </div>
           </div>
