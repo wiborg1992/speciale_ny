@@ -1919,36 +1919,6 @@ export default function Room() {
                         ))}
                       </div>
                     </div>
-                    <div className="flex flex-col gap-1">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[10px] font-mono text-muted-foreground">Domain prompt</span>
-                        {openaiPrompt.trim() ? (
-                          <button
-                            type="button"
-                            onClick={() => setOpenaiPrompt("")}
-                            disabled={isRecording}
-                            title="Nulstil til domæne-auto"
-                            className="text-[9px] font-mono text-muted-foreground hover:text-primary transition-colors disabled:opacity-40"
-                          >
-                            ✕ nulstil
-                          </button>
-                        ) : getDomainPromptLabel(workspaceDomain) ? (
-                          <span className="text-[9px] font-mono text-primary/70">auto · {getDomainPromptLabel(workspaceDomain)}</span>
-                        ) : null}
-                      </div>
-                      <textarea
-                        value={openaiPrompt}
-                        onChange={(e) => setOpenaiPrompt(e.target.value)}
-                        disabled={isRecording}
-                        placeholder={
-                          getDomainPromptLabel(workspaceDomain)
-                            ? `Auto: ${getDomainPromptLabel(workspaceDomain)}`
-                            : "Skriv domæne-ord (f.eks. Grundfos, pumpe, flow)"
-                        }
-                        rows={2}
-                        className="w-full bg-secondary/40 border border-border rounded px-2 py-1 text-[10px] font-mono text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-primary/40 resize-none disabled:opacity-40"
-                      />
-                    </div>
                   </div>
                 )}
 
