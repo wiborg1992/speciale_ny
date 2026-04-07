@@ -105,17 +105,6 @@ function VizVersionStrip({
   onDebugOpen: (version: number) => void;
 }) {
   const pillsRef = useRef<HTMLDivElement>(null);
-  const [isDropdown, setIsDropdown] = useState(false);
-
-  useEffect(() => {
-    const el = pillsRef.current;
-    if (!el) return;
-    const ro = new ResizeObserver(() => {
-      setIsDropdown(el.scrollWidth > el.clientWidth + 2);
-    });
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [vizHistory]);
 
   const handleDownload = useCallback(
     (v: VizVersion, e: React.MouseEvent) => {
@@ -145,14 +134,10 @@ function VizVersionStrip({
         Versions:
       </span>
 
-      {/* Pill row — hidden when overflowing, but always measured */}
+      {/* Pill row — scrollable horizontally, no layout switching */}
       <div
         ref={pillsRef}
-        className={cn(
-          "flex items-center gap-2 overflow-hidden",
-          isDropdown ? "invisible absolute pointer-events-none" : "flex-1",
-        )}
-        aria-hidden={isDropdown}
+        className="flex items-center gap-2 overflow-x-auto flex-1 min-w-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         {vizHistory.map((v) => (
           <div
@@ -217,22 +202,6 @@ function VizVersionStrip({
         ))}
       </div>
 
-      {/* Dropdown — shown when pills overflow */}
-      {isDropdown && (
-        <select
-          value={activeVersion ?? ""}
-          onChange={(e) => loadVizVersion(Number(e.target.value))}
-          className="flex-1 min-w-0 bg-secondary/40 border border-border rounded px-2 py-0.5 text-[10px] font-mono text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40"
-        >
-          {vizHistory.map((v) => (
-            <option key={v.version} value={v.version}>
-              v{v.version}
-              {v.debugSnapshot ? " [DBG]" : ""} · {v.name} ·{" "}
-              {format(new Date(v.timestamp), "HH:mm")}
-            </option>
-          ))}
-        </select>
-      )}
     </div>
   );
 }
