@@ -11,7 +11,9 @@ const router: IRouter = Router();
  * Falls back to a user-supplied OPENAI_API_KEY if the integration key is absent.
  */
 router.get("/openai-realtime-token", async (_req, res): Promise<void> => {
-  // Prefer a dedicated OPENAI_API_KEY; fall back to the AI Integration key
+  // Prefer an explicit OPENAI_API_KEY; fall back to the AI Integration key.
+  // The Replit AI Integration proxy doesn't support /realtime/sessions, so both
+  // paths call api.openai.com directly — a real OpenAI API key is required.
   const apiKey =
     process.env.OPENAI_API_KEY ||
     process.env.AI_INTEGRATIONS_OPENAI_API_KEY;

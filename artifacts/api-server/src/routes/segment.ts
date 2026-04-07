@@ -13,12 +13,9 @@ router.post("/segment", async (req, res): Promise<void> => {
     return;
   }
 
-  const { roomId, speakerName, text, timestamp, isFinal, provider, latencyMs } = parsed.data;
+  const { id: clientId, roomId, speakerName, text, timestamp, isFinal, provider, latencyMs } = parsed.data;
 
-  const clientId = typeof req.body.id === "string" && req.body.id.length > 8
-    ? req.body.id
-    : null;
-  const segmentId = clientId || randomUUID();
+  const segmentId = (clientId && clientId.length > 8) ? clientId : randomUUID();
 
   const segment = {
     id: segmentId,
