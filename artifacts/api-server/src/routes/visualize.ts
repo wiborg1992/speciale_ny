@@ -871,26 +871,27 @@ router.post("/visualize", async (req, res, next): Promise<void> => {
             updateMeetingTitle(roomId, title).catch(() => {});
           }
 
+          const room = getRoom(roomId);
+          if (room) {
+            // Always update in-memory state so reconnecting clients get the latest viz
+            room.lastVisualization = cleanHtml;
+            room.lastFamily = resolvedFamily ?? classification?.family ?? null;
+            const fromHtml = extractVizTitleFromHtml(cleanHtml);
+            room.lastVizTitle =
+              fromHtml ??
+              (title?.trim() ? title.trim().slice(0, 84) : room.lastVizTitle);
+            room.meetingEssenceBullets = computeEssenceBullets(
+              classification,
+              (resolvedFamily ??
+                classification?.family ??
+                null) as VizFamily | null,
+            );
+          }
           if (!clientDisconnected) {
-            const room = getRoom(roomId);
-            if (room) {
-              room.lastVisualization = cleanHtml;
-              room.lastFamily = resolvedFamily ?? classification?.family ?? null;
-              const fromHtml = extractVizTitleFromHtml(cleanHtml);
-              room.lastVizTitle =
-                fromHtml ??
-                (title?.trim() ? title.trim().slice(0, 84) : room.lastVizTitle);
-              room.meetingEssenceBullets = computeEssenceBullets(
-                classification,
-                (resolvedFamily ??
-                  classification?.family ??
-                  null) as VizFamily | null,
-              );
-              broadcastEvent(roomId, "visualization", { html: cleanHtml, meta });
-            }
+            broadcastEvent(roomId, "visualization", { html: cleanHtml, meta });
           } else {
             console.log(
-              `[viz-orphan] Client disconnected during generation — saved to DB but skipping live broadcast (room=${roomId}, family=${resolvedFamily ?? classification?.family}, took=${Math.round(performance.now() - streamT0)}ms)`,
+              `[viz-orphan] Client disconnected during generation — saved to DB and updated in-memory state (room=${roomId}, family=${resolvedFamily ?? classification?.family}, took=${Math.round(performance.now() - streamT0)}ms)`,
             );
           }
         }
