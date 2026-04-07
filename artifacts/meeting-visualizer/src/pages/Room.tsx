@@ -2815,48 +2815,19 @@ export default function Room() {
                       </button>
                     )}
 
-                    <div className="flex items-center gap-2">
+                    {isGenerating && (
                       <Button
-                        variant="outline"
+                        type="button"
+                        variant="destructive"
                         size="sm"
-                        onClick={() => {
-                          handleGenerate(false);
-                          setOutputTab("viz");
-                        }}
-                        disabled={
-                          isGenerating || getActiveTranscript().length === 0
-                        }
-                        className={cn(
-                          "h-7 px-3 text-xs transition-all",
-                          isGenerating && "border-primary text-primary",
-                        )}
+                        className="h-7 px-2 text-xs font-mono"
+                        title="Stop generering"
+                        onClick={() => cancelGeneration()}
                       >
-                        {isGenerating ? (
-                          <>
-                            <RefreshCcw className="w-3.5 h-3.5 mr-1.5 animate-spin" />
-                            Generating…
-                          </>
-                        ) : (
-                          <>
-                            <Wand2 className="w-3.5 h-3.5 mr-1.5" />
-                            Visualize
-                          </>
-                        )}
+                        <Square className="w-3 h-3 mr-1 fill-current" />
+                        Stop
                       </Button>
-                      {isGenerating && (
-                        <Button
-                          type="button"
-                          variant="destructive"
-                          size="sm"
-                          className="h-7 px-2 text-xs font-mono"
-                          title="Stop generering"
-                          onClick={() => cancelGeneration()}
-                        >
-                          <Square className="w-3 h-3 mr-1 fill-current" />
-                          Stop
-                        </Button>
-                      )}
-                    </div>
+                    )}
                     {streamMeta?.refinement && !isGenerating && (
                       <Badge
                         variant="outline"
