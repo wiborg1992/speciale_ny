@@ -972,7 +972,8 @@ STATEFUL CONTROLS — ALL REQUIRED:
   • Severity filter chips on alarm table: use data-viz-filter-host pattern (INFO=blue / WARN=amber / ALARM=red chips).
 
 Use the full HMI design language from system prompt: dark navy #0A1628/#0D1F3C, cyan #00C8FF accents, tabular-nums.
-DO NOT use light backgrounds. DO NOT generate journey maps, flowcharts, or product illustrations.`,
+DO NOT use light backgrounds. DO NOT generate journey maps, flowcharts, or product illustrations.
+Target ~6,000–8,000 tokens of HTML output.`,
 
   user_journey: `GENERATE: USER JOURNEY MAP — light background, swim lane layout, FULLY INTERACTIVE.
 
@@ -988,7 +989,8 @@ REQUIRED INTERACTIVITY:
 IMPLEMENTATION: Wire all phase column <th> or header divs with addEventListener('click'). Detail panel below uses innerHTML swap.
 
 Use Grundfos brand colours (#002A5C navy, #0077C8 blue). Clean, editorial layout with Google Fonts (Playfair Display + Outfit).
-DO NOT use dark backgrounds, gauges, or pump hardware illustrations.`,
+DO NOT use dark backgrounds, gauges, or pump hardware illustrations.
+Target ~4,500–6,000 tokens of HTML output.`,
 
   workflow_process: `GENERATE: WORKFLOW / PROCESS DIAGRAM — clean, light-background flowchart, FULLY INTERACTIVE.
 
@@ -1005,7 +1007,8 @@ IMPLEMENTATION: Each node has data-step="id" and a matching JS data object with 
 
 Use SVG or HTML for flow: rectangles (process steps), diamonds (decisions), arrows, swim lanes if multiple actors.
 Use Grundfos colours, crisp lines, directional arrows, numbered steps.
-DO NOT use dark HMI style. DO NOT generate journey maps or pump hardware.`,
+DO NOT use dark HMI style. DO NOT generate journey maps or pump hardware.
+Target ~4,000–5,500 tokens of HTML output.`,
 
   physical_product: `GENERATE: GRUNDFOS PUMP FRONT PANEL — the control face / display IS the visualization. NOT the full pump body.
 
@@ -1047,7 +1050,8 @@ SVG QUALITY RULES:
 
 DO NOT draw the whole pump with pipes and flanges. DO NOT use dark HMI dashboard layouts.
 DO NOT generate spec card grids or text-heavy requirement sections.
-The visualization IS the front panel — large, detailed, faithful to the product.`,
+The visualization IS the front panel — large, detailed, faithful to the product.
+`,
 
   requirements_matrix: `GENERATE: REQUIREMENTS TRACEABILITY MATRIX — structured table layout, FULLY INTERACTIVE.
 
@@ -1061,7 +1065,8 @@ REQUIRED INTERACTIVITY:
 TABLE: Columns: Req ID | Requirement (truncated, expands) | Priority (MoSCoW chip) | Source | Status chip | Actions.
 Colour-coding: Must=red chip, Should=amber, Could=green, Won't=grey. Alternating row shading (#F8FAFC).
 Grundfos brand header (#002A5C). Google Fonts.
-DO NOT use dark backgrounds or pump illustrations.`,
+DO NOT use dark backgrounds or pump illustrations.
+Target ~2,500–3,500 tokens of HTML output.`,
 
   management_summary: `GENERATE: MANAGEMENT SUMMARY / TIMELINE — editorial, executive-level layout, FULLY INTERACTIVE.
 
@@ -1076,7 +1081,8 @@ REQUIRED INTERACTIVITY:
 
 Use dramatic typography hierarchy (Playfair Display for headings, Outfit for body).
 Grundfos navy and blue accents (#002A5C, #0077C8). Print-ready proportions.
-DO NOT use dark HMI style or pump hardware illustrations.`,
+DO NOT use dark HMI style or pump hardware illustrations.
+Target ~3,500–4,500 tokens of HTML output.`,
 
   persona_research: `GENERATE: PERSONA / RESEARCH INSIGHTS — editorial card-based layout, FULLY INTERACTIVE.
 
@@ -1092,7 +1098,8 @@ REQUIRED INTERACTIVITY:
 For PERSONAS: profile section (name, role, archetype, silhouette), demographics sidebar, goals (green), frustrations (red), behavioral patterns, Day in the Life timeline, Jobs-to-be-Done.
 For EMPATHY MAPS: 4-quadrant layout (Says / Thinks / Does / Feels) with persona at center.
 For RESEARCH FINDINGS: insight cards with supporting quotes, thematic clusters, severity indicators, recommendations.
-Grundfos colours, Google Fonts, light background. DO NOT use dark HMI style or pump hardware.`,
+Grundfos colours, Google Fonts, light background. DO NOT use dark HMI style or pump hardware.
+Target ~3,000–4,000 tokens of HTML output.`,
 
   service_blueprint: `GENERATE: SERVICE BLUEPRINT / EXPERIENCE ARCHITECTURE — layered diagram, FULLY INTERACTIVE.
 
@@ -1107,7 +1114,8 @@ REQUIRED INTERACTIVITY:
 
 For SERVICE BLUEPRINTS: horizontal swim-lane layout — Customer Actions (top), Frontstage, Line of Visibility (dashed), Backstage Processes, Support Processes (bottom). Left-to-right phases.
 For STAKEHOLDER MAPS: radial/network diagram with nodes. For INFORMATION ARCHITECTURE: hierarchical sitemap.
-Grundfos brand colours, clean lines, light background. DO NOT use dark HMI style.`,
+Grundfos brand colours, clean lines, light background. DO NOT use dark HMI style.
+Target ~4,000–5,500 tokens of HTML output.`,
 
   comparison_evaluation: `GENERATE: COMPARISON / EVALUATION MATRIX — structured analytical layout, FULLY INTERACTIVE.
 
@@ -1121,7 +1129,8 @@ REQUIRED INTERACTIVITY:
 
 For COMPARISON MATRICES: table with options as columns, criteria as rows, colour-coded scoring (green/amber/red), weighted totals.
 For SWOT: 2×2 grid. For PRIORITIZATION: Impact×Effort 2D scatter. For SCORECARDS: radar/weighted table.
-Grundfos brand colours, Google Fonts, light background. DO NOT use dark HMI style.`,
+Grundfos brand colours, Google Fonts, light background. DO NOT use dark HMI style.
+Target ~2,500–3,500 tokens of HTML output.`,
 
   design_system: `GENERATE: DESIGN SYSTEM / COMPONENT SPECIFICATION — technical documentation layout, FULLY INTERACTIVE.
 
@@ -1135,7 +1144,8 @@ REQUIRED INTERACTIVITY:
 For COMPONENT SPECS: component anatomy diagram, all states, sizing variants (S/M/L), spacing annotations, prop/API table.
 For DESIGN TOKENS: Color Palette (hex/RGB/semantic), Typography Scale, Spacing Scale, Border Radius, Shadows.
 For STYLE GUIDES: brand colour usage, typography hierarchy, iconography, Do/Don't pairs.
-Clean, technical documentation style. Grid-aligned. Light background with subtle grid. DO NOT use dark HMI style.`,
+Clean, technical documentation style. Grid-aligned. Light background with subtle grid. DO NOT use dark HMI style.
+Target ~4,500–6,000 tokens of HTML output.`,
 
   engagement_analytics: `GENERATE: ENGAGEMENT ANALYTICS DASHBOARD — pick the ONE variant below that best matches the transcript. Never default to the same variant every time.
 
@@ -1221,7 +1231,8 @@ DATA: Extract figures/titles/channels from the transcript. When not available, u
 COLORS: #374151 primary text, #6B7280 secondary, #E5E7EB borders, #F9FAFB panel bg. Accent: deep green/teal (#0D9488 / #065F46) or muted coral/amber for contrast. Each data series gets a DISTINCT muted color.
 TYPOGRAPHY: font-variant-numeric: tabular-nums on all numbers. Headings: Outfit 600. Body/data rows: system-sans 13–14px. Import Outfit from Google Fonts.
 NAV STYLE: sidebar <a> links: display:block, padding:0.6rem 1rem, color:#374151, border-left:3px solid transparent; .viz-nav-active: border-left-color:#0D9488, color:#0D9488, background:#F0FDFA.
-DO NOT: dark HMI chrome, pump hardware, plain bullet list, all-same-layout every session.`,
+DO NOT: dark HMI chrome, pump hardware, plain bullet list, all-same-layout every session.
+Target ~6,000–8,000 tokens of HTML output.`,
 
   ux_prototype: `GENERATE: CLICKABLE MULTI-SCREEN UX PROTOTYPE — navigable interactive mockup.
 
@@ -1261,7 +1272,8 @@ VISUAL STYLE:
   • Typography: Inter or Outfit 14–16px body, clear hierarchy
   • Single accent colour derived from transcript context
 
-DO NOT generate a static dashboard with no navigation. DO NOT use dark HMI chrome. DO NOT generate pump hardware.`,
+DO NOT generate a static dashboard with no navigation. DO NOT use dark HMI chrome. DO NOT generate pump hardware.
+Target ~4,500–6,000 tokens of HTML output.`,
 
   generic: `GENERATE: STRUCTURED OVERVIEW — card-grid or section-header layout.
 The user has explicitly requested no specific diagram type. Your output must still be a VISUAL STRUCTURE — never a plain notepad or bullet wall.
@@ -1278,7 +1290,8 @@ ABSOLUTELY NOT ALLOWED:
   ✗ "Meeting notes" or "Observations" heading
   ✗ Bullet list of everything that was said, in order
   ✗ Plain <ul>/<li> without card structure
-  ✗ Fake polish: dark gradient background with white prose text`,
+  ✗ Fake polish: dark gradient background with white prose text
+Target ~1,800–2,500 tokens of HTML output.`,
 };
 
 function systemPromptForDomain(domain: WorkspaceDomain): string {
@@ -1644,12 +1657,21 @@ ${snippet}${tail}`;
               ]
             : userMessage;
 
-        const stream = client.messages.stream({
-          model: tryModel,
-          max_tokens: maxTokens,
-          system: systemPrompt,
-          messages: [{ role: "user", content: userContent }],
-        });
+        const stream = client.messages.stream(
+          {
+            model: tryModel,
+            max_tokens: maxTokens,
+            system: [
+              {
+                type: "text",
+                text: systemPrompt,
+                cache_control: { type: "ephemeral" },
+              },
+            ],
+            messages: [{ role: "user", content: userContent }],
+          },
+          { headers: { "anthropic-beta": "prompt-caching-2024-07-31" } },
+        );
 
         let fullText = "";
 

@@ -292,6 +292,7 @@ export function RoomOutputPanels({
             title={meetingTitle || null}
             context={meetingContextForIframe}
             workspaceDomain={workspaceDomain}
+            pendingFamily={isGenerating ? (debugInfo?.resolvedFamily ?? debugInfo?.classification?.family ?? null) : null}
             onAnnotate={onAnnotate}
           />
         </div>
