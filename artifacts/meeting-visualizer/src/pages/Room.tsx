@@ -3216,6 +3216,7 @@ export default function Room() {
               isLoadingActions={isLoadingActions}
               debugInfo={displayDebug}
               onAnnotate={handleVizAnnotate}
+              activeVersion={activeVersion}
             />
           </div>
         </main>

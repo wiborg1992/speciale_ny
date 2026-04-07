@@ -25,6 +25,7 @@ interface RoomOutputPanelsProps {
   isLoadingActions: boolean;
   debugInfo: VizDebugInfo | null | undefined;
   onAnnotate?: (screenshotDataUrl: string) => void;
+  activeVersion?: number | null;
 }
 
 // ── Technical Reasoning: one step in the thinking timeline ──────────────────
@@ -282,6 +283,7 @@ export function RoomOutputPanels({
   isLoadingActions,
   debugInfo,
   onAnnotate,
+  activeVersion,
 }: RoomOutputPanelsProps) {
   return (
     <div className="flex-1 min-h-0 overflow-hidden">
@@ -296,6 +298,7 @@ export function RoomOutputPanels({
             context={meetingContextForIframe}
             workspaceDomain={workspaceDomain}
             onAnnotate={onAnnotate}
+            activeVersion={activeVersion}
           />
         </div>
       )}

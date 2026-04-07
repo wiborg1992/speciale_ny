@@ -163,6 +163,8 @@ interface IframeRendererProps {
   workspaceDomain?: string | null;
   /** Kaldes med screenshot af visualiseringen når brugeren klikker "Tegn på" */
   onAnnotate?: (screenshotDataUrl: string) => void;
+  /** Aktiv version — når denne ændrer sig tvinges et nyt iframe-skriv selv om HTML'en er den samme */
+  activeVersion?: number | null;
 }
 
 export function IframeRenderer({
@@ -174,6 +176,7 @@ export function IframeRenderer({
   context,
   workspaceDomain,
   onAnnotate,
+  activeVersion,
 }: IframeRendererProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -306,6 +309,11 @@ ${t}
     doc.write(buildDocument(rawHtml));
     doc.close();
   }, []);
+
+  // Nulstil dedup-guard når aktiv version skifter — tvinger iframe-skriv selv om HTML er ens
+  useEffect(() => {
+    lastCommittedHtmlRef.current = null;
+  }, [activeVersion]);
 
   useEffect(() => {
     if (isStreaming) {

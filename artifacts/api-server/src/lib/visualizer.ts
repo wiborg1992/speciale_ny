@@ -1006,12 +1006,13 @@ OUTPUT THE EXACT HTML BELOW — only fill in the TITLE, SUBTITLE, and the D = { 
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&display=swap');
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Outfit',sans-serif;background:#F0F4F8;padding:14px 18px}
-h1{font-size:.92rem;font-weight:700;color:#002A5C;margin-bottom:2px}
-.sub{font-size:.68rem;color:#64748B;margin-bottom:10px}
-#dg{width:100%;overflow-x:auto}
-svg{display:block;font-family:'Outfit',sans-serif}
-.fn{font-size:.58rem;color:#94A3B8;text-align:right;margin-top:8px}
+html,body{height:100%}
+body{font-family:'Outfit',sans-serif;background:#F0F4F8;padding:12px 16px 6px;display:flex;flex-direction:column}
+h1{font-size:.92rem;font-weight:700;color:#002A5C;margin-bottom:2px;flex-shrink:0}
+.sub{font-size:.68rem;color:#64748B;margin-bottom:8px;flex-shrink:0}
+#dg{flex:1;overflow:auto;min-height:0}
+svg{display:block;font-family:'Outfit',sans-serif;height:100%;width:auto}
+.fn{font-size:.58rem;color:#94A3B8;text-align:right;margin-top:4px;flex-shrink:0}
 </style>
 </head>
 <body>
@@ -1082,7 +1083,7 @@ const D = {
     return {path,sx,sy,ex,ey,lx:(sx+ex)/2,ly:(sy+ey)/2};
   }
   const MC={'YES':'#16A34A','NO':'#DC2626'};
-  let s=\`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 \${W} \${H}" style="width:100%;height:auto;min-height:\${H}px">
+  let s=\`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 \${W} \${H}" style="min-width:\${W}px;min-height:\${H}px">
 <defs>
 \${['ah:#64748B','ahy:#16A34A','ahn:#DC2626'].map(m=>{const[id,c]=m.split(':');
 return\`<marker id="\${id}" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0L0,6L8,3z" fill="\${c}"/></marker>\`;}).join('')}
