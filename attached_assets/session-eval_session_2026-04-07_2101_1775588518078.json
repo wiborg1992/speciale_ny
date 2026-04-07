@@ -1,0 +1,89 @@
+{
+  "schemaVersion": 2,
+  "exportedAt": "2026-04-07T19:01:56.591Z",
+  "session": {
+    "roomId": "NUYEH5",
+    "meetingTitle": "",
+    "workspaceDomain": "grundfos",
+    "sessionStartedAt": "2026-04-07T18:56:32.432Z",
+    "sessionEndedAt": "2026-04-07T19:01:56.591Z"
+  },
+  "summary": {
+    "transcriptWordCountApprox": 222,
+    "segmentCount": 1,
+    "participantNames": [
+      "Speaker 1"
+    ],
+    "visualizationEventCount": 1,
+    "skippedCount": 0,
+    "errorCount": 0
+  },
+  "reviewerNotes": "Der blev oprtettet  Requirements Tracebility Matrix det må aldirg oprettes.\n\nUX-skeleton der skulle registrer input førend der trykkes på visualize kom først da der blev trykket på stop record- det er alt for sent. Derudover delte den visualiseringsområdet i to hvilket er en kritisk bug",
+  "events": [
+    {
+      "kind": "visualization",
+      "at": "2026-04-07T18:56:32.443Z",
+      "source": "local_stream",
+      "version": 1,
+      "vizName": "Requirements Traceability Matrix",
+      "htmlChars": 25626,
+      "debug": {
+        "timestamp": "2026-04-07T18:55:15.368Z",
+        "resolvedFamily": "requirements_matrix",
+        "userPickedType": false,
+        "vizType": "auto",
+        "vizModel": "haiku",
+        "isIncremental": false,
+        "isRefinement": false,
+        "refinementDirective": null,
+        "hasPreviousHtml": false,
+        "focusSegment": null,
+        "workspaceDomain": "grundfos",
+        "transcriptTotalWords": 219,
+        "roomId": "NUYEH5",
+        "performanceMs": null,
+        "classification": {
+          "inputMode": "tail",
+          "inputWords": 219,
+          "totalWords": 219,
+          "inputText": "[Speaker 1]: Alright. We're going to have a look at the workflow for technician. And in this workflow, he's going to arrive at the scene, and he has to check the physical surroundings for the installation of a pump. And in this check, he has to see if the pump is leaking. He has to see if the pump is installed correctly. If it's not, he has to contact the manufacturing department immediately so that they could come and make sure that it's will be installed correctly. And the same for if it's lea",
+          "family": "requirements_matrix",
+          "topic": "Requirements / traceability",
+          "lead": 26,
+          "ambiguous": false,
+          "topScores": [
+            {
+              "family": "requirements_matrix",
+              "score": 91
+            },
+            {
+              "family": "workflow_process",
+              "score": 65
+            },
+            {
+              "family": "physical_product",
+              "score": 39
+            },
+            {
+              "family": "hmi_interface",
+              "score": 0
+            },
+            {
+              "family": "user_journey",
+              "score": 0
+            },
+            {
+              "family": "engagement_analytics",
+              "score": 0
+            }
+          ]
+        }
+      },
+      "facit": {
+        "expectedIntent": "new_viz",
+        "actualIntentNotes": "Forkert visualisering skulle være et workflow",
+        "transcriptSnippetUser": "Workflow var tyedeligt defineret til at starte med: \"Alright. We're going to have a look at the workflow for technician \""
+      }
+    }
+  ]
+}

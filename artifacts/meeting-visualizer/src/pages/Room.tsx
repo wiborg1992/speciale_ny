@@ -26,6 +26,7 @@ import {
   Square,
   BrainCircuit,
   PenLine,
+  Bug,
 } from "lucide-react";
 import { format } from "date-fns";
 import { v4 as uuidv4 } from "uuid";
@@ -92,21 +93,16 @@ import { RoomOutputPanels } from "./room/RoomOutputPanels";
 
 // ─── VizVersionStrip ─────────────────────────────────────────────────────────
 
-interface VizVersionEntry {
-  version: number;
-  name: string;
-  timestamp: string;
-  debugSnapshot?: boolean;
-}
-
 function VizVersionStrip({
   vizHistory,
   activeVersion,
   loadVizVersion,
+  onDebugOpen,
 }: {
-  vizHistory: VizVersionEntry[];
+  vizHistory: VizVersion[];
   activeVersion: number | null;
   loadVizVersion: (v: number) => void;
+  onDebugOpen: (version: number) => void;
 }) {
   const pillsRef = useRef<HTMLDivElement>(null);
   const [isDropdown, setIsDropdown] = useState(false);
@@ -120,6 +116,27 @@ function VizVersionStrip({
     ro.observe(el);
     return () => ro.disconnect();
   }, [vizHistory]);
+
+  const handleDownload = useCallback(
+    (v: VizVersion, e: React.MouseEvent) => {
+      e.stopPropagation();
+      const blob = new Blob([v.html], { type: "text/html" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `meeting-viz-v${v.version}-${Date.now()}.html`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    },
+    [],
+  );
+
+  const handleDebug = useCallback(
+    (v: VizVersion, e: React.MouseEvent) => {
+      e.stopPropagation();
+      onDebugOpen(v.version);
+    },
+    [onDebugOpen],
+  );
 
   return (
     <div className="shrink-0 flex items-center gap-2 px-4 py-1.5 border-b border-border bg-card/10">
@@ -138,30 +155,65 @@ function VizVersionStrip({
         aria-hidden={isDropdown}
       >
         {vizHistory.map((v) => (
-          <button
+          <div
             key={v.version}
-            onClick={() => loadVizVersion(v.version)}
-            title={
-              (v.debugSnapshot ? "DBG · " : "") +
-              v.name +
-              " · " +
-              format(new Date(v.timestamp), "HH:mm")
-            }
             className={cn(
-              "shrink-0 flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono border transition-colors",
+              "group shrink-0 flex items-center gap-0.5 rounded-full border transition-colors",
               activeVersion === v.version
-                ? "border-primary text-primary bg-primary/10"
-                : "border-border text-muted-foreground hover:text-white hover:border-white/40",
+                ? "border-primary bg-primary/10"
+                : "border-border hover:border-white/40",
             )}
           >
-            <span className="font-bold">v{v.version}</span>
-            <span className="max-w-[80px] truncate opacity-70">{v.name}</span>
-            {v.debugSnapshot && (
-              <span className="text-[8px] text-amber-500/90 font-bold">
-                DBG
-              </span>
-            )}
-          </button>
+            {/* Version selector */}
+            <button
+              onClick={() => loadVizVersion(v.version)}
+              title={v.name + " · " + format(new Date(v.timestamp), "HH:mm")}
+              className={cn(
+                "flex items-center gap-1 pl-2 pr-1 py-0.5 text-[10px] font-mono transition-colors rounded-l-full",
+                activeVersion === v.version
+                  ? "text-primary"
+                  : "text-muted-foreground group-hover:text-white",
+              )}
+            >
+              <span className="font-bold">v{v.version}</span>
+              <span className="max-w-[72px] truncate opacity-70">{v.name}</span>
+              {v.debugSnapshot && (
+                <span className="text-[8px] text-amber-500/90 font-bold">
+                  DBG
+                </span>
+              )}
+            </button>
+
+            {/* Action buttons — always visible */}
+            <div className="flex items-center gap-0 pr-1">
+              {/* Debug button */}
+              <button
+                onClick={(e) => handleDebug(v, e)}
+                title={
+                  v.debugSnapshot
+                    ? "Vis debug for v" + v.version
+                    : "Ingen debug gemt for v" + v.version
+                }
+                className={cn(
+                  "p-0.5 rounded transition-colors",
+                  v.debugSnapshot
+                    ? "text-amber-500/80 hover:text-amber-400"
+                    : "text-muted-foreground/30 hover:text-muted-foreground/60",
+                )}
+              >
+                <Bug className="w-2.5 h-2.5" />
+              </button>
+
+              {/* Download button */}
+              <button
+                onClick={(e) => handleDownload(v, e)}
+                title={"Download HTML for v" + v.version}
+                className="p-0.5 rounded text-muted-foreground/40 hover:text-white transition-colors"
+              >
+                <Download className="w-2.5 h-2.5" />
+              </button>
+            </div>
+          </div>
         ))}
       </div>
 
@@ -3024,6 +3076,10 @@ export default function Room() {
                 vizHistory={vizHistory}
                 activeVersion={activeVersion}
                 loadVizVersion={loadVizVersion}
+                onDebugOpen={(version) => {
+                  loadVizVersion(version);
+                  setShowDebug(true);
+                }}
               />
             )}
 

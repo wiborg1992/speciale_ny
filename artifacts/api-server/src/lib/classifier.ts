@@ -298,70 +298,40 @@ const VIZ_FAMILY_SIGNALS: Array<{
     id: "requirements_matrix",
     label: "Requirements / traceability",
     terms: [
-      ["firmware requirements", 20],
+      // ONLY terms that are unambiguously about requirements traceability artefacts.
+      // Generic compliance / product / workflow terms are intentionally excluded —
+      // requirements_matrix is guarded by REQUIREMENTS_MATRIX_EXPLICIT_PHRASES below.
+      ["traceability matrix", 22],
+      ["requirements traceability", 22],
       ["traceability ids", 18],
       ["traceability id", 16],
-      ["compliance tracking", 16],
-      ["must should could", 16],
-      ["traceability matrix", 18],
-      ["requirements traceability", 18],
-      ["kravspecifikation", 18],
-      ["krav specifikation", 16],
-      ["kravspec", 16],
-      ["moscow", 14],
-      ["acceptance criteria", 16],
-      ["user story", 12],
-      ["user stories", 12],
-      ["functional requirement", 14],
-      ["non-functional requirement", 14],
-      ["verification and validation", 16],
-      ["verification validation", 14],
-      [" ieee ", 8],
-      ["srs document", 12],
-      ["requirement id", 12],
-      ["requirements baseline", 14],
-      ["krav matrix", 14],
-      ["cra", 14],
-      ["cyber resilience act", 18],
-      ["cyber resilience", 14],
-      ["cyber resiliens", 14],
-      ["eu 2024/2847", 18],
-      ["2024/2847", 16],
-      ["cybersecurity requirement", 16],
-      ["cybersikkerhedskrav", 16],
-      ["essential requirement", 14],
-      ["væsentlige krav", 14],
-      ["compliance requirement", 14],
-      ["overensstemmelseskrav", 14],
-      ["konformitetsvurdering", 16],
-      ["conformity assessment", 16],
-      ["ce-mærkning", 14],
-      ["ce marking", 14],
-      ["support period", 12],
-      ["supportperiode", 12],
-      ["vulnerability disclosure", 14],
-      ["sårbarhedsrapportering", 14],
-      ["sårbarhedshåndtering", 14],
-      ["secure by default", 14],
-      ["sikker standardkonfiguration", 16],
-      ["adgangskontrol", 12],
-      ["access control requirement", 16],
-      ["software update requirement", 14],
-      ["softwareopdateringskrav", 14],
-      ["13 functions", 14],
-      ["13 funktioner", 14],
-      ["regulatory compliance", 14],
-      ["regulatorisk overensstemmelse", 14],
-      ["annex", 8],
-      ["bilag", 8],
-      // IEC 62443 sammenskrevet + requirement-ID præfikser
+      ["kravspecifikation", 22],
+      ["krav specifikation", 18],
+      ["kravspec", 18],
+      ["krav matrix", 18],
+      ["kravmatrix", 18],
+      ["moscow priorit", 18],
+      ["must should could won", 20],
+      ["must have should have could have", 22],
+      ["srs document", 14],
+      ["requirement id", 14],
+      ["requirements baseline", 16],
+      ["sporbarhed af krav", 18],
+      ["status pr. krav", 18],
+      ["status per requirement", 16],
       ["iec62443", 16],
-      ["fr-", 8],
-      ["pl-", 8],
-      ["sr-", 8],
-      ["sporbarhed", 14],
-      ["status pr. krav", 16],
-      ["status per requirement", 14],
+      ["eu 2024/2847", 20],
+      ["2024/2847", 18],
+      ["cybersikkerhedskrav", 18],
+      ["cybersecurity requirement", 18],
+      ["softwareopdateringskrav", 16],
+      ["software update requirement", 16],
+      ["sårbarhedsrapportering", 16],
+      ["sårbarhedshåndtering", 16],
+      ["konformitetsvurdering", 18],
+      ["conformity assessment", 16],
+      ["overensstemmelseskrav", 16],
+      ["vulnerability disclosure", 16],
     ],
   },
   {
@@ -2129,6 +2099,82 @@ export function classifyVisualizationIntent(
       hardOverride: true,
     };
   }
+
+  // ── EXPLICIT-MENTION GUARD for requirements_matrix ──────────────────────────
+  // requirements_matrix may ONLY win if the transcript contains an unambiguous
+  // explicit reference to a requirements / traceability artefact. Generic
+  // compliance, firmware, CRA acronyms etc. must NOT trigger it.
+  // This guard applies before ambiguity check so it can force a re-rank.
+  const REQUIREMENTS_MATRIX_EXPLICIT_PHRASES = [
+    "requirement matrix",
+    "requirements matrix",
+    "requirements traceability",
+    "traceability matrix",
+    "kravspecifikation",
+    "kravspec",
+    "krav matrix",
+    "kravmatrix",
+    "moscow priorit",
+    "must have should have could have",
+    "must should could won",
+    "traceability id",
+    "status per requirement",
+    "status pr. krav",
+    "srs document",
+    "requirements baseline",
+    "requirement id",
+    "sporbarhed af krav",
+    "conformity assessment",
+    "konformitetsvurdering",
+    "iec62443",
+    "eu 2024/2847",
+    "2024/2847",
+  ];
+
+  if (top.id === "requirements_matrix") {
+    const normFull = normalizeForClassification(transcript);
+    const hasExplicitMention = REQUIREMENTS_MATRIX_EXPLICIT_PHRASES.some((p) =>
+      normFull.includes(p),
+    );
+    if (!hasExplicitMention) {
+      console.warn(
+        `[classifier] requirements_matrix SUPPRESSED — no explicit mention found (score=${top.score})`,
+      );
+      // Zero out requirements_matrix and re-sort to find real winner
+      const rescored = sorted.map((s) =>
+        s.id === "requirements_matrix" ? { ...s, score: 0 } : s,
+      );
+      rescored.sort((a, b) => b.score - a.score);
+      const newTop = rescored[0];
+      const newSecond = rescored[1] ?? { id: null, label: "", score: 0 };
+      const newLead =
+        Math.round((newTop.score - newSecond.score) * 10) / 10;
+      const newAmbiguous =
+        newTop.score < CLASSIFY_MIN_TOTAL || newLead < CLASSIFY_MIN_LEAD;
+      if (newAmbiguous || newTop.score === 0) {
+        return {
+          family: "generic",
+          topic: "General visualization",
+          scores: rescored,
+          ambiguous: true,
+          lead: newLead,
+          runnerUp: newTop.score > 0 ? newTop.id : (newSecond.id ?? null),
+          hardOverride: false,
+        };
+      }
+      const fam = VIZ_FAMILY_SIGNALS.find((f) => f.id === newTop.id)!;
+      return {
+        family: newTop.id as VizFamily,
+        topic: fam?.label ?? newTop.id,
+        scores: rescored,
+        ambiguous: false,
+        lead: newLead,
+        runnerUp: newSecond.id ?? null,
+        hardOverride: false,
+      };
+    }
+  }
+  // ─────────────────────────────────────────────────────────────────────────────
 
   const ambiguous = top.score < CLASSIFY_MIN_TOTAL || lead < CLASSIFY_MIN_LEAD;
 

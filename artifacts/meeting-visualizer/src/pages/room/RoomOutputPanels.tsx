@@ -63,9 +63,12 @@ function buildThinkingSteps(info: VizDebugInfo): ThinkingStep[] {
     const runnerUp = allSorted[1];
     const leadPct = ((c.lead ?? 0) * 100).toFixed(1);
 
+    const maxScore = allSorted[0]?.score ?? 1;
+    const norm = maxScore > 0 ? maxScore : 1;
     const scoreBars = allSorted.map((s) => {
-      const pct = (s.score * 100).toFixed(1);
-      const filled = Math.round(s.score * 16);
+      const ratio = s.score / norm;
+      const pct = (ratio * 100).toFixed(1);
+      const filled = Math.max(0, Math.min(16, Math.round(ratio * 16)));
       const bar = "█".repeat(filled) + "░".repeat(16 - filled);
       const winner = s.family === c.family ? " ◀" : "";
       return `${s.family.padEnd(22)} ${bar} ${pct}%${winner}`;

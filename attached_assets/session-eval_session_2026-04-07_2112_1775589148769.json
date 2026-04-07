@@ -1,0 +1,218 @@
+{
+  "schemaVersion": 2,
+  "exportedAt": "2026-04-07T19:12:23.782Z",
+  "session": {
+    "roomId": "NUYEH5",
+    "meetingTitle": "",
+    "workspaceDomain": "grundfos",
+    "sessionStartedAt": "2026-04-07T18:56:32.432Z",
+    "sessionEndedAt": "2026-04-07T19:12:23.782Z"
+  },
+  "summary": {
+    "transcriptWordCountApprox": 570,
+    "segmentCount": 3,
+    "participantNames": [
+      "Speaker 1",
+      "Speaker 2"
+    ],
+    "visualizationEventCount": 3,
+    "skippedCount": 0,
+    "errorCount": 0
+  },
+  "reviewerNotes": "Der blev oprtettet  Requirements Tracebility Matrix det må aldirg oprettes.\n\nUX-skeleton der skulle registrer input førend der trykkes på visualize kom først da der blev trykket på stop record- det er alt for sent. Derudover delte den visualiseringsområdet i to hvilket er en kritisk bug",
+  "events": [
+    {
+      "kind": "visualization",
+      "at": "2026-04-07T18:56:32.443Z",
+      "source": "local_stream",
+      "version": 1,
+      "vizName": "Requirements Traceability Matrix",
+      "htmlChars": 25626,
+      "debug": {
+        "timestamp": "2026-04-07T18:55:15.368Z",
+        "resolvedFamily": "requirements_matrix",
+        "userPickedType": false,
+        "vizType": "auto",
+        "vizModel": "haiku",
+        "isIncremental": false,
+        "isRefinement": false,
+        "refinementDirective": null,
+        "hasPreviousHtml": false,
+        "focusSegment": null,
+        "workspaceDomain": "grundfos",
+        "transcriptTotalWords": 219,
+        "roomId": "NUYEH5",
+        "performanceMs": null,
+        "classification": {
+          "inputMode": "tail",
+          "inputWords": 219,
+          "totalWords": 219,
+          "inputText": "[Speaker 1]: Alright. We're going to have a look at the workflow for technician. And in this workflow, he's going to arrive at the scene, and he has to check the physical surroundings for the installation of a pump. And in this check, he has to see if the pump is leaking. He has to see if the pump is installed correctly. If it's not, he has to contact the manufacturing department immediately so that they could come and make sure that it's will be installed correctly. And the same for if it's lea",
+          "family": "requirements_matrix",
+          "topic": "Requirements / traceability",
+          "lead": 26,
+          "ambiguous": false,
+          "topScores": [
+            {
+              "family": "requirements_matrix",
+              "score": 91
+            },
+            {
+              "family": "workflow_process",
+              "score": 65
+            },
+            {
+              "family": "physical_product",
+              "score": 39
+            },
+            {
+              "family": "hmi_interface",
+              "score": 0
+            },
+            {
+              "family": "user_journey",
+              "score": 0
+            },
+            {
+              "family": "engagement_analytics",
+              "score": 0
+            }
+          ]
+        }
+      },
+      "facit": {
+        "expectedIntent": "new_viz",
+        "actualIntentNotes": "Forkert visualisering skulle være et workflow",
+        "transcriptSnippetUser": "Workflow var tyedeligt defineret til at starte med: \"Alright. We're going to have a look at the workflow for technician \""
+      }
+    },
+    {
+      "kind": "visualization",
+      "at": "2026-04-07T19:05:15.499Z",
+      "source": "local_stream",
+      "version": 2,
+      "vizName": "Requirements Traceability Matrix",
+      "htmlChars": 23534,
+      "debug": {
+        "timestamp": "2026-04-07T19:03:47.395Z",
+        "resolvedFamily": "requirements_matrix",
+        "userPickedType": false,
+        "vizType": "auto",
+        "vizModel": "sonnet",
+        "isIncremental": true,
+        "isRefinement": false,
+        "refinementDirective": null,
+        "hasPreviousHtml": true,
+        "focusSegment": null,
+        "workspaceDomain": "grundfos",
+        "transcriptTotalWords": 391,
+        "roomId": "NUYEH5",
+        "performanceMs": null,
+        "classification": {
+          "inputMode": "tail",
+          "inputWords": 280,
+          "totalWords": 391,
+          "inputText": "being maintained. If its firmware is up to date, and when the last audit control bus scheduled and performed. Also, he has to need to check if the pump is ready to get up to date to the CRA compliance. He has to make sure that it is able to sit in and put in a a PIN code for both the manufacturing and the customer site. And if it's not, then he needs to contact the digital department that so they can make sure that will happen. And last of all, he needs to report this to his chief of command and",
+          "family": "requirements_matrix",
+          "topic": "Requirements / traceability",
+          "lead": 26,
+          "ambiguous": false,
+          "topScores": [
+            {
+              "family": "requirements_matrix",
+              "score": 91
+            },
+            {
+              "family": "workflow_process",
+              "score": 65
+            },
+            {
+              "family": "management_summary",
+              "score": 65
+            },
+            {
+              "family": "physical_product",
+              "score": 39
+            },
+            {
+              "family": "hmi_interface",
+              "score": 0
+            },
+            {
+              "family": "user_journey",
+              "score": 0
+            }
+          ]
+        }
+      },
+      "facit": {
+        "expectedIntent": "new_viz",
+        "actualIntentNotes": "Derrefinet på Requirements Tracebility Matrix det må aldirg oprettes.",
+        "disambiguationShown": false,
+        "severity": "p0",
+        "transcriptSnippetUser": "And now let's go to look at the actual workflow. And for this workflow, we're going to need to have a look at how we're going to CRA buttons to to to the systems and especially to the pumps. And what is go to guidelines that we need to and how we need to design this. So we need to set up different variations should we have Should we let designers first come up with some some ideas for where the button should be placed? And in this kind of workflow, should we also, have some design sprints? Should we have have iterations with the with the customers? And how exactly is are we going to handle it. For instance, we could have 1 situation where the technician is going out to set up the pumps, and he needs to put in his password. And afterwards, he needs to deliver the pump to the customer, which needs their own password. Also, this is a big error for mistake because because, likely, the technician won't won't do this.\n",
+        "legacyHypothesis": "transcript_window"
+      }
+    },
+    {
+      "kind": "visualization",
+      "at": "2026-04-07T19:12:05.533Z",
+      "source": "local_stream",
+      "version": 3,
+      "vizName": "Technician & CustomerPump Onboarding Journ",
+      "htmlChars": 21463,
+      "debug": {
+        "timestamp": "2026-04-07T19:10:39.348Z",
+        "resolvedFamily": "user_journey",
+        "userPickedType": false,
+        "vizType": "auto",
+        "vizModel": "sonnet",
+        "isIncremental": false,
+        "isRefinement": false,
+        "refinementDirective": null,
+        "hasPreviousHtml": false,
+        "focusSegment": null,
+        "workspaceDomain": "grundfos",
+        "transcriptTotalWords": 559,
+        "roomId": "NUYEH5",
+        "performanceMs": null,
+        "classification": {
+          "inputMode": "tail",
+          "inputWords": 280,
+          "totalWords": 559,
+          "inputText": "need to set up different variations should we have Should we let designers first come up with some ideas for where the button should be placed? And in this workflow, should we also, have some design sprints? Should we have iterations with the customers? And how exactly is are we going to handle it. For instance, we could have 1 situation where the technician is going out to set up the pumps, and he needs to put in his password. And afterwards, he needs to deliver the pump to the customer, which ",
+          "family": "user_journey",
+          "topic": "User journey / experience map",
+          "lead": 39,
+          "ambiguous": false,
+          "topScores": [
+            {
+              "family": "user_journey",
+              "score": 130
+            },
+            {
+              "family": "requirements_matrix",
+              "score": 91
+            },
+            {
+              "family": "physical_product",
+              "score": 39
+            },
+            {
+              "family": "workflow_process",
+              "score": 25
+            },
+            {
+              "family": "management_summary",
+              "score": 25
+            },
+            {
+              "family": "hmi_interface",
+              "score": 0
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

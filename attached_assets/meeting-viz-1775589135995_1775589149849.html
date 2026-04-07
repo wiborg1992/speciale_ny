@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Requirements Traceability Matrix — Technician Workflow CRA Compliance</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+  width: 100%;
+  height: 100%;
+  font-family: 'Outfit', sans-serif;
+  background: #f8fafc;
+  color: #333;
+}
+
+.matrix-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 28px 32px;
+}
+
+.matrix-header {
+  margin-bottom: 32px;
+  border-bottom: 2px solid #0077c8;
+  padding-bottom: 20px;
+}
+
+.matrix-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 2.4rem;
+  font-weight: 900;
+  color: #002a5c;
+  margin-bottom: 8px;
+}
+
+.matrix-subtitle {
+  font-size: 0.95rem;
+  color: #667085;
+  font-weight: 400;
+}
+
+.filter-section {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 16px 20px;
+  margin-bottom: 20px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.filter-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #667085;
+  margin-bottom: 10px;
+  display: block;
+}
+
+.filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.filter-chips:last-of-type {
+  margin-bottom: 0;
+}
+
+.chip {
+  padding: 6px 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
+  background: #fff;
+  color: #667085;
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.chip:hover {
+  border-color: #0077c8;
+  color: #0077c8;
+}
+
+.chip.viz-filter-active {
+  background: #002a5c;
+  color: #fff;
+  border-color: #002a5c;
+}
+
+.search-box {
+  margin-top: 12px;
+}
+
+.search-box input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.85rem;
+  color: #333;
+}
+
+.search-box input::placeholder {
+  color: #a8b8cc;
+}
+
+.table-wrapper {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 42, 92, 0.08);
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+thead {
+  background: #002a5c;
+  color: #fff;
+}
+
+th {
+  padding: 12px 14px;
+  text-align: left;
+  font-weight: 700;
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
+  cursor: pointer;
+  user-select: none;
+  position: relative;
+}
+
+th:last-child {
+  border-right: none;
+}
+
+th:hover {
+  background: #1a3a63;
+}
+
+th[data-sortable="true"]::after {
+  content: " ";
+  display: inline-block;
+  margin-left: 6px;
+  font-size: 0.7rem;
+  opacity: 0.6;
+}
+
+th[data-sort="asc"]::after {
+  content: "▲";
+}
+
+th[data-sort="desc"]::after {
+  content: "▼";
+}
+
+tbody tr {
+  border-bottom: 1px solid #e2e8f0;
+  transition: background 0.15s ease;
+}
+
+tbody tr:nth-child(even) {
+  background: #f8fafc;
+}
+
+tbody tr:hover {
+  background: #eef6ff;
+}
+
+tbody tr[data-hidden="true"] {
+  display: none;
+}
+
+td {
+  padding: 12px 14px;
+  color: #333;
+}
+
+.req-id {
+  font-family: 'Courier New', monospace;
+  font-weight: 600;
+  color: #002a5c;
+  font-size: 0.8rem;
+}
+
+.req-text {
+  color: #333;
+  font-weight: 500;
+  max-width: 280px;
+}
+
+.priority-chip {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+  border: none;
+}
+
+.priority-must {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.priority-should {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.priority-could {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.priority-wont {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
+.status-chip {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+  border: none;
+}
+
+.status-accepted {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.status-pending {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.status-blocked {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.status-deferred {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
+.expand-btn {
+  background: none;
+  border: none;
+  color: #0077c8;
+  cursor: pointer;
+  font-size: 1rem;
+  padding: 0;
+  font-weight: 700;
+  transition: transform 0.2s ease;
+}
+
+.expand-btn[data-expanded="true"] {
+  transform: rotate(180deg);
+}
+
+.detail-row {
+  display: none;
+}
+
+.detail-row[data-visible="true"] {
+  display: table-row;
+}
+
+.detail-cell {
+  padding: 0;
+  background: #f0f4f8;
+}
+
+.detail-content {
+  padding: 16px 20px;
+  font-size: 0.8rem;
+  color: #555;
+  line-height: 1.6;
+}
+
+.detail-section {
+  margin-bottom: 12px;
+}
+
+.detail-section:last-child {
+  margin-bottom: 0;
+}
+
+.detail-label {
+  font-weight: 700;
+  color: #002a5c;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 4px;
+}
+
+.detail-text {
+  color: #555;
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+.source-link {
+  color: #0077c8;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.source-link:hover {
+  text-decoration: underline;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 6px;
+}
+
+.action-btn {
+  padding: 4px 8px;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  background: #fff;
+  color: #0077c8;
+  font-size: 0.7rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  transition: all 0.2s ease;
+}
+
+.action-btn:hover {
+  background: #eef6ff;
+  border-color: #0077c8;
+}
+
+.footer {
+  margin-top: 28px;
+  padding-top: 20px;
+  border-top: 1px solid #e2e8f0;
+  text-align: center;
+  font-size: 0.62rem;
+  color: #999;
+  font-weight: 300;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+
+tbody tr {
+  animation: fadeIn 0.3s ease both;
+}
+
+tbody tr:nth-child(1) { animation-delay: 0s; }
+tbody tr:nth-child(2) { animation-delay: 0.04s; }
+tbody tr:nth-child(3) { animation-delay: 0.08s; }
+tbody tr:nth-child(4) { animation-delay: 0.12s; }
+tbody tr:nth-child(5) { animation-delay: 0.16s; }
+tbody tr:nth-child(6) { animation-delay: 0.2s; }
+tbody tr:nth-child(7) { animation-delay: 0.24s; }
+tbody tr:nth-child(8) { animation-delay: 0.28s; }
+tbody tr:nth-child(9) { animation-delay: 0.32s; }
+tbody tr:nth-child(10) { animation-delay: 0.36s; }
+
+@media (max-width: 1024px) {
+  .matrix-container {
+    padding: 20px 20px;
+  }
+  
+  .matrix-title {
+    font-size: 1.8rem;
+  }
+  
+  table {
+    font-size: 0.78rem;
+  }
+  
+  td, th {
+    padding: 10px 10px;
+  }
+  
+  .req-text {
+    max-width: 200px;
+  }
+}
+</style>
+</head>
+<body>
+
+<div class="matrix-container">
+  <div class="matrix-header">
+    <h1 class="matrix-title">Requirements Traceability Matrix</h1>
+    <p class="matrix-subtitle">Technician Workflow — CRA Compliance & Physical Safety Verification</p>
+  </div>
+
+  <div class="filter-section">
+    <label class="filter-label">Priority Filter (MoSCoW)</label>
+    <div class="filter-chips" data-viz-filter-host="priority">
+      <button type="button" class="chip viz-filter-active" data-viz-filter="all">All</button>
+      <button type="button" class="chip" data-viz-filter="must">Must Have</button>
+      <button type="button" class="chip" data-viz-filter="should">Should Have</button>
+      <button type="button" class="chip" data-viz-filter="could">Could Have</button>
+      <button type="button" class="chip" data-viz-filter="wont">Won't Have</button>
+    </div>
+
+    <label class="filter-label">Status Filter</label>
+    <div class="filter-chips" data-viz-filter-host="status">
+      <button type="button" class="chip viz-filter-active" data-viz-filter="all">All</button>
+      <button type="button" class="chip" data-viz-filter="accepted">Accepted</button>
+      <button type="button" class="chip" data-viz-filter="pending">Pending</button>
+      <button type="button" class="chip" data-viz-filter="blocked">Blocked</button>
+      <button type="button" class="chip" data-viz-filter="deferred">Deferred</button>
+    </div>
+
+    <div class="search-box">
+      <input type="text" id="search-input" placeholder="Search by Req ID or keyword...">
+    </div>
+  </div>
+
+  <div class="table-wrapper">
+    <table id="requirements-table">
+      <thead>
+        <tr>
+          <th data-sortable="true" data-column="req_id" style="width: 8%;">Req ID</th>
+          <th data-sortable="true" data-column="requirement" style="width: 32%;">Requirement</th>
+          <th data-sortable="true" data-column="priority" style="width: 12%;">Priority</th>
+          <th style="width: 18%;">Source</th>
+          <th data-sortable="true" data-column="status" style="width: 12%;">Status</th>
+          <th style="width: 18%;">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- Row 1 -->
+        <tr data-viz-row-cat="must" data-viz-row-status="accepted" data-req-id="req-001" data-req-text="Physical pump inspection">
+          <td><span class="req-id">REQ-001</span></td>
+          <td><span class="req-text">Physical pump inspection on-site for leakage</span></td>
+          <td><span class="priority-chip priority-must">Must</span></td>
+          <td><a href="#" class="source-link">Speaker 1</a></td>
+          <td><span class="status-chip status-accepted">Accepted</span></td>
+          <td><button class="expand-btn" data-expand="detail-001">▾</button></td>
+        </tr>
+        <tr class="detail-row" id="detail-001">
+          <td colspan="6" class="detail-cell">
+            <div class="detail-content">
+              <div class="detail-section">
+                <div class="detail-label">Description</div>
+                <div class="detail-text">Technician must visually inspect the pump at the installation site to detect any signs of leakage or improper installation before operational use.</div>
+              </div>
+              <div class="detail-section">
+                <div class="detail-label">Acceptance Criteria</div>
+                <div class="detail-text">✓ No visible leakage at pump seals or connections. ✓ Pump securely mounted. ✓ Visual inspection documented in site report.</div>
+              </div>
+              <div class="detail-section">
+                <div class="detail-label">CRA Reference</div>
+                <div class="detail-text">CRA Art. 10 (Secure Default Configuration) — physical integrity as part of product security lifecycle.</div>
+              </div>
+            </div>
+          </td>
+        </tr>
+
+        <!-- Row 2 -->
+        <tr data-viz-row-cat="must" data-viz-row-status="accepted" data-req-id="req-002" data-req-text="Correct installation verification">
+          <td><span class="req-id">REQ-002</span></td>
+          <td><span class="req-text">Verify pump is installed correctly per manual specifications</span></td>
+          <td><span class="priority-chip priority-must">Must</span></td>
+          <td><a href="#" class="source-link">Speaker 1</a></td>
+          <td><span class="status-chip status-accepted">Accepted</span></td>
+          <td><button class="expand-btn" data-expand="detail-002">▾</button></td>
+        </tr>
+        <tr class="detail-row" id="detail-002">
+          <td colspan="6" class="detail-cell">
+            <div class="detail-content">
+              <div class="detail-section">
+                <div class="detail-label">Description</div>
+                <div class="detail-text">Technician must confirm that the pump is installed in accordance with the manufacturer's installation guidelines, including orientation, connections, and mechanical alignment.</div>
+              </div>
+              <div class="detail-section">
+                <div class="detail-label">Acceptance Criteria</div>
+                <div class="detail-text">✓ Installation matches manual diagrams. ✓ All fasteners tight. ✓ Inlet/outlet orientation correct. ✓ Installation report completed.</div>
+              </div>
+              <div class="detail-section">
+                <div class="detail-label">CRA Reference</div>
+                <div class="detail-text">CRA Art. 13 (Resilience & Availability) — proper physical installation ensures operational resilience.</div>
+              </div>
+            </div>
+          </td>
+        </tr>
+
+        <!-- Row 3 -->
+        <tr data-viz-row-cat="must" data-viz-row-status="pending" data-req-id="req-003" data-req-text="Manufacturing department contact if issues found">
+          <td><span class="req-id">REQ-003</span></td>
+          <td><span class="req-text">Contact manufacturing dept immediately if leakage or incorrect install</span></td>
+          <td><span class="priority-chip priority-must">Must</span></td>
+          <td><a href="#" class="source-link">Speaker 1</a></td>
+          <td><span class="status-chip status-pending">Pending</span></td>
+          <td><button class="expand-btn" data-expand="detail-003">▾</button></td>
+        </tr>
+        <tr class="detail-row" id="detail-003">
+          <td colspan="6" class="detail-cell">
+            <div class="detail-content">
+              <div class="detail-section">
+                <div class="detail-label">Description</div>
+                <div class="detail-text">If the technician identifies leakage or incorrect installation during REQ-001/REQ-002, they must immediately escalate to the manufacturing department for remediation.</div>
+              </div>
+              <div class="detail-section">
+                <div class="detail-label">Acceptance Criteria</div>
+                <div class="detail-text">✓ Escalation procedure defined. ✓ Manufacturing team SLA for response established. ✓ Escalation logged in service system. ✓ Customer notified of issue status within 2 hours.</div>
+              </div>
+              <div class="detail-section">
+                <div class="detail-label">CRA Reference</div>
+                <div class="detail-text">CRA Art. 11 (Vulnerability Handling) — defect identification and remediation process.</div>
+              </div>
+            </div>
+          </td>
+        </tr>
+
+        <!-- Row 4 -->
+        <tr data-viz-row-cat="must" data-viz-row-status="accepted" data-req-id="req-004" data-req-text="Check firmware up-to-date status">
+          <td><span class="req-id">REQ-004</span></td>
+          <td><span class="req-text">Verify pump firmware is current and up-to-date</span></td>
+          <td><span class="priority-chip priority-must">Must</span></td>
+          <td><a href="#" class="source-link">Speaker 1</a></td>
+          <td><span class="status-chip status-accepted">Accepted</span></td>
+          <td><button class="expand-btn" data-expand="detail-004">▾</button></td>
+        </tr>
+        <tr class="detail-row" id="detail-004">
+          <td colspan="6" class="detail-cell">
+            <div class="detail-content">
+              <div class="detail-section">
+                <div class="detail-label">Description</div>
+                <div class="detail-text">Technician must check the pump's current firmware version against the latest available version and confirm it is up-to-date before proceeding with CRA compliance verification.</div>
+              </div>
+              <div class="detail-section">
+                <div class="detail-label">Acceptance Criteria</div>
+                <div class="detail-text">✓ Firmware version readable from HMI/controller. ✓ Comparison against known latest version. ✓ If outdated, initiate firmware update workflow. ✓ Result documented.</div>
+              </div>
+              <div class="detail-section">
+                <div class="detail-label">CRA Reference</div>
+                <div class="detail-text">CRA Art. 9 (Software Update Mechanism) — essential for vulnerability remediation and security patch deployment.</div>
+              </div>
+            </div>
+          </td>
+        </tr>
+
+        <!-- Row 5 -->
+        <tr data-viz-row-cat="should" data-viz-row-status="pending" data-req-id="req-005" data-req-text="Maintenance history check">
+          <td><span class="req-id">REQ-005</span></td>
+          <td><span class="req-text">Review pump maintenance history and last audit control</span></td>
+          <td><span class="priority-chip priority-should">Should</span></td>
+          <td><a href="#" class="source-link">Speaker 1</a></td>
+          <td><span class="status-chip status-pending">Pending</span></td>
+          <td><button class="expand-btn" data-expand="detail-005">▾</button></td>
+        </tr>
+        <tr class="detail-row" id="detail-005">
+          <td colspan="6" class="detail-cell">
+            <div class="detail-content">
+              <div class="detail-section">
+                <div class="detail-label">Description</div>
+                <div class="detail-text">Technician should review the pump's maintenance log to determine when it was last serviced and when the most recent audit control bus test was performed.</div>
+              </div>
+              <div class="detail-section">
+                <div class="detail-label">Acceptance Criteria</div>
+                <div class="detail-text">✓ Maintenance schedule accessible. ✓ Last service date identified. ✓ Last audit control date confirmed. ✓ Any overdue maintenance flagged. ✓ Recommendation for next service issued.</div>
+              </div>
+              <div class="detail-section">
+                <div class="detail-label">CRA Reference</div>
+                <div class="detail-text">CRA Art. 12 (Logging & Monitoring) — audit trail and lifecycle tracking for accountability.</div>
+              </div>
+            </div>
+          </td>
+        </tr>
+
+        <!-- Row 6 -->
+        <tr data-viz-row-cat="must" data-viz-row-status="pending" data-req-id="req-006" data-req-text="CRA compliance readiness check">
+          <td><span class="req-id">REQ-006</span></td>
+          <td><span class="req-text">Assess pump readiness for CRA compliance update</span></td>
+          <td><span class="priority-chip priority-must">Must</span></td>
+          <td><a href="#" class="source-link">Speaker 1</a></td>
+          <td><span class="status-chip status-pending">Pending</span></td>
+          <td><button class="expand-btn" data-expand="detail-006">▾</button></td>
+        </tr>
+        <tr class="detail-row" id="detail-006">
+          <td colspan="6" class="detail-cell">
+            <div class="detail-content">
+              <div class="detail-section">
+                <div class="detail-label">Description</div>
+                <div class="detail-text">Technician must verify that the pump system is ready to receive CRA compliance configurations, including evaluation of network connectivity, firmware compatibility, and prerequisites for PIN code provisioning.</div>
+              </div>
+              <div class="detail-section">
+                <div class="detail-label">Acceptance Criteria</div>
+                <div class="detail-text">✓ Network connectivity confirmed. ✓ Firmware version supports CRA compliance features. ✓ System prerequisites met (memory, storage). ✓ CRA readiness checklist completed. ✓ Any blockers identified and escalated.</div>
+              </div>
+              <div class="detail-section">
+                <div class="detail-label">CRA Reference</div>
+                <div class="detail-text">CRA Art. 10 (Secure Default Configuration) & Art. 5 (Access Control) — foundational for compliance implementation.</div>
+              </div>
+            </div>
+          </td>
+        </tr>
+
+        <!-- Row 7 -->
+        <tr data-viz-row-cat="must" data-viz-row-status="blocked" data-req-id="req-007" data-req-text="PIN code configuration (manufacturing)">
+          <td><span class="req-id">REQ-007</span></td>
+          <td><span class="req-text">Configure PIN code for manufacturing site access</span></td>
+          <td><span class="priority-chip priority-must">Must</span></td>
+          <td><a href="#" class="source-link">Speaker 1</a></td>
+          <td><span class="status-chip status-blocked">Blocked</span></td>
+          <td><button class="expand-btn" data-expand="detail-007">▾</button></td>
+        </tr>
+        <tr class="detail-row" id="detail-007">
+          <td colspan="6" class="detail-cell">
+            <div class="detail-content">
+              <div class="detail-section">
+                <div class="detail-label">Description</div>
+                <div class="detail-text">Technician must configure a secure PIN code on the pump/controller to restrict access at the manufacturing site level, preventing unauthorized configuration changes or tampering.</div>
+              </div>
+              <div class="detail-section">
+                <div class="detail-label">Acceptance Criteria</div>
+                <div class="detail-text">✓ PIN code successfully set on device. ✓ PIN format meets security requirements (min 6 chars, alphanumeric). ✓ PIN stored securely (hashed). ✓ Manufacturing personnel briefed on PIN. ✓ Recovery procedure documented.</div>
+              </div>
+              <div class="detail-section">
+                <div class="detail-label">CRA Reference</div>
+                <div class="detail-text">CRA Art. 5 (Access Control) — essential security function for role-based access and device hardening.</div>
+              </div>
+              <div class="detail-section">
+                <div class="detail-label">Blocker</div>
+                <div class="detail-text">Awaiting digital department confirmation on PIN implementation capability on current controller hardware.</div>
+              </div>
+            </div>
+          </td>
+        </tr>
+
+        <!-- Row 8 -->
+        <tr data-viz-row-cat="must" data-viz-row-status="blocked" data-req-id="req-008" data-req-text="PIN code configuration (customer)">
+          <td><span class="req-id">REQ-008</span></td>
+          <td><span class="req-text">Configure PIN code for customer site access control</span></td>
+          <td><span class="priority-chip priority-must">Must</span></td>
+          <td><a href="#" class="source-link">Speaker 1</a></td>
+          <td><span class="status-chip status-blocked">Blocked</span></td>
+          <td><button class="expand-btn" data-expand="detail-008">▾</button></td>
+        </tr>
+        <tr class="detail-row" id="detail-008">
+          <td colspan="6" class="detail-cell">
+            <div class="detail-content">
+              <div class="detail-section">
+                <div class="detail-label">Description</div>
+                <div class="detail-text">Technician must configure a separate, customer-specific PIN code on the pump/controller to enforce role-based access control at the customer installation site, limiting operational changes to authorized personnel.</div>
+              </div>
+              <div class="detail-section">
+                <div class="detail-label">Acceptance Criteria</div>
+                <div class="detail-text">✓ Customer PIN code successfully set. ✓ PIN differs from manufacturing PIN. ✓ PIN communicated securely to customer (NOT via email). ✓ Customer acknowledges receipt and understanding. ✓ PIN change option available to customer after handoff.</div>
+              </div>
+              <div class="detail-section">
+                <div class="detail-label">CRA Reference</div>
+                <div class="detail-text">CRA Art. 5 (Access Control) & Art. 10 (Secure Default Configuration) — multi-role access separation.</div>
+              </div>
+              <div class="detail-section">
+                <div class="detail-label">Blocker</div>
+                <div class="detail-text">Awaiting digital department confirmation on multi-PIN support and customer notification procedure approval.</div>
+              </div>
+            </div>
+          </td>
+        </tr>
+
+        <!-- Row 9 -->
+        <tr data-viz-row-cat="must" data-viz-row-status="pending" data-req-id="req-009" data-req-text="Escalate to digital dept if PIN not available">
+          <td><span class="req-id">REQ-009</span></td>
+          <td><span class="req-text">Escalate to digital department if PIN code capability unavailable</span></td>
+          <td><span class="priority-chip priority-must">Must</span></td>
+          <td><a href="#" class="source-link">Speaker 1</a></td>
+          <td><span class="status-chip status-pending">Pending</span></td>
+          <td><button class="expand-btn" data-expand="detail-009">▾</button></td>
+        </tr>
+        <tr class="detail-row" id="detail-009">
+          <td colspan="6" class="detail-cell">
+            <div class="detail-content">
+              <div class="detail-section">
+                <div class="detail-label">Description</div>
+                <div class="detail-text">If the pump/controller does not support PIN code configuration or the feature is unavailable, technician must immediately escalate to the digital department for remediation or alternative access control solution.</div>
+              </div>
+              <div class="detail-section">
+                <div class="detail-label">Acceptance Criteria</div>
+                <div class="detail-text">✓ Escalation procedure defined. ✓ Digital team SLA for response (4 hours). ✓ Escalation ticket created with full system context. ✓ Workaround documented if temporary. ✓ Customer notified of delay and ETA.</div>
+              </div>
+              <div class="detail-section">
