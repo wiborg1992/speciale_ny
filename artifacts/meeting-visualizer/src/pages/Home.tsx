@@ -11,13 +11,16 @@ import {
   ExternalLink,
   Archive,
   Trash2,
+  Download,
+  Loader2,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useLocalStorage } from "@/hooks/use-local-storage";
 import { generateRoomCode } from "@/lib/utils";
-import { getLocalMeetingLog, removeMeetingFromLocalLog } from "@/lib/recent-meetings-log";
+import { getLocalMeetingLog, removeMeetingFromLocalLog, clearMeetingLog } from "@/lib/recent-meetings-log";
+import { exportSession } from "@/lib/export-session";
 
 const BASE = import.meta.env.BASE_URL;
 
@@ -47,6 +50,8 @@ export default function Home() {
   const [speakerName, setSpeakerName] = useLocalStorage("meetingVisualizer_speakerName", "");
   const [localLogVersion, setLocalLogVersion] = useState(0);
   const [deletingRoomId, setDeletingRoomId] = useState<string | null>(null);
+  const [exportingRoomId, setExportingRoomId] = useState<string | null>(null);
+  const [confirmClearAll, setConfirmClearAll] = useState(false);
 
   const { data } = useQuery<{ meetings: MeetingRow[] }>({
     queryKey: ["meetings"],
@@ -94,6 +99,30 @@ export default function Home() {
     );
     return merged.slice(0, 5);
   }, [data?.meetings, localLogVersion]);
+
+  const handleClearAll = async () => {
+    const apiIds = (data?.meetings ?? []).map((m) => m.roomId);
+    await Promise.allSettled(
+      apiIds.map((roomId) =>
+        fetch(`${BASE}api/meetings/${encodeURIComponent(roomId)}`, { method: "DELETE" })
+      )
+    );
+    clearMeetingLog();
+    setLocalLogVersion((v) => v + 1);
+    queryClient.invalidateQueries({ queryKey: ["meetings"] });
+    setConfirmClearAll(false);
+  };
+
+  const handleExport = async (roomId: string, title: string) => {
+    setExportingRoomId(roomId);
+    try {
+      await exportSession(roomId, title);
+    } catch (err) {
+      console.error("Export failed:", err);
+    } finally {
+      setExportingRoomId(null);
+    }
+  };
 
   const handleNewSession = (e: React.FormEvent) => {
     e.preventDefault();
@@ -180,14 +209,46 @@ export default function Home() {
               <Clock className="w-3.5 h-3.5" />
               Recent Sessions
             </h2>
-            <button
-              type="button"
-              onClick={() => setLocation("/history")}
-              className="text-[10px] font-mono text-muted-foreground hover:text-primary transition-colors flex items-center gap-1"
-            >
-              <Archive className="w-3 h-3" />
-              View All
-            </button>
+            <div className="flex items-center gap-3">
+              {recentMeetings.length > 0 && (
+                confirmClearAll ? (
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] text-muted-foreground font-mono">Clear all?</span>
+                    <button
+                      type="button"
+                      onClick={handleClearAll}
+                      className="text-[10px] font-mono text-destructive hover:text-destructive/80 transition-colors"
+                    >
+                      Yes
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setConfirmClearAll(false)}
+                      className="text-[10px] font-mono text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      No
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setConfirmClearAll(true)}
+                    className="text-[10px] font-mono text-muted-foreground hover:text-destructive transition-colors flex items-center gap-1"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                    Clear All
+                  </button>
+                )
+              )}
+              <button
+                type="button"
+                onClick={() => setLocation("/history")}
+                className="text-[10px] font-mono text-muted-foreground hover:text-primary transition-colors flex items-center gap-1"
+              >
+                <Archive className="w-3 h-3" />
+                View All
+              </button>
+            </div>
           </div>
 
           {recentMeetings.length === 0 ? (
@@ -233,7 +294,7 @@ export default function Home() {
                       </div>
                       <ExternalLink className="w-3.5 h-3.5 text-muted-foreground/40 group-hover:text-primary transition-colors shrink-0 ml-2" />
                     </button>
-                    <div className="flex flex-col justify-center pr-1.5 shrink-0">
+                    <div className="flex items-center justify-center gap-0.5 pr-1.5 shrink-0">
                       {isConfirming ? (
                         <div className="flex flex-col gap-1 py-1">
                           <Button
@@ -253,7 +314,7 @@ export default function Home() {
                               }
                             }}
                           >
-                            {isSynthetic ? "OK" : "Slet"}
+                            {isSynthetic ? "OK" : "Delete"}
                           </Button>
                           <Button
                             type="button"
@@ -265,23 +326,43 @@ export default function Home() {
                               setDeletingRoomId(null);
                             }}
                           >
-                            Nej
+                            No
                           </Button>
                         </div>
                       ) : (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive opacity-60 group-hover:opacity-100"
-                          title="Fjern fra listen"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setDeletingRoomId(m.roomId);
-                          }}
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </Button>
+                        <>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0 text-muted-foreground hover:text-orange-400 opacity-60 group-hover:opacity-100"
+                            title="Export session"
+                            disabled={exportingRoomId === m.roomId}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleExport(m.roomId, m.title || `Session_${m.roomId}`);
+                            }}
+                          >
+                            {exportingRoomId === m.roomId ? (
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            ) : (
+                              <Download className="w-3.5 h-3.5" />
+                            )}
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive opacity-60 group-hover:opacity-100"
+                            title="Remove from list"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDeletingRoomId(m.roomId);
+                            }}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        </>
                       )}
                     </div>
                   </div>

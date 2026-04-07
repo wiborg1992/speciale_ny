@@ -169,7 +169,13 @@ export async function getMeetingByRoom(roomId: string) {
   /** Kronologisk (ældst → nyest) til UI og så `at(-1)` er seneste. */
   const visualizations = [...visualizationsDesc].reverse();
 
-  return { meeting, segments, visualizations };
+  const sketches = await db
+    .select()
+    .from(sketchScenesTable)
+    .where(eq(sketchScenesTable.meetingId, roomId))
+    .orderBy(sketchScenesTable.createdAt);
+
+  return { meeting, segments, visualizations, sketches };
 }
 
 /** Slet alle segmenter for mødet og nulstil tællere (visualiseringer bevares). */

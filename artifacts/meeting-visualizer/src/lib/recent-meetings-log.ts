@@ -49,6 +49,11 @@ export function removeMeetingFromLocalLog(roomId: string): void {
   localStorage.setItem(LS_KEY, JSON.stringify(list.slice(0, MAX_ENTRIES)));
 }
 
+export function clearMeetingLog(): void {
+  if (typeof window === "undefined") return;
+  localStorage.removeItem(LS_KEY);
+}
+
 export function recordMeetingVisit(roomId: string, title: string): void {
   if (typeof window === "undefined" || !roomId || roomId.length < 3) return;
   const id = roomId.toUpperCase().slice(0, 8);
