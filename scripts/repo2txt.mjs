@@ -6,7 +6,7 @@
  */
 
 import { readdir, readFile, writeFile, stat } from "node:fs/promises";
-import { join, relative, extname } from "node:path";
+import { join, relative, extname, basename } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
@@ -24,7 +24,12 @@ const INCLUDE_EXTENSIONS = new Set([
   ".toml",
   ".sql",
   ".html",
+]);
+
+const INCLUDE_EXACT_FILENAMES = new Set([
   ".env.example",
+  "Dockerfile",
+  "Makefile",
 ]);
 
 const EXCLUDE_DIRS = new Set([
@@ -53,11 +58,8 @@ const EXCLUDE_PATH_FRAGMENTS = [
   "/.local/",
   "/.agents/",
   "/.claude/external/",
-  "/src/components/ui/",
   "/node_modules/",
 ];
-
-const MAX_FILE_BYTES = 300_000;
 
 function shouldExcludePath(rel) {
   const normalized = "/" + rel.replace(/\\/g, "/");
@@ -84,20 +86,12 @@ async function collectFiles(dir, files = []) {
       if (EXCLUDE_FILES.has(entry.name)) continue;
       if (entry.name.endsWith(".map")) continue;
       if (entry.name.endsWith(".tsbuildinfo")) continue;
-
-      const ext = extname(entry.name);
-      const hasKnownExt = INCLUDE_EXTENSIONS.has(ext);
-      const isNoExtConfigFile = ext === "" && (
-        entry.name.startsWith(".env") ||
-        entry.name === "Dockerfile" ||
-        entry.name === "Makefile"
-      );
-
-      if (!hasKnownExt && !isNoExtConfigFile) continue;
       if (shouldExcludePath(rel)) continue;
 
-      const info = await stat(fullPath);
-      if (info.size > MAX_FILE_BYTES) continue;
+      const ext = extname(entry.name);
+      const name = basename(entry.name);
+      const included = INCLUDE_EXTENSIONS.has(ext) || INCLUDE_EXACT_FILENAMES.has(name);
+      if (!included) continue;
 
       files.push({ fullPath, rel });
     }
@@ -116,12 +110,13 @@ async function main() {
   const chunks = [];
   let totalChars = 0;
   let skippedBinary = 0;
+  const skippedPaths = [];
 
   const header = [
     SEP,
     "MEETING AI VISUALIZER — FULL CODEBASE CONTEXT",
     `Generated: ${new Date().toISOString()}`,
-    `Files: ${files.length}`,
+    `Files collected: ${files.length}`,
     SEP,
     "",
     "TABLE OF CONTENTS",
@@ -141,6 +136,7 @@ async function main() {
       const raw = await readFile(fullPath);
       if (raw.includes(0x00)) {
         skippedBinary++;
+        skippedPaths.push(rel);
         continue;
       }
       content = raw.toString("utf8");
@@ -164,9 +160,13 @@ async function main() {
   await writeFile(OUTPUT, output, "utf8");
 
   const kb = (totalChars / 1024).toFixed(1);
+  const included = files.length - skippedBinary;
   console.log(`\nDone!`);
-  console.log(`  Files included : ${files.length - skippedBinary}`);
-  console.log(`  Skipped binary : ${skippedBinary}`);
+  console.log(`  Files included : ${included}`);
+  if (skippedBinary > 0) {
+    console.log(`  Skipped binary : ${skippedBinary}`);
+    skippedPaths.forEach((p) => console.log(`    - ${p}`));
+  }
   console.log(`  Total size     : ~${kb} KB`);
   console.log(`  Output         : ${relative(ROOT, OUTPUT)}`);
   console.log(`\nTip: Upload repo-context.txt to your AI assistant for full codebase context.`);
