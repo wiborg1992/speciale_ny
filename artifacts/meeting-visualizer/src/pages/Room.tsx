@@ -738,14 +738,21 @@ export default function Room() {
       setVizHistory((prev) => {
         const last = prev[prev.length - 1];
 
-        // Suppress sse_peer echoes: if a local_stream just completed within 3s
-        // and the incoming HTML length is within 200 chars of the last entry,
-        // it's almost certainly the server broadcasting our own generation back.
-        if (sessionSource === "sse_peer" && last) {
+        // Suppress sse_peer echoes in two cases:
+        // 1. Our own generation echoed back: local_stream just completed within 3s
+        //    and the incoming HTML length is within 200 chars of the last entry.
+        // 2. Old-session replay: sse_peer HTML length is within 50 chars of ANY
+        //    existing history entry (catches server replaying the previous session's viz
+        //    when SSE reconnects mid-session, as observed in eval data).
+        if (sessionSource === "sse_peer") {
           const msSinceLocal = Date.now() - lastLocalStreamCompletedMsRef.current;
-          if (msSinceLocal < 3000 && Math.abs(last.html.length - trimmed.length) < 200) {
-            return prev; // skip duplicate echo
-          }
+          const ownEcho = last &&
+            msSinceLocal < 3000 &&
+            Math.abs(last.html.length - trimmed.length) < 200;
+          const historyDuplicate = prev.some(
+            (v) => Math.abs(v.html.length - trimmed.length) < 50,
+          );
+          if (ownEcho || historyDuplicate) return prev;
         }
 
         if (last && last.html.trim() === trimmed) {
