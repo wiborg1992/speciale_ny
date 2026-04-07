@@ -23,6 +23,8 @@ export const segmentsTable = pgTable("segments", {
   text: text("text").notNull(),
   timestamp: timestamp("timestamp").defaultNow().notNull(),
   isFinal: boolean("is_final").default(true).notNull(),
+  provider: text("provider"),
+  latencyMs: integer("latency_ms"),
 });
 
 export const visualizationsTable = pgTable("visualizations", {

@@ -61,6 +61,8 @@ export const PostSegmentBody = zod.object({
   text: zod.string().describe("The transcribed text segment"),
   timestamp: zod.number().describe("Unix timestamp (ms) of the segment"),
   isFinal: zod.boolean().describe("Whether the segment is final (not interim)"),
+  provider: zod.string().optional().describe("Transcription provider: browser | deepgram | openai"),
+  latencyMs: zod.number().optional().describe("End-to-end transcription latency in milliseconds"),
 });
 
 export const PostSegmentResponse = zod.object({

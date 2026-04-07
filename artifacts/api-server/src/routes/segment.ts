@@ -13,7 +13,7 @@ router.post("/segment", async (req, res): Promise<void> => {
     return;
   }
 
-  const { roomId, speakerName, text, timestamp, isFinal } = parsed.data;
+  const { roomId, speakerName, text, timestamp, isFinal, provider, latencyMs } = parsed.data;
 
   const clientId = typeof req.body.id === "string" && req.body.id.length > 8
     ? req.body.id
@@ -26,6 +26,8 @@ router.post("/segment", async (req, res): Promise<void> => {
     text,
     timestamp,
     isFinal,
+    provider,
+    latencyMs,
   };
 
   addSegment(roomId, segment);

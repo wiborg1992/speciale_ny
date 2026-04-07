@@ -43,6 +43,8 @@ export async function saveSegment(
     text: string;
     timestamp: number;
     isFinal: boolean;
+    provider?: string;
+    latencyMs?: number;
   }
 ) {
   try {
@@ -56,6 +58,8 @@ export async function saveSegment(
       text: segment.text,
       timestamp: new Date(segment.timestamp),
       isFinal: segment.isFinal,
+      provider: segment.provider ?? null,
+      latencyMs: segment.latencyMs ?? null,
     });
 
     const segmentWords = segment.text.split(/\s+/).filter(Boolean).length;

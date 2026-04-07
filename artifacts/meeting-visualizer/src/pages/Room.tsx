@@ -38,6 +38,7 @@ import {
 import { useLocalStorage } from "@/hooks/use-local-storage";
 import { useSpeech } from "@/hooks/use-speech";
 import { useDeepgramSpeech } from "@/hooks/use-deepgram-speech";
+import { useOpenAISpeech } from "@/hooks/use-openai-speech";
 import { useRoomSSE } from "@/hooks/use-room-sse";
 import {
   useVisualizeStream,
@@ -196,14 +197,25 @@ export default function Room() {
   const [loadingSessionTranscript, setLoadingSessionTranscript] = useState<string | null>(null);
   const previousSessionsSectionRef = useRef<HTMLDivElement>(null);
 
-  // Transcription mode: "browser" = Web Speech API, "deepgram" = Deepgram (diarization)
+  // Transcription mode: "browser" = Web Speech API, "deepgram" = Deepgram (diarization), "openai" = OpenAI Realtime
   const [transcriptionMode, setTranscriptionMode] = useLocalStorage<
-    "browser" | "deepgram"
+    "browser" | "deepgram" | "openai"
   >("meetingVisualizer_transcriptionMode", "browser");
+  const transcriptionModeRef = useRef<"browser" | "deepgram" | "openai">("browser");
+  useEffect(() => { transcriptionModeRef.current = transcriptionMode; }, [transcriptionMode]);
   // Maps Deepgram speaker ID (0,1,2…) → display name
   const [deepgramSpeakerNames, setDeepgramSpeakerNames] = useState<
     Record<number, string>
   >({});
+  // OpenAI Realtime config
+  const [openaiLanguage, setOpenaiLanguage] = useLocalStorage<"da" | "en">(
+    "meetingVisualizer_openaiLanguage",
+    "da",
+  );
+  const [openaiPrompt, setOpenaiPrompt] = useLocalStorage(
+    "meetingVisualizer_openaiPrompt",
+    "",
+  );
 
   // Version history
   const [vizHistory, setVizHistory] = useState<VizVersion[]>([]);
@@ -797,7 +809,7 @@ export default function Room() {
   // ── Speech ───────────────────────────────────────────────────────────────────
   // detectedSpeaker is provided by Deepgram mode; falls back to the manual speakerName
   const handleFinalSegment = useCallback(
-    async (text: string, detectedSpeaker?: string) => {
+    async (text: string, detectedSpeaker?: string, latencyMs?: number) => {
       if (!roomId) return;
       const effectiveSpeaker = detectedSpeaker ?? speakerName;
       const newSegment = {
@@ -817,6 +829,8 @@ export default function Room() {
             timestamp: newSegment.timestamp,
             isFinal: true,
             id: newSegment.id,
+            provider: transcriptionModeRef.current,
+            ...(latencyMs != null ? { latencyMs } : {}),
           } as any,
         });
       } catch (err) {
@@ -1122,13 +1136,23 @@ export default function Room() {
     speakerNames: deepgramSpeakerNames,
   });
 
+  const openaiSpeech = useOpenAISpeech({
+    onSegmentFinalized: handleFinalSegment,
+    language: openaiLanguage,
+    prompt: openaiPrompt,
+  });
+
   const {
     isRecording,
     interimText,
     toggleRecording,
     stopRecording,
     error: speechError,
-  } = transcriptionMode === "deepgram" ? deepgramSpeech : browserSpeech;
+  } = transcriptionMode === "deepgram"
+    ? deepgramSpeech
+    : transcriptionMode === "openai"
+    ? openaiSpeech
+    : browserSpeech;
 
   const detectedSpeakers: number[] =
     transcriptionMode === "deepgram" ? deepgramSpeech.detectedSpeakers : [];
@@ -1806,7 +1830,7 @@ export default function Room() {
                     Transcription
                   </span>
                   <div className="flex rounded-md overflow-hidden border border-border text-[10px] font-mono">
-                    {(["browser", "deepgram"] as const).map((mode) => (
+                    {(["browser", "deepgram", "openai"] as const).map((mode) => (
                       <button
                         key={mode}
                         type="button"
@@ -1820,7 +1844,11 @@ export default function Room() {
                           "disabled:opacity-40 disabled:cursor-not-allowed",
                         )}
                       >
-                        {mode === "browser" ? "Browser" : "Deepgram ✦"}
+                        {mode === "browser"
+                          ? "Browser"
+                          : mode === "deepgram"
+                          ? "Deepgram ✦"
+                          : "OpenAI ✦"}
                       </button>
                     ))}
                   </div>
@@ -1853,6 +1881,48 @@ export default function Room() {
                         />
                       </div>
                     ))}
+                  </div>
+                )}
+
+                {/* OpenAI Realtime config panel */}
+                {transcriptionMode === "openai" && (
+                  <div className="shrink-0 px-3 py-2 border-b border-border bg-card/30 space-y-2">
+                    <p className="text-[9px] font-mono uppercase tracking-wider text-muted-foreground">
+                      OpenAI Realtime · gpt-4o-transcribe
+                    </p>
+                    <div className="flex items-center gap-3">
+                      <span className="text-[10px] font-mono text-muted-foreground w-14 shrink-0">Language</span>
+                      <div className="flex rounded overflow-hidden border border-border text-[10px] font-mono">
+                        {(["da", "en"] as const).map((lang) => (
+                          <button
+                            key={lang}
+                            type="button"
+                            onClick={() => setOpenaiLanguage(lang)}
+                            disabled={isRecording}
+                            className={cn(
+                              "px-2.5 py-0.5 transition-colors",
+                              openaiLanguage === lang
+                                ? "bg-primary/80 text-white"
+                                : "text-muted-foreground hover:text-white hover:bg-secondary/60",
+                              "disabled:opacity-40 disabled:cursor-not-allowed",
+                            )}
+                          >
+                            {lang === "da" ? "Dansk" : "English"}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <span className="text-[10px] font-mono text-muted-foreground">Domain prompt</span>
+                      <textarea
+                        value={openaiPrompt}
+                        onChange={(e) => setOpenaiPrompt(e.target.value)}
+                        disabled={isRecording}
+                        placeholder="Optional: list domain words to boost (e.g. Grundfos, pumpe, flow)"
+                        rows={2}
+                        className="w-full bg-secondary/40 border border-border rounded px-2 py-1 text-[10px] font-mono text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary/40 resize-none disabled:opacity-40"
+                      />
+                    </div>
                   </div>
                 )}
 
