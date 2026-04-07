@@ -1395,9 +1395,10 @@ export default function Room() {
           freshStart,
           workspaceDomain,
           ...(sketchId ? { sketchId } : {}),
+          // Manual click always bypasses the word-growth gate; auto-trigger respects it
+          ...(!auto ? { forceVisualize: true } : {}),
           // Annotation-trigger: bypass disambiguation-dialog (altid "refine") + ord-gate
           ...(isAnnotationTrigger ? {
-            forceVisualize: true,
             isAnnotation: true,
             userVizIntent: "refine" as const,
           } : {}),
