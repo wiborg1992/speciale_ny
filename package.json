@@ -12,7 +12,8 @@
     "db:ensure-env": "node ./scripts/ensure-database-url.mjs",
     "db:wait": "node ./scripts/wait-postgres.mjs",
     "db:push": "pnpm --filter @workspace/db push",
-    "db:setup": "pnpm run db:up && pnpm run db:wait && pnpm run db:ensure-env && pnpm run db:push"
+    "db:setup": "pnpm run db:up && pnpm run db:wait && pnpm run db:ensure-env && pnpm run db:push",
+    "repo2txt": "node scripts/repo2txt.mjs"
   },
   "private": true,
   "devDependencies": {

@@ -65,3 +65,6 @@ Thumbs.db
 
 # Claude Code personlige praeferencer
 CLAUDE.local.md
+
+# Repo-to-Text output (genereres lokalt med pnpm repo2txt)
+repo-context.txt
