@@ -179,7 +179,7 @@ export function useOpenAISpeech({
       silencer.connect(audioCtx.destination);
 
       // 4. Open WebSocket to OpenAI Realtime API with ephemeral key
-      const wsUrl = "wss://api.openai.com/v1/realtime?model=gpt-4o-transcribe";
+      const wsUrl = "wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview";
       const ws = new WebSocket(wsUrl, [
         "realtime",
         `openai-insecure-api-key.${clientSecret}`,

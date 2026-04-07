@@ -5,7 +5,7 @@ const router: IRouter = Router();
 /**
  * GET /api/openai-realtime-token
  *
- * Returns an ephemeral client_secret for the OpenAI Realtime API (gpt-4o-transcribe).
+ * Returns an ephemeral client_secret for the OpenAI Realtime API (gpt-4o-realtime-preview).
  * The Replit AI Integration proxy doesn't support the /realtime/sessions endpoint,
  * so we call api.openai.com directly using the integration's API key.
  * Falls back to a user-supplied OPENAI_API_KEY if the integration key is absent.
@@ -33,7 +33,7 @@ router.get("/openai-realtime-token", async (_req, res): Promise<void> => {
         "Content-Type": "application/json",
         Authorization: `Bearer ${apiKey}`,
       },
-      body: JSON.stringify({ model: "gpt-4o-transcribe" }),
+      body: JSON.stringify({ model: "gpt-4o-realtime-preview" }),
     });
 
     if (!r.ok) {

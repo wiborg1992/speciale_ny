@@ -1991,7 +1991,7 @@ export default function Room() {
                 {transcriptionMode === "openai" && (
                   <div className="shrink-0 px-3 py-2 border-b border-border bg-card/30 space-y-2">
                     <p className="text-[9px] font-mono uppercase tracking-wider text-muted-foreground">
-                      OpenAI Realtime · gpt-4o-transcribe
+                      OpenAI Realtime · gpt-4o-realtime-preview
                     </p>
                     <div className="flex items-center gap-3">
                       <span className="text-[10px] font-mono text-muted-foreground w-14 shrink-0">Language</span>
