@@ -765,7 +765,7 @@ router.post("/visualize", async (req, res, next): Promise<void> => {
                 topic: classification.topic,
                 lead: classification.lead,
                 ambiguous: classification.ambiguous,
-                allScores: classification.scores.slice(0, 8),
+                allScores: classification.scores.slice(0, 8).map(s => ({ family: s.id, score: s.score })),
               }
             : null,
           userPickedType: !!userPickedType,
