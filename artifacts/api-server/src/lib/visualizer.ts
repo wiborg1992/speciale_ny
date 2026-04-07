@@ -992,9 +992,11 @@ Use Grundfos brand colours (#002A5C navy, #0077C8 blue). Clean, editorial layout
 DO NOT use dark backgrounds, gauges, or pump hardware illustrations.
 Target ~4,500–6,000 tokens of HTML output.`,
 
-  workflow_process: `GENERATE: MERMAID FLOWCHART — output a complete HTML page using Mermaid.js for perfect auto-layout.
+  workflow_process: `GENERATE: HORIZONTAL SWIM LANE PROCESS DIAGRAM — pure HTML/CSS, no libraries needed.
 
-OUTPUT THE EXACT HTML STRUCTURE BELOW — only fill in the TITLE and MERMAID DIAGRAM CODE, nothing else:
+CONCEPT: Each actor/role gets one HORIZONTAL BAND. Flow runs LEFT → RIGHT inside each band. Bands stack vertically. A dashed "handoff" separator appears between bands.
+
+OUTPUT THE EXACT HTML STRUCTURE BELOW — fill in TITLE, SUBTITLE, and the lane content:
 
 \`\`\`html
 <!DOCTYPE html>
@@ -1002,93 +1004,106 @@ OUTPUT THE EXACT HTML STRUCTURE BELOW — only fill in the TITLE and MERMAID DIA
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WORKFLOW TITLE HERE</title>
-<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
-<script>
-  mermaid.initialize({
-    startOnLoad: false,
-    theme: 'base',
-    themeVariables: {
-      primaryColor: '#EFF6FF',
-      primaryBorderColor: '#0077C8',
-      primaryTextColor: '#1E293B',
-      lineColor: '#94A3B8',
-      secondaryColor: '#FEF3C7',
-      tertiaryColor: '#D1FAE5',
-      edgeLabelBackground: '#ffffff',
-      clusterBkg: '#F0F9FF',
-      clusterBorder: '#BAE6FD',
-      fontFamily: 'Outfit, sans-serif',
-      fontSize: '14px'
-    },
-    flowchart: { curve: 'orthogonal', padding: 24 }
-  });
-</script>
+<title>PROCESS TITLE</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&display=swap');
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'Outfit', sans-serif; background: #fff; padding: 24px 28px; min-height: 100vh; }
-  h1 { font-size: 1.05rem; font-weight: 700; color: #002A5C; margin-bottom: 20px; letter-spacing: 0.02em; }
-  .mermaid { width: 100%; }
-  .mermaid svg { width: 100% !important; height: auto !important; min-height: 400px; }
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Outfit',sans-serif;background:#fff;padding:18px 22px}
+h1{font-size:.95rem;font-weight:700;color:#002A5C;margin-bottom:3px;letter-spacing:.02em}
+.sub{font-size:.7rem;color:#64748B;margin-bottom:14px}
+.chart{border:1.5px solid #CBD5E1;border-radius:8px;overflow:hidden}
+.lane{display:flex;align-items:stretch;border-bottom:1.5px solid #CBD5E1;min-height:88px}
+.lane:last-child{border-bottom:none}
+.lh{width:82px;min-width:82px;display:flex;align-items:center;justify-content:center;padding:6px 4px;
+    font-size:.6rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;text-align:center;
+    color:#fff;border-right:2px solid rgba(0,0,0,.15)}
+.lh.c0{background:#0054A4}.lh.c1{background:#065F46}.lh.c2{background:#5B21B6}.lh.c3{background:#92400E}.lh.c4{background:#1E3A5F}
+.lb{flex:1;display:flex;align-items:center;flex-wrap:wrap;padding:10px 14px;gap:5px}
+.lane.c0 .lb{background:#EFF6FF}.lane.c1 .lb{background:#ECFDF5}.lane.c2 .lb{background:#EDE9FE}.lane.c3 .lb{background:#FEF9EE}.lane.c4 .lb{background:#F1F5F9}
+.n{border-radius:5px;font-size:.68rem;font-weight:600;text-align:center;padding:6px 10px;line-height:1.25;white-space:nowrap}
+.n.st,.n.en{background:#002A5C;color:#fff;border-radius:18px;padding:6px 13px;font-weight:700}
+.n.pr{background:#DBEAFE;border:1.5px solid #0077C8;color:#1E3A5F}
+.lane.c1 .n.pr{background:#D1FAE5;border-color:#059669;color:#064E3B}
+.lane.c2 .n.pr{background:#EDE9FE;border-color:#7C3AED;color:#4C1D95}
+.lane.c3 .n.pr{background:#FEF3C7;border-color:#D97706;color:#78350F}
+.n.de{background:#FEF3C7;border:1.5px solid #F59E0B;color:#78350F;border-radius:4px}
+.n.er{background:#FEE2E2;border:1.5px solid #EF4444;color:#991B1B}
+.ar{display:flex;flex-direction:column;align-items:center;justify-content:center;color:#94A3B8;font-size:14px;flex-shrink:0;line-height:1}
+.ar .lbl{font-size:.58rem;font-weight:600;color:#16A34A;white-space:nowrap;margin-top:1px}
+.ar .lbl.no{color:#DC2626}
+.ho{width:100%;display:flex;align-items:center;gap:8px;padding:4px 14px;background:#F8FAFC;border-top:1px dashed #CBD5E1;border-bottom:1px dashed #CBD5E1;font-size:.6rem;color:#94A3B8;font-weight:600;letter-spacing:.06em}
+.ho::before,.ho::after{content:'';flex:1;height:1px;background:#CBD5E1}
+.fn{font-size:.58rem;color:#94A3B8;text-align:right;margin-top:10px;letter-spacing:.05em}
 </style>
 </head>
 <body>
-<h1>WORKFLOW TITLE HERE</h1>
-<div class="mermaid">
-flowchart LR
+<h1>PROCESS TITLE HERE</h1>
+<p class="sub">SUBTITLE HERE — optional context line</p>
+<div class="chart">
 
-  FILL IN MERMAID DIAGRAM HERE
+  <!-- LANE 1: first actor — use class c0 for blue, c1 for green, c2 for purple, c3 for amber, c4 for slate -->
+  <div class="lane c0">
+    <div class="lh c0">ACTOR NAME</div>
+    <div class="lb">
+      <div class="n st">START</div>
+      <div class="ar">→</div>
+      <div class="n pr">Step Label</div>
+      <div class="ar">→<span class="lbl">YES</span></div>
+      <div class="n pr">Next Step</div>
+      <div class="ar">→</div>
+      <div class="n de">Decision?</div>
+      <div class="ar">→<span class="lbl no">if NO→retry</span></div>
+    </div>
+  </div>
+
+  <!-- Handoff separator between actors -->
+  <div class="ho">↓ HANDOFF — ACTOR NAME → NEXT ACTOR</div>
+
+  <!-- LANE 2: second actor -->
+  <div class="lane c1">
+    <div class="lh c1">ACTOR NAME</div>
+    <div class="lb">
+      <div class="n pr">Step Label</div>
+      <div class="ar">→</div>
+      <div class="n de">Check?</div>
+      <div class="ar">→<span class="lbl">YES</span></div>
+      <div class="n pr">Final Step</div>
+      <div class="ar">→</div>
+      <div class="n en">END</div>
+    </div>
+  </div>
 
 </div>
-<script>
-  mermaid.run();
-</script>
+<div class="fn">Generated by Meeting AI Visualizer</div>
 </body>
 </html>
 \`\`\`
 
-MERMAID SYNTAX RULES:
-  • Direction: ALWAYS write "flowchart LR" — NEVER "flowchart TD" or "flowchart TB"
-  • Start/End:    A([START])  Z([END])  — stadium shape, assigned class "endpoint"
-  • Process step: B[Short Label]        — rectangle, assigned class "proc"
-  • Decision:     C{Check?}             — diamond, assigned class "dec"
-  • Error/retry:  ERR["Retry"]          — rectangle, assigned class "err"
-  • Arrows:       A --> B  or  C -->|YES| D  and  C -->|NO| E
-  • Swim lanes:   subgraph blocks become HORIZONTAL BANDS (perfect for LR flow):
-      subgraph ACTOR_A ["ACTOR A"]
-        A([START]) --> B[Step] --> C{Check?}
-      end
-      subgraph ACTOR_B ["ACTOR B"]
-        D[Step] --> Z([END])
-      end
-      C -->|YES| D
-
-  • Node labels: MAX 3 WORDS — keep them tiny. Use \\n for line break if needed: B["Receive\\nPump"]
-  • Total nodes: aim for 6–10 max — merge minor steps, do NOT list every sub-action
-  • Back-edges: ERR --> B  (Mermaid routes automatically)
-
-  AFTER all node/edge definitions, add these two blocks verbatim:
-
-  classDef proc fill:#DBEAFE,stroke:#0077C8,stroke-width:1.5,color:#1E293B,rx:4
-  classDef dec fill:#FEF3C7,stroke:#F59E0B,stroke-width:1.5,color:#78350F
-  classDef endpoint fill:#002A5C,stroke:#001A3E,color:#fff,font-weight:700
-  classDef err fill:#FEE2E2,stroke:#EF4444,stroke-width:1.5,color:#991B1B
-
-  class START,END_NODE endpoint
-  class [LIST ALL PROCESS STEP IDs HERE] proc
-  class [LIST ALL DECISION IDs HERE] dec
-  class [LIST ALL ERROR IDs HERE] err
+FILL-IN RULES:
+  • Title (h1) + subtitle (.sub) → from the process name and context in transcript
+  • One <div class="lane cX"> per actor/role (cX = c0 c1 c2 c3 based on actor index)
+  • Nodes inside .lb (the lane body):
+      START/END:     <div class="n st">START</div>   <div class="n en">END</div>
+      Process step:  <div class="n pr">Short Label</div>   ← 2–4 words max
+      Decision:      <div class="n de">Check?</div>   ← ends with "?" 
+      Error/retry:   <div class="n er">Retry</div>
+  • Arrows between nodes: <div class="ar">→</div>
+      With label:    <div class="ar">→<span class="lbl">YES</span></div>
+      Negative path: <div class="ar">→<span class="lbl no">if NO</span></div>
+  • Handoff between lanes: <div class="ho">↓ ACTOR A → ACTOR B</div>
+  • Loops/retries: note them inline on an arrow label: <span class="lbl no">if fail → retry</span>
+  • Keep MAX 5–7 nodes per lane — merge minor steps
+  • Add only the lanes actually needed (1 lane = single-actor process, 2–3 = multi-actor)
 
 EXTRACT FROM TRANSCRIPT:
-  • Process name → use as the page title (h1) AND the HTML title
-  • Main steps in sequence → process rectangles (merge trivial sub-steps)
-  • Decision gates (if/check/verify/approve/correct?) → diamond shapes
-  • YES/NO outcomes → labelled arrows |YES| and |NO|
-  • Distinct roles/actors → subgraph swim lanes (only if 2+ roles mentioned)
+  • Process name → h1 title
+  • Roles/actors → one lane each (only if clearly 2+ distinct actors mentioned)
+  • Steps → .n.pr nodes in sequence, left to right
+  • Decision points → .n.de nodes
+  • Error/retry conditions → .n.er with arrow label showing condition
 
-DO NOT generate raw SVG. DO NOT write "flowchart TD". DO NOT generate sidebars or tables.
-Target ~900–1,300 tokens of HTML output.`,
+DO NOT use Mermaid. DO NOT add SVG. DO NOT add sidebars, tables, or debug panels.
+Target ~1,000–1,400 tokens of HTML output.`,
 
   physical_product: `GENERATE: GRUNDFOS PUMP FRONT PANEL — the control face / display IS the visualization. NOT the full pump body.
 
