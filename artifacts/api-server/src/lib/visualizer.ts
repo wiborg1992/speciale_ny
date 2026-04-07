@@ -931,21 +931,79 @@ export interface VisualizerParams {
 
 /** Maps server-side family IDs to clear, unambiguous instructions for the AI */
 const FAMILY_INSTRUCTIONS: Record<string, string> = {
-  hmi_interface: `GENERATE: HMI / SCADA DASHBOARD — Grundfos iSolutions dark-theme interface.
-Use the full HMI design language defined in the system prompt (dark navy backgrounds, cyan accents, tab navigation, gauge widgets, live value cards).
-DO NOT use light backgrounds. DO NOT generate journey maps, flowcharts, or product illustrations.
+  hmi_interface: `GENERATE: HMI / SCADA DASHBOARD — Grundfos iSolutions dark-theme interface, FULLY INTERACTIVE like a deployed web application.
 
-TAB INTERACTIVITY (this family only): Horizontal main tabs (Overview, Settings, Drift log, Security, etc.) MUST be fully interactive in the browser — clicking a tab shows its panel and hides the others. Use either (1) the data-viz-host-tabs + data-viz-tab / data-viz-tab-panel pattern with the inline script from the system prompt, or (2) <button type="button" class="tab-btn" data-tab="id"> with matching content regions id="id" and a small closing inline <script> IIFE. Do not deliver static tab labels with no JavaScript when multiple main panels exist.`,
+LAYOUT: Left sidebar (180px, #0A1628) + right content area (flex:1). The sidebar contains nav items that switch the main content — this is the PRIMARY navigation. No dead zones.
 
-  user_journey: `GENERATE: USER JOURNEY MAP — light background, swim lane layout.
-Show phases across the top (e.g., Awareness → Onboarding → Use → Support → Renewal).
-For each phase: actor touchpoints, emotions (emoji scale ☹→😐→😊→😍), pain points (red), opportunities (green).
-Use Grundfos brand colours (#002A5C navy, #0077C8 blue). Clean, editorial layout with Google Fonts.
+REQUIRED SECTIONS — all reachable via sidebar nav:
+  • Oversigt / Overview (default shown) — 3–4 KPI tiles, pump status badges, active alert count
+  • Drift / Operation — live metrics grid (flow m³/h, pressure bar, RPM, kW, efficiency%), START/STOP button, mode chip, sparklines
+  • Indstillinger / Settings — setpoint inputs (flow target, pressure target), PID fields (Kp/Ki/Kd), schedule table, Save button
+  • Alarm log — scrollable event table (timestamp | severity | event | value), severity filter chips, ACK button per alarm row
+  • Kommunikation — protocol status chips (BACnet/Modbus/PROFINET), IP/node address, last heartbeat
+  • Vedligehold — wear indicators (0–100% progress bars for bearing/seal/impeller), service countdown, work order list
+
+SIDEBAR NAV — USE THIS EXACT PATTERN (section C from system prompt):
+<div data-viz-nav-root style="display:flex;min-height:100vh">
+  <nav data-viz-nav style="width:180px;background:#0A1628;padding:1rem 0">
+    <a href="#" data-viz-nav-item="overview" class="viz-nav-active">Oversigt</a>
+    <a href="#" data-viz-nav-item="operation">Drift</a>
+    <a href="#" data-viz-nav-item="settings">Indstillinger</a>
+    <a href="#" data-viz-nav-item="alarms">Alarm log</a>
+    <a href="#" data-viz-nav-item="comms">Kommunikation</a>
+    <a href="#" data-viz-nav-item="maintenance">Vedligehold</a>
+  </nav>
+  <main style="flex:1">
+    <section data-viz-section="overview" style="display:block">...FULL content...</section>
+    <section data-viz-section="operation" style="display:none" hidden>...FULL content...</section>
+    <section data-viz-section="settings" style="display:none" hidden>...FULL content...</section>
+    <section data-viz-section="alarms" style="display:none" hidden>...FULL content...</section>
+    <section data-viz-section="comms" style="display:none" hidden>...FULL content...</section>
+    <section data-viz-section="maintenance" style="display:none" hidden>...FULL content...</section>
+  </main>
+</div>
+Every section must contain FULLY RENDERED content — no "Coming soon" placeholders.
+
+STATEFUL CONTROLS — ALL REQUIRED:
+  • START/STOP: clicking toggles a .hmi-running class on <body>; button text/color flips (green "■ RUNNING" ↔ red "▶ STOPPED"); metric values shimmer briefly.
+  • MODE selector: <select> onchange updates a mode-badge chip text and color (AUTO ADAPT=cyan, MANUAL=amber, TIMER=purple).
+  • ALARM ACK: each alarm row has a button; clicking adds line-through, sets status to "ACK", disables button.
+  • Settings Save: <button data-viz-save data-viz-save-label="Applied ✓"> — shows green confirmation for 2s.
+  • Severity filter chips on alarm table: use data-viz-filter-host pattern (INFO=blue / WARN=amber / ALARM=red chips).
+
+Use the full HMI design language from system prompt: dark navy #0A1628/#0D1F3C, cyan #00C8FF accents, tabular-nums.
+DO NOT use light backgrounds. DO NOT generate journey maps, flowcharts, or product illustrations.`,
+
+  user_journey: `GENERATE: USER JOURNEY MAP — light background, swim lane layout, FULLY INTERACTIVE.
+
+LAYOUT: Phase column headers across the top (5–6 phases). 4–5 horizontal swim lanes below (Actor, Touchpoints, Emotions, Pain Points, Opportunities).
+
+REQUIRED INTERACTIVITY:
+  • Phase columns are CLICKABLE — clicking highlights the column (blue left border + light background) and expands a detail panel BELOW the swim lanes showing all content for that phase in card form. Use JS to swap the detail panel content and highlight the active column. First column is active by default.
+  • Pain point cards (red): each has a "▾ Details" toggle button — clicking expands root-cause + recommendation text using data-viz-toggle.
+  • Opportunity cards (green): same expand/collapse pattern.
+  • If multiple personas/roles: tab strip ABOVE swim lanes switching persona context — use data-viz-host-tabs.
+  • Emotion dots: CSS :hover shows a tooltip (position:absolute) with the verbatim quote/context.
+
+IMPLEMENTATION: Wire all phase column <th> or header divs with addEventListener('click'). Detail panel below uses innerHTML swap.
+
+Use Grundfos brand colours (#002A5C navy, #0077C8 blue). Clean, editorial layout with Google Fonts (Playfair Display + Outfit).
 DO NOT use dark backgrounds, gauges, or pump hardware illustrations.`,
 
-  workflow_process: `GENERATE: WORKFLOW / PROCESS DIAGRAM — clean, light-background flowchart.
+  workflow_process: `GENERATE: WORKFLOW / PROCESS DIAGRAM — clean, light-background flowchart, FULLY INTERACTIVE.
+
+LAYOUT: Main SVG/HTML flowchart (left/center, ~65% width) + fixed right detail panel (35% width, #F8FAFC, border-left). The detail panel starts with a placeholder "← Click a step to see details".
+
+REQUIRED INTERACTIVITY:
+  • Every process step node (rect) and decision node (diamond) is CLICKABLE — clicking it (1) adds a highlight stroke to the clicked node, (2) fills the right detail panel with that step's name, description, responsible actor, inputs/outputs, and status from transcript.
+  • Swim lane actor labels: clicking highlights all nodes in that lane and filters the detail panel to show only that actor's steps.
+  • If the workflow has multiple phases: top tab strip switching phases using data-viz-host-tabs.
+  • "Reset" button in detail panel clears highlight and restores placeholder.
+  • Node hover: cursor:pointer + drop-shadow effect.
+
+IMPLEMENTATION: Each node has data-step="id" and a matching JS data object with step details. Click handler swaps right panel innerHTML.
+
 Use SVG or HTML for flow: rectangles (process steps), diamonds (decisions), arrows, swim lanes if multiple actors.
-Show clear start → process nodes → decision points → end states.
 Use Grundfos colours, crisp lines, directional arrows, numbered steps.
 DO NOT use dark HMI style. DO NOT generate journey maps or pump hardware.`,
 
@@ -991,111 +1049,178 @@ DO NOT draw the whole pump with pipes and flanges. DO NOT use dark HMI dashboard
 DO NOT generate spec card grids or text-heavy requirement sections.
 The visualization IS the front panel — large, detailed, faithful to the product.`,
 
-  requirements_matrix: `GENERATE: REQUIREMENTS TRACEABILITY MATRIX — structured table layout.
-Columns: Req ID | Requirement | Priority (MoSCoW) | Source | Status | Notes.
-Use colour-coding: Must=red, Should=amber, Could=green, Won't=grey.
-Clean table with alternating row shading (#F8FAFC). Grundfos brand header.
+  requirements_matrix: `GENERATE: REQUIREMENTS TRACEABILITY MATRIX — structured table layout, FULLY INTERACTIVE.
+
+REQUIRED INTERACTIVITY:
+  • MoSCoW filter bar at top: "All | Must Have | Should Have | Could Have | Won't Have" chips using data-viz-filter-host. Each row has data-viz-row-cat="must|should|could|wont". Clicking a chip filters visible rows instantly.
+  • Status filter bar (second row): "All | Accepted | Pending | Blocked | Deferred" chips — second data-viz-filter-host for status filtering.
+  • Search input: typing in a text input above the table filters rows in real-time (JS keyup event matching req ID or text).
+  • Sortable columns: clicking "Req ID", "Priority", or "Status" header cycles asc/desc with ▲/▼ indicator using JS sort on table rows.
+  • Expandable rows: each row has a "▾" toggle — clicking expands an inline detail row showing full description, rationale, CRA article reference, acceptance criteria, and linked requirements.
+
+TABLE: Columns: Req ID | Requirement (truncated, expands) | Priority (MoSCoW chip) | Source | Status chip | Actions.
+Colour-coding: Must=red chip, Should=amber, Could=green, Won't=grey. Alternating row shading (#F8FAFC).
+Grundfos brand header (#002A5C). Google Fonts.
 DO NOT use dark backgrounds or pump illustrations.`,
 
-  management_summary: `GENERATE: MANAGEMENT SUMMARY / TIMELINE — editorial, executive-level layout.
-May include: horizontal Gantt/timeline SVG, decision log cards, KPI summary, risk register, roadmap phases.
-Use dramatic typography hierarchy (Playfair Display for headings, Outfit for body), structured backgrounds.
-Grundfos navy and blue accents. Print-ready proportions.
+  management_summary: `GENERATE: MANAGEMENT SUMMARY / TIMELINE — editorial, executive-level layout, FULLY INTERACTIVE.
+
+LAYOUT: Top section tab strip switching between major views. Content area below.
+
+REQUIRED INTERACTIVITY:
+  • Top tabs (use data-viz-host-tabs pattern): "Tidslinje | Beslutninger | KPI'er | Risici" (or equivalent from transcript). All tabs fully rendered, click switches view.
+  • Timeline/Gantt tab: each phase bar is CLICKABLE — clicking highlights it and expands a detail card below the Gantt with milestone list, owner, status, and notes. Use JS to swap detail content.
+  • Beslutninger tab: each decision card has a data-viz-toggle "▾ Vis rationale" expanding full rationale, stakeholders, date, and outcome.
+  • KPI tiles: each tile is clickable — clicking cycles through periods (Denne uge / Denne måned / Dette kvartal) and updates the displayed value.
+  • Risici tab: risk rows sortable by severity (Høj/Middel/Lav); each row expands mitigation plan with data-viz-toggle.
+
+Use dramatic typography hierarchy (Playfair Display for headings, Outfit for body).
+Grundfos navy and blue accents (#002A5C, #0077C8). Print-ready proportions.
 DO NOT use dark HMI style or pump hardware illustrations.`,
 
-  persona_research: `GENERATE: PERSONA / RESEARCH INSIGHTS — editorial card-based layout.
-Create a rich persona card or research insight summary. For PERSONAS: include a profile section (name, role, archetype, 
-photo placeholder silhouette), demographics sidebar, goals & motivations (green), frustrations & pain points (red), 
-behavioral patterns, a "Day in the Life" timeline, and a Jobs-to-be-Done section. For EMPATHY MAPS: 4-quadrant layout 
-(Says, Thinks, Does, Feels) with the persona at center. For RESEARCH FINDINGS: structured insight cards with supporting 
-quotes, thematic clusters, severity/frequency indicators, and actionable recommendations.
-Use Grundfos brand colours (#002A5C navy, #0077C8 blue), clean editorial layout, Google Fonts.
-Light background. Professional UX research deliverable quality.
-DO NOT use dark HMI backgrounds, gauges, or pump hardware.`,
+  persona_research: `GENERATE: PERSONA / RESEARCH INSIGHTS — editorial card-based layout, FULLY INTERACTIVE.
 
-  service_blueprint: `GENERATE: SERVICE BLUEPRINT / EXPERIENCE ARCHITECTURE — layered horizontal diagram.
-Create a structured service design artifact. For SERVICE BLUEPRINTS: horizontal swim-lane layout with layers: 
-Customer Actions (top), Frontstage (visible touchpoints), Line of Visibility (dashed), Backstage Processes, 
-Support Processes (bottom). Show time progression left-to-right, vertical connections between layers, 
-evidence items at each touchpoint. For INFORMATION ARCHITECTURE: hierarchical sitemap/tree diagram showing 
-navigation structure, content grouping, and page relationships. For ECOSYSTEM/STAKEHOLDER MAPS: radial or 
-network diagram showing actors, relationships, data flows, and system integrations.
-Use Grundfos brand colours, clean lines, clear layer separations with distinct background tints.
-Light background. DO NOT use dark HMI style.`,
+REQUIRED INTERACTIVITY:
+  • If multiple personas (2+): tab strip at top switching between personas using data-viz-host-tabs. Each tab shows ONE full persona card. First tab active by default.
+  • "Day in the Life" timeline: each time entry is CLICKABLE — clicking expands a detail popover/inline panel with the full activity description, emotional state quote, and UX implications.
+  • Pain point cards (red): each has a data-viz-toggle "▾ Root cause & recommendation" expanding below.
+  • Quote cards: clicking expands to show full quote text + context + participant ID.
+  • Research insight sections (if research findings mode): each theme cluster is collapsible using <details><summary>.
+  • Empathy map quadrants (if empathy map mode): clicking a quadrant header expands all items in that quadrant using data-viz-toggle.
+  • Severity filter for pain points/insights: "All | Critical | Major | Minor" filter chips using data-viz-filter-host.
 
-  comparison_evaluation: `GENERATE: COMPARISON / EVALUATION MATRIX — structured analytical layout.
-Create a professional comparison or evaluation artifact. For COMPARISON MATRICES: table with options as 
-columns, criteria as rows, colour-coded scoring (green=strong, amber=moderate, red=weak), weighted totals 
-at bottom. For SWOT ANALYSIS: 2×2 grid (Strengths green, Weaknesses red, Opportunities blue, Threats amber) 
-with bullet points in each quadrant and a strategic summary. For PRIORITIZATION: 2D scatter plot or matrix 
-(Impact vs Effort, Value vs Complexity) with items positioned as labeled circles, quadrant labels 
-(Quick Wins, Strategic Bets, Fill-Ins, Deprioritize). For SCORECARDS: radar/spider chart or weighted 
-scoring table with visual indicators.
-Use Grundfos brand colours, professional analytical layout, Google Fonts.
-Light background. DO NOT use dark HMI style.`,
+For PERSONAS: profile section (name, role, archetype, silhouette), demographics sidebar, goals (green), frustrations (red), behavioral patterns, Day in the Life timeline, Jobs-to-be-Done.
+For EMPATHY MAPS: 4-quadrant layout (Says / Thinks / Does / Feels) with persona at center.
+For RESEARCH FINDINGS: insight cards with supporting quotes, thematic clusters, severity indicators, recommendations.
+Grundfos colours, Google Fonts, light background. DO NOT use dark HMI style or pump hardware.`,
 
-  design_system: `GENERATE: DESIGN SYSTEM / COMPONENT SPECIFICATION — technical documentation layout.
-Create a professional design system deliverable. For COMPONENT SPECS: show component anatomy (labeled diagram), 
-all states (default, hover, active, disabled, error), sizing variants (S/M/L), spacing rules with pixel 
-annotations, and prop/API table. For DESIGN TOKENS: organized sections for Color Palette (swatches with 
-hex/RGB values, semantic naming), Typography Scale (font samples at each size), Spacing Scale (visual ruler), 
-Border Radius, Shadows, and Breakpoints. For STYLE GUIDES: brand colour usage, typography hierarchy, 
-iconography samples, do/don't examples side by side. For DESIGN PRINCIPLES: numbered principle cards with 
-title, description, and visual "Do" vs "Don't" example pairs.
-Use clean, technical documentation style. Grid-aligned. Code-adjacent feel.
-Light background with subtle grid. DO NOT use dark HMI style.`,
+  service_blueprint: `GENERATE: SERVICE BLUEPRINT / EXPERIENCE ARCHITECTURE — layered diagram, FULLY INTERACTIVE.
+
+LAYOUT: Top view-switcher tabs + main diagram area.
+
+REQUIRED INTERACTIVITY:
+  • View tabs (data-viz-host-tabs): "Blueprint | Stakeholder Map | Informationsflow" — clicking switches the main diagram. All tabs fully rendered.
+  • Blueprint tab — phase column headers are CLICKABLE: clicking highlights the column (blue tint) and expands a detail card below the swim lanes for that phase showing all touchpoints, backstage processes, and evidence items.
+  • Swimlane row labels (Customer Actions, Frontstage, Backstage, etc.) are CLICKABLE: clicking collapses/expands that row using data-viz-toggle.
+  • Stakeholder Map tab: clicking a stakeholder node shows a details panel (role, interest level, influence level, relationship to product) using JS innerHTML swap.
+  • Pain points / friction markers: hovering shows tooltip; clicking expands an inline note.
+
+For SERVICE BLUEPRINTS: horizontal swim-lane layout — Customer Actions (top), Frontstage, Line of Visibility (dashed), Backstage Processes, Support Processes (bottom). Left-to-right phases.
+For STAKEHOLDER MAPS: radial/network diagram with nodes. For INFORMATION ARCHITECTURE: hierarchical sitemap.
+Grundfos brand colours, clean lines, light background. DO NOT use dark HMI style.`,
+
+  comparison_evaluation: `GENERATE: COMPARISON / EVALUATION MATRIX — structured analytical layout, FULLY INTERACTIVE.
+
+REQUIRED INTERACTIVITY:
+  • Category filter chips at top: filter criteria rows by category using data-viz-filter-host pattern.
+  • Sortable columns: clicking an option column header sorts all criteria rows by that option's score (asc/desc) with ▲/▼ indicator.
+  • Expandable rows: each criterion row has a "▾" toggle — expanding shows full rationale, evidence, and source from transcript.
+  • "Vægtede scores / Rå scores" toggle button: switches between raw scores and weighted totals in the total row and score cells using JS.
+  • SWOT quadrants (if SWOT): each quadrant is collapsible and each bullet item has a data-viz-toggle for elaboration.
+  • Scatter plot items (if 2×2 matrix): clicking a labeled circle shows a tooltip/detail card with full description.
+
+For COMPARISON MATRICES: table with options as columns, criteria as rows, colour-coded scoring (green/amber/red), weighted totals.
+For SWOT: 2×2 grid. For PRIORITIZATION: Impact×Effort 2D scatter. For SCORECARDS: radar/weighted table.
+Grundfos brand colours, Google Fonts, light background. DO NOT use dark HMI style.`,
+
+  design_system: `GENERATE: DESIGN SYSTEM / COMPONENT SPECIFICATION — technical documentation layout, FULLY INTERACTIVE.
+
+REQUIRED INTERACTIVITY:
+  • Left sidebar nav (data-viz-nav + data-viz-nav-root): sections "Farver | Typografi | Spacing | Komponenter | Ikoner | Principper" — clicking switches the main content. First section active by default.
+  • Components section: tab strip (data-viz-host-tabs) switching between component types (Button, Input, Card, Badge, etc.).
+  • Component state switcher: "Default | Hover | Active | Disabled | Error" pills — clicking shows the matching component state example.
+  • Color swatch: clicking a swatch copies hex to clipboard (JS execCommand or navigator.clipboard) and shows "Kopieret!" tooltip.
+  • "Mørk / Lys tilstand" toggle button: switches between light/dark mode previews of all component examples.
+
+For COMPONENT SPECS: component anatomy diagram, all states, sizing variants (S/M/L), spacing annotations, prop/API table.
+For DESIGN TOKENS: Color Palette (hex/RGB/semantic), Typography Scale, Spacing Scale, Border Radius, Shadows.
+For STYLE GUIDES: brand colour usage, typography hierarchy, iconography, Do/Don't pairs.
+Clean, technical documentation style. Grid-aligned. Light background with subtle grid. DO NOT use dark HMI style.`,
 
   engagement_analytics: `GENERATE: ENGAGEMENT ANALYTICS DASHBOARD — pick the ONE variant below that best matches the transcript. Never default to the same variant every time.
 
 VARIANT SELECTION — read the transcript and choose:
-  A. "Real-Time Monitor"   → transcript mentions live/concurrent users, active visitors, now, real-time feeds
-  B. "Executive KPI Board" → transcript mentions KPIs, management, monthly/quarterly report, board, overview
-  C. "Campaign Attribution"→ transcript mentions campaign, CTR, CPC, spend, attribution, source breakdown, funnel
-  D. "Content Heatmap"     → transcript mentions articles, editorial, content pieces, author performance, sections
+  A. "Real-Time Monitor"    → transcript mentions live/concurrent users, active visitors, now, real-time feeds
+  B. "Executive KPI Board"  → transcript mentions KPIs, management, monthly/quarterly report, board, overview
+  C. "Campaign Attribution" → transcript mentions campaign, CTR, CPC, spend, attribution, source breakdown, funnel
+  D. "Content Heatmap"      → transcript mentions articles, editorial, content pieces, author performance, sections
   E. "Audience Segmentation"→ transcript mentions audience, cohort, retention, subscribers, GDPR, segments, loyalty
   When the transcript is ambiguous or generic, rotate across B / C / D (do NOT default to A).
 
+━━━ MANDATORY FOR ALL VARIANTS: LEFT SIDEBAR NAV ━━━
+Every variant MUST use a persistent left sidebar (220px) + main content area layout using the data-viz-nav-root pattern.
+The sidebar has the dashboard title at top, then navigation links for all major sections of that variant.
+Clicking a sidebar link switches the main content area to that section (data-viz-nav + data-viz-section pattern).
+The first section is always visible by default. Every section must be FULLY RENDERED with real content — no placeholders.
+
+Example sidebar structure (adapt section names to the variant):
+<div data-viz-nav-root style="display:flex;min-height:100vh;font-family:Outfit,sans-serif">
+  <nav data-viz-nav style="width:220px;background:#F9FAFB;border-right:1px solid #E5E7EB;padding:1.5rem 0">
+    <div style="padding:0 1rem 1rem;font-weight:700;color:#111827">Dashboard Name</div>
+    <a href="#" data-viz-nav-item="overview" class="viz-nav-active">Overview</a>
+    <a href="#" data-viz-nav-item="section2">Section 2</a>
+    <a href="#" data-viz-nav-item="section3">Section 3</a>
+    <a href="#" data-viz-nav-item="settings">Settings</a>
+  </nav>
+  <main style="flex:1;padding:2rem">
+    <section data-viz-section="overview" style="display:block">...FULL content...</section>
+    <section data-viz-section="section2" style="display:none" hidden>...FULL content...</section>
+    <section data-viz-section="section3" style="display:none" hidden>...FULL content...</section>
+    <section data-viz-section="settings" style="display:none" hidden>...FULL content...</section>
+  </main>
+</div>
+
 ━━━ VARIANT A — Real-Time Concurrent Monitor ━━━
-Three-column layout (22% | 54% | 24%):
-  LEFT SIDEBAR (#F9FAFB, border-right): Primary KPI — big bold number (3rem+) "284 Concurrents". Below: Engaged Time + Recirculation % with inline bar gauges. Checkbox filters: Subscriber type (Guest / Subscriber / Registered), Device (Mobile / Desktop / Tablet), Frequency (New / Returning / Loyal).
-  CENTER (white): Period tabs TODAY / 7-DAY / 30-DAY (all functional JS). Chart.js stacked area chart — 4 series (Internal, Direct, Search, Social). Below: sortable table — Concurrents ↕ | Title | Engaged Time | Pageviews. Column header click cycles asc/desc. Row hover #F0F9FF.
-  RIGHT SIDEBAR (#F9FAFB, border-left): "Traffic by Source" horizontal bar rows, each source a distinct muted color. Separator. "Top Referrers" list with numeric counts right-aligned.
-Interactivity: tab switching swaps Chart.js datasets; checkbox filters show/hide table rows by data-cat attr; column sort; hover.
+SIDEBAR SECTIONS: Overview | Live Feed | Traffic Sources | Audience Filters | Settings
+  Overview section: Primary KPI tile (3rem+ bold "284 Concurrents"), Engaged Time, Recirculation %. Period tabs TODAY / 7-DAY / 30-DAY (all functional JS, swap Chart.js stacked area chart datasets). Below chart: sortable table (Concurrents ↕ | Title | Engaged Time | Pageviews) — column header click cycles asc/desc.
+  Live Feed section: auto-refreshing-style table (JS setInterval mock) of recent page visits — time, title, device icon, source. "Pause / Resume" toggle button.
+  Traffic Sources section: horizontal bar chart by source + "Top Referrers" ranked list. Chart.js horizontal bar.
+  Audience Filters section: Checkbox filters (Subscriber type: Guest/Subscriber/Registered, Device: Mobile/Desktop/Tablet, Frequency: New/Returning/Loyal) — using data-viz-checkbox pattern; checkboxes update a filtered count badge.
+  Settings section: date range selector, threshold input for alert level, data-viz-save save button.
+Interactivity: tab switching swaps Chart.js datasets; sidebar nav switches sections; checkbox filters; column sort; hover.
 
 ━━━ VARIANT B — Executive KPI Command Center ━━━
-Full-width sticky header row: 4–5 KPI tiles side by side, each tile = white card, number 2.5rem bold, label below, tiny up/down % change badge (green/red). Examples: Total Engaged Users, Avg. Engaged Time, Recirculation Rate, Newsletter Opens, CTR.
-Below header: two-column split (60% | 40%) —
-  LEFT: Chart.js multi-line chart (line per channel), period toggle THIS WEEK / LAST 4 WEEKS / LAST 3 MONTHS. Below chart: summary table (Channel | Sessions | Engaged | CTR | Δ vs prev) with sortable columns.
-  RIGHT: Doughnut/ring chart (Chart.js) showing traffic source share, legend below. Below doughnut: "Top Pages" ranked list — rank number + title + engaged-time + pageview count, alternating #F9FAFB rows.
-Interactivity: period toggle swaps all chart datasets; doughnut legend click toggles segment; table sort.
+SIDEBAR SECTIONS: KPI Overview | Channels | Traffic Mix | Top Content | Export
+  KPI Overview section: 4–5 KPI tiles (Total Engaged Users, Avg. Engaged Time, Recirculation Rate, Newsletter Opens, CTR) in a 2×3 grid. Each tile clickable — clicking cycles period (This week / This month / This quarter) and updates the value. Period toggle strip (THIS WEEK / LAST 4 WEEKS / LAST 3 MONTHS) above KPIs switches all values simultaneously.
+  Channels section: Chart.js multi-line chart (line per channel). Summary table (Channel | Sessions | Engaged | CTR | Δ vs prev) with sortable columns.
+  Traffic Mix section: Doughnut/ring chart (Chart.js) — traffic source share. Legend items clickable to toggle segment. Below: "Top Pages" ranked list.
+  Top Content section: sortable table (Title | Pageviews | Engaged Time | CTR | Δ) with filter chips (All | Article | Video | Newsletter) using data-viz-filter-host.
+  Export section: download buttons (mock — show "Preparing export…" confirmation on click using data-viz-save pattern).
+Interactivity: period toggle swaps all chart datasets; sidebar nav; doughnut legend toggle; table sort; tile period cycling.
 
 ━━━ VARIANT C — Campaign Attribution Breakdown ━━━
-Header bar: campaign name badge + date range pill + "Active Campaigns: N" counter. Below: three zones (30% | 40% | 30%):
-  LEFT: Vertical conversion funnel — 4–5 steps (Impressions → Clicks → Engaged Visits → Leads → Conversions). Each step: colored bar tapering left-to-right, step name, count, conversion-rate badge. SVG or CSS clip-path.
-  CENTER: Grouped horizontal bar chart (Chart.js) — rows = channels (Email / Social / Search / Display / Direct), bars = Reach / Clicks / Conversions per channel. Toggle button "Absolute / Indexed" switches between raw numbers and index-100 bars.
-  RIGHT: Campaign card list — each card: campaign name bold, status chip (Active=teal / Paused=amber / Ended=gray), CTR %, CPC metric, sparkline (Chart.js mini line). Cards clickable (toggle expanded/collapsed state showing more metrics).
-Interactivity: Absolute/Indexed toggle; card expand/collapse; bar hover tooltip.
+SIDEBAR SECTIONS: Campaigns | Funnel | Channel Mix | Attribution | Settings
+  Campaigns section: Campaign card list — each card: campaign name bold, status chip (Active=teal/Paused=amber/Ended=gray), CTR %, CPC metric, sparkline. Cards CLICKABLE — clicking expands (data-viz-toggle) showing full metrics: Impressions, Clicks, Leads, Conversions, ROAS, date range.
+  Funnel section: Vertical conversion funnel SVG/CSS — 5 steps (Impressions → Clicks → Engaged Visits → Leads → Conversions). Each step: step name, count, conversion-rate badge. Clicking a funnel step highlights it and shows breakdown in a detail card below.
+  Channel Mix section: Grouped horizontal bar chart (Chart.js) — rows = channels (Email/Social/Search/Display/Direct), bars = Reach/Clicks/Conversions. Toggle button "Absolute / Indexed" switches between raw numbers and index-100 bars using JS.
+  Attribution section: "First touch / Last touch / Linear" attribution model selector pills — clicking recalculates and swaps displayed % values (use JS with pre-defined data per model).
+  Settings section: date range, conversion goal selector, data-viz-save button.
+Interactivity: sidebar nav; Absolute/Indexed toggle; card expand/collapse; funnel step click; attribution model switch.
 
 ━━━ VARIANT D — Content Engagement Heatmap ━━━
-Top bar: metric selector pills (Pageviews / Engaged Time / CTR / Social Shares — clicking changes heatmap color mapping). Date range: LAST 7 DAYS / 30 DAYS / 90 DAYS tabs. Below: two zones (70% | 30%):
-  LEFT: Content heatmap grid — rows = article/content titles (8–12 rows), columns = days/weeks. Each cell: background color from pale (#FEF3C7) → deep (#92400E) for teal variant, or pale (#ECFDF5) → deep (#065F46), intensity = metric value. Cell tooltip on hover shows exact value.
-  RIGHT: Sparkline table — for each article row: title (truncated) + 14-day mini chart.js line chart + current metric value + Δ badge. "Author" filter dropdown at top filters rows.
-Bottom strip: summary bar — top performer highlight card, avg. engaged time, total unique articles tracked.
-Interactivity: metric pill changes heatmap colors + sparkline y-axis; date tabs recompute all values; author filter; cell hover tooltip.
+SIDEBAR SECTIONS: Content Heatmap | Trending Articles | Authors | Insights | Settings
+  Content Heatmap section: Metric selector pills at top (Pageviews / Engaged Time / CTR / Social Shares — clicking changes heatmap color intensity mapping, JS swaps cell background color scale). Date range tabs LAST 7 DAYS / 30 DAYS / 90 DAYS. Heatmap grid: rows = article titles (8–12 rows), columns = days/weeks, cells colored by metric value intensity. Cell hover shows tooltip with exact value.
+  Trending Articles section: ranked list (1–10) — title, category chip, metric bar, Δ badge. Each row expandable with data-viz-toggle showing performance history.
+  Authors section: author filter dropdown (from transcript or placeholder names) — switching author filters heatmap and article rows. Table: Author | Articles | Avg Engaged Time | Total Pageviews | Top Article.
+  Insights section: insight cards with up/down trend indicators. Each card data-viz-toggle expandable for recommendation.
+  Settings section: content category filter (data-viz-filter-host for All/Article/Video/Podcast), author mapping, data-viz-save.
+Interactivity: sidebar nav; metric pill changes heatmap; date tabs recompute values; author filter; cell hover tooltip; row expand.
 
 ━━━ VARIANT E — Audience Segmentation Explorer ━━━
-Top: page title "Audience Intelligence" + date range badge.
-Row 1 — three donut/ring charts side by side (Chart.js Doughnut): (1) Device split Mobile/Desktop/Tablet, (2) Subscriber type Guest/Registered/Paid/GDPR-deleted, (3) Traffic source Direct/Search/Social/Email/Internal. Each has a bold center label (largest segment name) and a legend below.
-Row 2 — Cohort Retention heatmap (CSS Grid table): rows = weekly cohorts (Week 0 … Week 8), columns = weeks since first visit (W0 … W6). Cells colored by retention % — #F0FDF4 (100%) to #166534 (0%, effectively dark green scale). Cell value = "N%" text. Row header = cohort start date. Column header = "Week N".
-Row 3 — Behavioral funnel strip: horizontal funnel (5 steps) showing visitor → content-engaged → recirculated → subscribed → retained. Each step: count + drop-off % badge.
-Bottom: GDPR/consent note strip in muted style: "Data shown is post-consent and anonymised per…" (fill plausibly).
-Interactivity: donut legend click toggles segment; cohort table row hover highlights full row; funnel step hover shows tooltip.
+SIDEBAR SECTIONS: Audience Overview | Cohort Retention | Segments | GDPR & Consent | Settings
+  Audience Overview section: Three donut/ring charts side by side (Chart.js Doughnut): (1) Device split, (2) Subscriber type (Guest/Registered/Paid/GDPR-deleted), (3) Traffic source. Each legend item clickable to toggle segment. Behavioral funnel strip below: 5-step horizontal funnel (Visitor → Content-Engaged → Recirculated → Subscribed → Retained) — each step clickable showing detail tooltip.
+  Cohort Retention section: Retention heatmap table (CSS Grid): rows = weekly cohorts, columns = weeks since first visit. Cells colored #F0FDF4→#166534. Row hover highlights full row. Cell hover shows "Week N: X%" tooltip. "Export CSV" button (data-viz-save pattern).
+  Segments section: Segment filter chips (All | New | Returning | Loyal | At-Risk | Churned) using data-viz-filter-host. Cards per segment showing size, avg engaged time, CTR, recirculation.
+  GDPR & Consent section: Consent status breakdown chart (Accepted/Declined/Pending/Expired). Consent category chips. GDPR data retention policy display. "Request data export" mock form with data-viz-save.
+  Settings section: date range, cohort granularity (weekly/monthly), data-viz-save.
+Interactivity: sidebar nav; donut legend toggle; funnel step click; cohort row hover; segment filter chips; table row expand.
 
 ━━━ SHARED RULES (all variants) ━━━
 CHART LIBRARY: Chart.js from cdn.jsdelivr.net/npm/chart.js — always inline dataset arrays, never fetch().
 DATA: Extract figures/titles/channels from the transcript. When not available, use coherent round-number placeholders; add small italic "Example data — replace with live feed" footnote.
-COLORS: #374151 primary text, #6B7280 secondary, #E5E7EB borders, #F9FAFB panel bg. Accent: deep green/teal (#0D9488 / #065F46) or muted coral/amber for contrast. Each data series gets a DISTINCT muted color — never all the same hue.
-TYPOGRAPHY: font-variant-numeric: tabular-nums on all numbers. Headings: Outfit 600 or Georgia serif. Body/data rows: Inter or system-sans 13–14px. Import Outfit from Google Fonts.
+COLORS: #374151 primary text, #6B7280 secondary, #E5E7EB borders, #F9FAFB panel bg. Accent: deep green/teal (#0D9488 / #065F46) or muted coral/amber for contrast. Each data series gets a DISTINCT muted color.
+TYPOGRAPHY: font-variant-numeric: tabular-nums on all numbers. Headings: Outfit 600. Body/data rows: system-sans 13–14px. Import Outfit from Google Fonts.
+NAV STYLE: sidebar <a> links: display:block, padding:0.6rem 1rem, color:#374151, border-left:3px solid transparent; .viz-nav-active: border-left-color:#0D9488, color:#0D9488, background:#F0FDFA.
 DO NOT: dark HMI chrome, pump hardware, plain bullet list, all-same-layout every session.`,
 
   ux_prototype: `GENERATE: CLICKABLE MULTI-SCREEN UX PROTOTYPE — navigable interactive mockup.
