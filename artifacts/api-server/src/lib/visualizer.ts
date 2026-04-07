@@ -1047,7 +1047,7 @@ const D = {
 };
 // ── RENDERER (do not modify) ──────────────────────────────────────────────
 (function(D){
-  const LH=115,CW=158,LBW=96,NW=122,NH=42,DS=52,PAD=28;
+  const LH=162,CW=185,LBW=108,NW=152,NH=56,DS=66,PAD=32;
   const LC=['#0054A4','#065F46','#5B21B6','#92400E','#1E3A5F'];
   const LB=['rgba(0,84,164,.05)','rgba(6,95,70,.05)','rgba(91,33,182,.05)','rgba(146,64,14,.05)','rgba(30,58,95,.05)'];
   const NC={proc:{f:'#DBEAFE',s:'#0077C8',t:'#1E3A5F'},dec:{f:'#FEF3C7',s:'#F59E0B',t:'#78350F'},
@@ -1091,7 +1091,7 @@ return\`<marker id="\${id}" markerWidth="8" markerHeight="8" refX="7" refY="3" o
     const y=i*LH;
     s+=\`<rect x="0" y="\${y}" width="\${W}" height="\${LH}" fill="\${LB[i%LB.length]}"/>\`;
     s+=\`<rect x="0" y="\${y}" width="\${LBW-2}" height="\${LH}" fill="\${LC[i%LC.length]}"/>\`;
-    s+=\`<text transform="rotate(-90,\${LBW/2-1},\${y+LH/2})" x="\${LBW/2-1}" y="\${y+LH/2}" text-anchor="middle" dominant-baseline="middle" fill="#fff" font-size="9.5" font-weight="700" letter-spacing=".09em">\${ln.toUpperCase()}</text>\`;
+    s+=\`<text transform="rotate(-90,\${LBW/2-1},\${y+LH/2})" x="\${LBW/2-1}" y="\${y+LH/2}" text-anchor="middle" dominant-baseline="middle" fill="#fff" font-size="12" font-weight="700" letter-spacing=".09em">\${ln.toUpperCase()}</text>\`;
     if(i<D.lanes.length-1) s+=\`<line x1="0" y1="\${(i+1)*LH}" x2="\${W}" y2="\${(i+1)*LH}" stroke="#CBD5E1" stroke-width="1" stroke-dasharray="5 3"/>\`;
   });
   D.edges.forEach(e=>{
@@ -1099,8 +1099,8 @@ return\`<marker id="\${id}" markerWidth="8" markerHeight="8" refX="7" refY="3" o
     const lbl=e.label||''; const c=MC[lbl]||'#64748B';
     const mk=lbl==='YES'?'ahy':lbl==='NO'?'ahn':'ah';
     s+=\`<path d="\${pts.path}" fill="none" stroke="\${c}" stroke-width="1.7" marker-end="url(#\${mk})"/>\`;
-    if(lbl){s+=\`<rect x="\${pts.lx-18}" y="\${pts.ly-8}" width="36" height="13" rx="4" fill="#fff" opacity=".92"/>\`;
-    s+=\`<text x="\${pts.lx}" y="\${pts.ly+1.5}" text-anchor="middle" font-size="8.5" font-weight="700" fill="\${c}">\${lbl}</text>\`;}
+    if(lbl){s+=\`<rect x="\${pts.lx-22}" y="\${pts.ly-9}" width="44" height="17" rx="5" fill="#fff" opacity=".92"/>\`;
+    s+=\`<text x="\${pts.lx}" y="\${pts.ly+2}" text-anchor="middle" font-size="11" font-weight="700" fill="\${c}">\${lbl}</text>\`;}
   });
   D.nodes.forEach(n=>{
     const p=pos[n.id]; const c=NC[n.type]||NC.proc;
@@ -1108,13 +1108,13 @@ return\`<marker id="\${id}" markerWidth="8" markerHeight="8" refX="7" refY="3" o
     if(n.type==='dec'){
       const pts=\`\${p.x},\${p.y-DS/2} \${p.x+DS/2},\${p.y} \${p.x},\${p.y+DS/2} \${p.x-DS/2},\${p.y}\`;
       s+=\`<polygon points="\${pts}" fill="\${c.f}" stroke="\${c.s}" stroke-width="1.5"/>\`;
-      ls.forEach((l,i)=>{const dy=(i-(ls.length-1)/2)*11;s+=\`<text x="\${p.x}" y="\${p.y+dy+4}" text-anchor="middle" font-size="9" font-weight="600" fill="\${c.t}">\${l}</text>\`;});
+      ls.forEach((l,i)=>{const dy=(i-(ls.length-1)/2)*14;s+=\`<text x="\${p.x}" y="\${p.y+dy+5}" text-anchor="middle" font-size="11" font-weight="600" fill="\${c.t}">\${l}</text>\`;});
     } else if(n.type==='start'||n.type==='end'){
-      s+=\`<rect x="\${p.x-NW/2}" y="\${p.y-16}" width="\${NW}" height="32" rx="16" fill="\${c.f}"/>\`;
-      s+=\`<text x="\${p.x}" y="\${p.y+4.5}" text-anchor="middle" font-size="11" font-weight="700" fill="\${c.t}">\${n.label}</text>\`;
+      s+=\`<rect x="\${p.x-NW/2}" y="\${p.y-21}" width="\${NW}" height="42" rx="21" fill="\${c.f}"/>\`;
+      s+=\`<text x="\${p.x}" y="\${p.y+5}" text-anchor="middle" font-size="14" font-weight="700" fill="\${c.t}">\${n.label}</text>\`;
     } else {
-      s+=\`<rect x="\${p.x-NW/2}" y="\${p.y-NH/2}" width="\${NW}" height="\${NH}" rx="6" fill="\${c.f}" stroke="\${c.s}" stroke-width="1.5"/>\`;
-      ls.forEach((l,i)=>{const dy=(i-(ls.length-1)/2)*13;s+=\`<text x="\${p.x}" y="\${p.y+dy+4.5}" text-anchor="middle" font-size="10" font-weight="600" fill="\${c.t}">\${l}</text>\`;});
+      s+=\`<rect x="\${p.x-NW/2}" y="\${p.y-NH/2}" width="\${NW}" height="\${NH}" rx="8" fill="\${c.f}" stroke="\${c.s}" stroke-width="1.5"/>\`;
+      ls.forEach((l,i)=>{const dy=(i-(ls.length-1)/2)*15;s+=\`<text x="\${p.x}" y="\${p.y+dy+5}" text-anchor="middle" font-size="12" font-weight="600" fill="\${c.t}">\${l}</text>\`;});
     }
   });
   s+='</svg>';
