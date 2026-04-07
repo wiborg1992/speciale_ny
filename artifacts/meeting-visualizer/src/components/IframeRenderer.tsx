@@ -79,6 +79,72 @@ function isHtmlRenderable(html: string | null): boolean {
   return html.includes("<div") || html.includes("<section") || html.includes("<table");
 }
 
+function GeneratingSkeleton({ progress }: { progress: number }) {
+  return (
+    <div style={{
+      position: "absolute", inset: 0, background: "#fff",
+      borderRadius: "inherit", overflow: "hidden", display: "flex",
+      flexDirection: "column", zIndex: 10,
+    }}>
+      <style>{`
+        @keyframes __sk_shimmer { 0%{transform:translateX(-100%)} 100%{transform:translateX(200%)} }
+        .__sk { position:relative; overflow:hidden; background:#F3F4F6; border-radius:6px; flex-shrink:0; }
+        .__sk::after { content:''; position:absolute; inset:0;
+          background:linear-gradient(90deg,transparent 0%,rgba(0,119,200,0.1) 50%,transparent 100%);
+          animation:__sk_shimmer 1.6s ease-in-out infinite; }
+      `}</style>
+      <div style={{ padding: "20px 24px 14px", borderBottom: "1px solid #E2E8F0", display: "flex", alignItems: "center", gap: 12 }}>
+        <div className="__sk" style={{ width: 32, height: 32, borderRadius: 8 }} />
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 6 }}>
+          <div className="__sk" style={{ width: "40%", height: 12 }} />
+          <div className="__sk" style={{ width: "25%", height: 9, opacity: 0.6 }} />
+        </div>
+      </div>
+      <div style={{ flex: 1, padding: "24px", display: "flex", flexDirection: "column", gap: 16 }}>
+        <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+          <div className="__sk" style={{ width: 140, height: 56, borderRadius: 8 }} />
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 8 }}>
+            <div className="__sk" style={{ width: "70%", height: 10 }} />
+            <div className="__sk" style={{ width: "55%", height: 10, opacity: 0.6 }} />
+            <div className="__sk" style={{ width: "80%", height: 10, opacity: 0.4 }} />
+          </div>
+        </div>
+        <div style={{ display: "flex", gap: 10 }}>
+          {[80, 100, 90, 110, 75].map((w, i) => (
+            <div key={i} className="__sk" style={{ width: w, height: 52, borderRadius: 8, opacity: i === 0 ? 1 : 0.55 }} />
+          ))}
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {[100, 75, 90].map((pct, i) => (
+            <div key={i} className="__sk" style={{ width: `${pct}%`, height: 9, opacity: i === 0 ? 0.9 : 0.45 }} />
+          ))}
+        </div>
+        <div style={{ display: "flex", gap: 10, marginTop: 4 }}>
+          {[120, 120, 120].map((w, i) => (
+            <div key={i} className="__sk" style={{ width: w, height: 80, borderRadius: 10, opacity: i === 0 ? 1 : 0.6 }} />
+          ))}
+        </div>
+      </div>
+      <div style={{ padding: "14px 24px 18px", borderTop: "1px solid #F1F5F9", display: "flex", flexDirection: "column", gap: 6 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 10, color: "#94A3B8", letterSpacing: "0.08em" }}>
+            GENERATING VISUALIZATION…
+          </span>
+          <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 10, color: "#0077C8", letterSpacing: "0.06em" }}>
+            {Math.round(progress)}%
+          </span>
+        </div>
+        <div style={{ height: 3, borderRadius: 99, background: "#E2E8F0", overflow: "hidden" }}>
+          <div style={{
+            height: "100%", borderRadius: 99,
+            background: "linear-gradient(90deg, #002A5C 0%, #0077C8 100%)",
+            width: `${progress}%`, transition: "width 0.4s ease",
+          }} />
+        </div>
+      </div>
+    </div>
+  );
+}
 
 interface IframeRendererProps {
   html: string | null;
@@ -106,6 +172,8 @@ export function IframeRenderer({
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
+  const [skeletonProgress, setSkeletonProgress] = useState(0);
+  const progressTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const fillPendingRef = useRef(false);
   const originalHtmlRef = useRef<string | null>(null);
   const editHook = useIframeEdit(iframeRef);
@@ -120,8 +188,29 @@ export function IframeRenderer({
 
   pendingHtmlRef.current = html;
 
+  useEffect(() => {
+    if (isStreaming) {
+      setSkeletonProgress(5);
+      let current = 5;
+      progressTimerRef.current = setInterval(() => {
+        const delta = (92 - current) * 0.045;
+        current = Math.min(92, current + delta + 0.3);
+        setSkeletonProgress(current);
+      }, 400);
+    } else {
+      if (progressTimerRef.current) clearInterval(progressTimerRef.current);
+      setSkeletonProgress(100);
+      const t = setTimeout(() => setSkeletonProgress(0), 600);
+      return () => clearTimeout(t);
+    }
+    return () => {
+      if (progressTimerRef.current) clearInterval(progressTimerRef.current);
+    };
+  }, [isStreaming]);
+
   const renderable = isHtmlRenderable(html);
   const isEmpty = !html || html.trim() === "";
+  const showSkeleton = isStreaming && !renderable;
 
   function stripCodeFences(s: string): string {
     let t = s.trim();
@@ -393,17 +482,20 @@ ${t}
         </div>
       )}
 
-      {!isEmpty && (
-        <div className="relative min-h-0 w-full flex-1 flex flex-col">
-          <iframe
-            ref={iframeRef}
-            className={cn(
-              "w-full rounded-lg bg-card/20 border min-h-0 flex-1",
-              isEditMode ? "border-primary/40 ring-1 ring-primary/20" : "border-border"
-            )}
-            title="AI Visualization"
-            style={{ pointerEvents: "auto" }}
-          />
+      {(showSkeleton || !isEmpty) && (
+        <div className={cn("relative min-h-0 w-full flex-1 flex flex-col", showSkeleton && isEmpty ? "rounded-lg border border-border overflow-hidden" : "")}>
+          {showSkeleton && <GeneratingSkeleton progress={skeletonProgress} />}
+          {!isEmpty && (
+            <iframe
+              ref={iframeRef}
+              className={cn(
+                "w-full rounded-lg bg-card/20 border min-h-0 flex-1",
+                isEditMode ? "border-primary/40 ring-1 ring-primary/20" : "border-border"
+              )}
+              title="AI Visualization"
+              style={{ pointerEvents: "auto" }}
+            />
+          )}
         </div>
       )}
     </div>

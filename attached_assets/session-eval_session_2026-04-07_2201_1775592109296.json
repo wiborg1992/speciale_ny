@@ -1,0 +1,85 @@
+{
+  "schemaVersion": 1,
+  "exportedAt": "2026-04-07T20:01:47.692Z",
+  "session": {
+    "roomId": "AA07R9",
+    "meetingTitle": "",
+    "workspaceDomain": "grundfos",
+    "sessionStartedAt": "2026-04-07T19:58:51.432Z",
+    "sessionEndedAt": "2026-04-07T20:01:47.692Z"
+  },
+  "summary": {
+    "transcriptWordCountApprox": 155,
+    "segmentCount": 2,
+    "participantNames": [
+      "Speaker 1",
+      "Speaker 2"
+    ],
+    "visualizationEventCount": 1,
+    "skippedCount": 0,
+    "errorCount": 0
+  },
+  "reviewerNotes": "Det gik meget hurtigere- men tingen står forskudt og er slet ikke skarpe i hvor linjerne går hen og nogle ting står oven i hinadne",
+  "events": [
+    {
+      "kind": "visualization",
+      "at": "2026-04-07T20:00:33.940Z",
+      "source": "local_stream",
+      "version": 1,
+      "vizName": "Version 1",
+      "htmlChars": 12363,
+      "debug": {
+        "timestamp": "2026-04-07T20:00:08.627Z",
+        "resolvedFamily": "workflow_process",
+        "userPickedType": false,
+        "vizType": "auto",
+        "vizModel": "haiku",
+        "isIncremental": false,
+        "isRefinement": false,
+        "refinementDirective": null,
+        "hasPreviousHtml": false,
+        "focusSegment": null,
+        "workspaceDomain": "grundfos",
+        "transcriptTotalWords": 152,
+        "roomId": "AA07R9",
+        "performanceMs": null,
+        "classification": {
+          "inputMode": "tail",
+          "inputWords": 152,
+          "totalWords": 152,
+          "inputText": "[Speaker 1]: Alright. Try to look at workflow. Case. To speed. How are you going to decide? If the is 0 plans to at sides. Set up their own password.\n[Speaker 2]: And the first line of information should come from technician. If he doesn't provide that information, they need to be delivered at manufacturer product manual where it says as the first thing on the front page. And besides that, they need also to be a QR code on the side of the pump. To to make sure that they know that they can instal",
+          "family": "workflow_process",
+          "topic": "Process / workflow / flowchart",
+          "lead": 65,
+          "ambiguous": false,
+          "topScores": [
+            {
+              "family": "workflow_process",
+              "score": 65
+            },
+            {
+              "family": "hmi_interface",
+              "score": 0
+            },
+            {
+              "family": "user_journey",
+              "score": 0
+            },
+            {
+              "family": "physical_product",
+              "score": 0
+            },
+            {
+              "family": "requirements_matrix",
+              "score": 0
+            },
+            {
+              "family": "engagement_analytics",
+              "score": 0
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

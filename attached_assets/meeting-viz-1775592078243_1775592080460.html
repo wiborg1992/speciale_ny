@@ -1,0 +1,338 @@
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pump Installation & Access Control Workflow</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&family=Space+Mono:wght@400;700&display=swap');
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Outfit', sans-serif;
+  background-color: #FFFFFF;
+  padding: 32px 24px;
+  line-height: 1.6;
+}
+
+.container {
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.workflow-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #002A5C;
+  margin-bottom: 20px;
+  letter-spacing: 0.02em;
+}
+
+.svg-wrapper {
+  background: #FFFFFF;
+  border-radius: 8px;
+  padding: 16px;
+  border: 1px solid #E2E8F0;
+  overflow-x: auto;
+  box-shadow: 0 1px 3px rgba(0, 42, 92, 0.08);
+}
+
+svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  min-height: 600px;
+}
+
+/* Node hover effects */
+.flowchart-node {
+  transition: filter 0.2s ease;
+  cursor: pointer;
+}
+
+.flowchart-node:hover {
+  filter: drop-shadow(0 3px 8px rgba(0, 119, 200, 0.25));
+}
+
+.flowchart-text {
+  font-family: 'Outfit', sans-serif;
+  pointer-events: none;
+  user-select: none;
+}
+
+.step-label {
+  font-size: 13px;
+  font-weight: 600;
+  fill: #1E293B;
+}
+
+.decision-label {
+  font-size: 12px;
+  font-weight: 600;
+  fill: #78350F;
+}
+
+.start-end-label {
+  font-size: 13px;
+  font-weight: 700;
+  fill: #FFFFFF;
+}
+
+.arrow-label {
+  font-size: 11px;
+  font-weight: 600;
+  font-family: 'Outfit', sans-serif;
+}
+
+.yes-label {
+  fill: #16A34A;
+}
+
+.no-label {
+  fill: #DC2626;
+}
+
+.footnote {
+  font-size: 0.62rem;
+  color: #94A3B8;
+  text-align: right;
+  margin-top: 16px;
+  letter-spacing: 0.05em;
+}
+
+/* Step number badge */
+.step-badge {
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  font-weight: 700;
+  fill: #FFFFFF;
+}
+
+/* Swim lane styles */
+.swim-lane {
+  fill: none;
+  stroke: #E2E8F0;
+  stroke-width: 1;
+  stroke-dasharray: none;
+}
+
+.swim-lane-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-family: 'Outfit', sans-serif;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.svg-wrapper svg {
+  animation: fadeIn 0.6s ease-out;
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div class="workflow-title">Pump Installation & Access Control Setup Workflow</div>
+  
+  <div class="svg-wrapper">
+    <svg viewBox="0 0 1200 800" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+          <polygon points="0 0, 10 3, 0 6" fill="#94A3B8"/>
+        </marker>
+        <marker id="arrowhead-yes" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+          <polygon points="0 0, 10 3, 0 6" fill="#16A34A"/>
+        </marker>
+        <marker id="arrowhead-no" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+          <polygon points="0 0, 10 3, 0 6" fill="#DC2626"/>
+        </marker>
+      </defs>
+
+      <!-- Swim lanes background -->
+      <rect x="20" y="60" width="1160" height="280" fill="#E0F2FE" opacity="0.15" rx="4"/>
+      <text x="30" y="200" class="swim-lane-label" text-anchor="end" transform="rotate(-90 30 200)">Technician</text>
+
+      <rect x="20" y="360" width="1160" height="200" fill="#D1FAE5" opacity="0.15" rx="4"/>
+      <text x="30" y="470" class="swim-lane-label" text-anchor="end" transform="rotate(-90 30 470)">Customer / User</text>
+
+      <!-- START node -->
+      <g class="flowchart-node">
+        <ellipse cx="120" cy="100" rx="70" ry="30" fill="#002A5C" stroke="#002A5C" stroke-width="2" class="start-end-node"/>
+        <text x="120" y="107" text-anchor="middle" class="start-end-label">START</text>
+      </g>
+
+      <!-- Arrow 1 -->
+      <line x1="120" y1="130" x2="120" y2="170" stroke="#94A3B8" stroke-width="1.8" marker-end="url(#arrowhead)"/>
+
+      <!-- Step 1: Technician receives pump -->
+      <g class="flowchart-node">
+        <rect x="30" y="170" width="180" height="70" rx="8" fill="#EFF6FF" stroke="#0077C8" stroke-width="2"/>
+        <circle cx="45" cy="185" r="10" fill="#0077C8"/>
+        <text x="45" y="192" class="step-badge" text-anchor="middle">1</text>
+        <text x="120" y="200" text-anchor="middle" class="step-label">Technician</text>
+        <text x="120" y="220" text-anchor="middle" class="step-label">Receives Pump</text>
+      </g>
+
+      <!-- Arrow 2 -->
+      <line x1="120" y1="240" x2="120" y2="280" stroke="#94A3B8" stroke-width="1.8" marker-end="url(#arrowhead)"/>
+
+      <!-- Step 2: Check for documentation -->
+      <g class="flowchart-node">
+        <rect x="30" y="280" width="180" height="70" rx="8" fill="#EFF6FF" stroke="#0077C8" stroke-width="2"/>
+        <circle cx="45" cy="295" r="10" fill="#0077C8"/>
+        <text x="45" y="302" class="step-badge" text-anchor="middle">2</text>
+        <text x="120" y="310" text-anchor="middle" class="step-label">Check Product</text>
+        <text x="120" y="330" text-anchor="middle" class="step-label">Manual & QR Code</text>
+      </g>
+
+      <!-- Arrow 3 -->
+      <line x1="120" y1="350" x2="120" y2="390" stroke="#94A3B8" stroke-width="1.8" marker-end="url(#arrowhead)"/>
+
+      <!-- Decision: Documentation found? -->
+      <g class="flowchart-node">
+        <polygon points="200,440 290,500 200,560 110,500" fill="#FEF3C7" stroke="#F59E0B" stroke-width="2"/>
+        <text x="200" y="495" text-anchor="middle" class="decision-label">Documentation</text>
+        <text x="200" y="510" text-anchor="middle" class="decision-label">Available?</text>
+      </g>
+
+      <!-- NO arrow - left path -->
+      <line x1="110" y1="500" x2="40" y2="500" stroke="#DC2626" stroke-width="1.8" marker-end="url(#arrowhead-no)"/>
+      <text x="60" y="490" class="arrow-label no-label">NO</text>
+
+      <!-- Step 3a: Request from manufacturer -->
+      <g class="flowchart-node">
+        <rect x="0" y="465" width="140" height="70" rx="8" fill="#EFF6FF" stroke="#0077C8" stroke-width="2"/>
+        <circle cx="15" cy="480" r="10" fill="#0077C8"/>
+        <text x="15" y="487" class="step-badge" text-anchor="middle">3</text>
+        <text x="70" y="500" text-anchor="middle" class="step-label">Request from</text>
+        <text x="70" y="520" text-anchor="middle" class="step-label">Manufacturer</text>
+      </g>
+
+      <!-- Arrow back to decision -->
+      <line x1="70" y1="465" x2="110" y2="445" stroke="#DC2626" stroke-width="1.8" stroke-dasharray="4,4" marker-end="url(#arrowhead-no)"/>
+
+      <!-- YES arrow - continue down -->
+      <line x1="200" y1="560" x2="200" y2="600" stroke="#16A34A" stroke-width="1.8" marker-end="url(#arrowhead-yes)"/>
+      <text x="215" y="585" class="arrow-label yes-label">YES</text>
+
+      <!-- Step 4: Setup system -->
+      <g class="flowchart-node">
+        <rect x="110" y="600" width="180" height="70" rx="8" fill="#EFF6FF" stroke="#0077C8" stroke-width="2"/>
+        <circle cx="125" cy="615" r="10" fill="#0077C8"/>
+        <text x="125" y="622" class="step-badge" text-anchor="middle">4</text>
+        <text x="200" y="630" text-anchor="middle" class="step-label">Configure System</text>
+        <text x="200" y="650" text-anchor="middle" class="step-label">Settings & Defaults</text>
+      </g>
+
+      <!-- Arrow 5 -->
+      <line x1="200" y1="670" x2="200" y2="710" stroke="#94A3B8" stroke-width="1.8" marker-end="url(#arrowhead)"/>
+
+      <!-- Step 5: Generate Technician PIN -->
+      <g class="flowchart-node">
+        <rect x="110" y="710" width="180" height="70" rx="8" fill="#D1FAE5" stroke="#10B981" stroke-width="2"/>
+        <circle cx="125" cy="725" r="10" fill="#10B981"/>
+        <text x="125" y="732" class="step-badge" text-anchor="middle">5</text>
+        <text x="200" y="740" text-anchor="middle" class="step-label">Create Unique</text>
+        <text x="200" y="760" text-anchor="middle" class="step-label">Technician PIN Code</text>
+      </g>
+
+      <!-- Long arrow down to next section -->
+      <line x1="200" y1="780" x2="500" y2="780" stroke="#94A3B8" stroke-width="1.8" marker-end="url(#arrowhead)"/>
+
+      <!-- Step 6: Provide credentials to customer -->
+      <g class="flowchart-node">
+        <rect x="410" y="710" width="180" height="70" rx="8" fill="#D1FAE5" stroke="#10B981" stroke-width="2"/>
+        <circle cx="425" cy="725" r="10" fill="#10B981"/>
+        <text x="425" y="732" class="step-badge" text-anchor="middle">6</text>
+        <text x="485" y="740" text-anchor="middle" class="step-label">Provide Access</text>
+        <text x="485" y="760" text-anchor="middle" class="step-label">Credentials to User</text>
+      </g>
+
+      <!-- Arrow 7 -->
+      <line x1="485" y1="710" x2="485" y2="670" stroke="#94A3B8" stroke-width="1.8" marker-end="url(#arrowhead)"/>
+
+      <!-- Step 7: User sets their password -->
+      <g class="flowchart-node">
+        <rect x="410" y="600" width="180" height="70" rx="8" fill="#D1FAE5" stroke="#10B981" stroke-width="2"/>
+        <circle cx="425" cy="615" r="10" fill="#10B981"/>
+        <text x="425" y="622" class="step-badge" text-anchor="middle">7</text>
+        <text x="485" y="630" text-anchor="middle" class="step-label">User Sets Their</text>
+        <text x="485" y="650" text-anchor="middle" class="step-label">Own Password</text>
+      </g>
+
+      <!-- Arrow 8 -->
+      <line x1="485" y1="600" x2="485" y2="560" stroke="#94A3B8" stroke-width="1.8" marker-end="url(#arrowhead)"/>
+
+      <!-- Decision: Two distinct PIN codes? -->
+      <g class="flowchart-node">
+        <polygon points="600,500 690,560 600,620 510,560" fill="#FEF3C7" stroke="#F59E0B" stroke-width="2"/>
+        <text x="600" y="550" text-anchor="middle" class="decision-label">Two Distinct</text>
+        <text x="600" y="565" text-anchor="middle" class="decision-label">PIN Codes?</text>
+      </g>
+
+      <!-- YES arrow - continue -->
+      <line x1="690" y1="560" x2="760" y2="560" stroke="#16A34A" stroke-width="1.8" marker-end="url(#arrowhead-yes)"/>
+      <text x="710" y="550" class="arrow-label yes-label">YES</text>
+
+      <!-- Step 8: Access control established -->
+      <g class="flowchart-node">
+        <rect x="760" y="530" width="180" height="70" rx="8" fill="#D1FAE5" stroke="#10B981" stroke-width="2"/>
+        <circle cx="775" cy="545" r="10" fill="#10B981"/>
+        <text x="775" y="552" class="step-badge" text-anchor="middle">8</text>
+        <text x="850" y="560" text-anchor="middle" class="step-label">Access Control</text>
+        <text x="850" y="580" text-anchor="middle" class="step-label">Established</text>
+      </g>
+
+      <!-- Arrow to END -->
+      <line x1="850" y1="530" x2="850" y2="460" stroke="#94A3B8" stroke-width="1.8" marker-end="url(#arrowhead)"/>
+
+      <!-- END node -->
+      <g class="flowchart-node">
+        <ellipse cx="850" cy="410" rx="70" ry="30" fill="#002A5C" stroke="#002A5C" stroke-width="2"/>
+        <text x="850" y="417" text-anchor="middle" class="start-end-label">END</text>
+      </g>
+
+      <!-- NO arrow from decision (error case) -->
+      <line x1="600" y1="620" x2="600" y2="680" stroke="#DC2626" stroke-width="1.8" marker-end="url(#arrowhead-no)"/>
+      <text x="580" y="655" class="arrow-label no-label">NO</text>
+
+      <!-- Error step -->
+      <g class="flowchart-node">
+        <rect x="510" y="680" width="180" height="70" rx="8" fill="#FEE2E2" stroke="#DC2626" stroke-width="2"/>
+        <circle cx="525" cy="695" r="10" fill="#DC2626"/>
+        <text x="525" y="702" class="step-badge" text-anchor="middle">!</text>
+        <text x="600" y="710" text-anchor="middle" class="step-label">Alert: Duplicate</text>
+        <text x="600" y="730" text-anchor="middle" class="step-label">PIN Detected</text>
+      </g>
+
+      <!-- Feedback loop -->
+      <line x1="510" y1="715" x2="400" y2="715" stroke="#DC2626" stroke-width="1.8" stroke-dasharray="4,4" marker-end="url(#arrowhead-no)"/>
+      <line x1="400" y1="715" x2="400" y2="640" stroke="#DC2626" stroke-width="1.8" stroke-dasharray="4,4" marker-end="url(#arrowhead-no)"/>
+      <text x="380" y="680" class="arrow-label no-label" font-size="10">Retry</text>
+
+    </svg>
+  </div>
+
+  <div class="footnote">Generated by Meeting AI Visualizer</div>
+</div>
+
+</body>
+</html>
+```
