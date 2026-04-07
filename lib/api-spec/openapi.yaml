@@ -91,7 +91,7 @@ paths:
   /openai-realtime-token:
     get:
       operationId: getOpenAIRealtimeToken
-      tags: [deepgram]
+      tags: [rooms]
       summary: Get OpenAI Realtime ephemeral client secret
       description: Returns a short-lived client_secret for the OpenAI Realtime WebSocket API (gpt-4o-transcribe)
       responses:
