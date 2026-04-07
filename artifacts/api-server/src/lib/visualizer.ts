@@ -1045,25 +1045,58 @@ title, description, and visual "Do" vs "Don't" example pairs.
 Use clean, technical documentation style. Grid-aligned. Code-adjacent feel.
 Light background with subtle grid. DO NOT use dark HMI style.`,
 
-  engagement_analytics: `GENERATE: ENGAGEMENT ANALYTICS DASHBOARD — Chartbeat/real-time analytics style, three-panel layout.
+  engagement_analytics: `GENERATE: ENGAGEMENT ANALYTICS DASHBOARD — pick the ONE variant below that best matches the transcript. Never default to the same variant every time.
 
-LAYOUT: Three-column design filling the full viewport:
-  • LEFT SIDEBAR (22% width, #F9FAFB background, border-right 1px #E5E7EB): Top primary KPI (large number 3rem+ bold + label, e.g. "284 Concurrents"), 2–3 secondary KPIs with labeled inline progress bars (Recirculation %, Engaged Time mm:ss). Below: labeled checkbox filter groups — Subscribers (Guest/Subscriber/Registered/Unspecified), Visitor Frequency (New/Returning/Loyal/Unclassified), Device (Mobile/Desktop/Tablet). Each filter group has a small bold heading.
-  • CENTER PANEL (54% width, white): Stacked area/line chart in top third with tab navigation TODAY / 7-DAY / 30-DAY — ALL tabs functional JS. Chart uses Chart.js from cdn.jsdelivr.net/npm/chart.js with inline dataset arrays (no fetch). Below chart: article/content table with columns "Concurrents ↕ | Title | Engaged Time | Pageviews" — clicking column headers re-sorts the table asc/desc with ▲/▼ indicator. Row hover: #F0F9FF highlight. Table rows are data-viz-row-cat attributed for filter integration.
-  • RIGHT PANEL (24% width, #F9FAFB, border-left 1px #E5E7EB): "Traffic" section heading + "by Source" toggle label. Horizontal bar rows: source name | colored bar | percentage (Internal=teal, Direct=coral/orange, Search=green, Social=purple, Links/Other=gray). Separator. "Referrers" section: list of referrer domains with numeric counts right-aligned.
+VARIANT SELECTION — read the transcript and choose:
+  A. "Real-Time Monitor"   → transcript mentions live/concurrent users, active visitors, now, real-time feeds
+  B. "Executive KPI Board" → transcript mentions KPIs, management, monthly/quarterly report, board, overview
+  C. "Campaign Attribution"→ transcript mentions campaign, CTR, CPC, spend, attribution, source breakdown, funnel
+  D. "Content Heatmap"     → transcript mentions articles, editorial, content pieces, author performance, sections
+  E. "Audience Segmentation"→ transcript mentions audience, cohort, retention, subscribers, GDPR, segments, loyalty
+  When the transcript is ambiguous or generic, rotate across B / C / D (do NOT default to A).
 
-INTERACTIVITY — ALL FOUR REQUIRED:
-  1. TODAY / 7-DAY / 30-DAY tabs: clicking switches Chart.js dataset to pre-defined inline arrays for that range; active tab gets border-bottom accent style.
-  2. Sidebar checkboxes: checking/unchecking any filter updates which table rows are visible (filter by data-viz-row-cat attribute on each row).
-  3. Column sort: clicking a <th> cycles asc/desc; updates visible rows order and shows ▲ / ▼.
-  4. Row hover highlight via CSS :hover or JS mouseenter.
+━━━ VARIANT A — Real-Time Concurrent Monitor ━━━
+Three-column layout (22% | 54% | 24%):
+  LEFT SIDEBAR (#F9FAFB, border-right): Primary KPI — big bold number (3rem+) "284 Concurrents". Below: Engaged Time + Recirculation % with inline bar gauges. Checkbox filters: Subscriber type (Guest / Subscriber / Registered), Device (Mobile / Desktop / Tablet), Frequency (New / Returning / Loyal).
+  CENTER (white): Period tabs TODAY / 7-DAY / 30-DAY (all functional JS). Chart.js stacked area chart — 4 series (Internal, Direct, Search, Social). Below: sortable table — Concurrents ↕ | Title | Engaged Time | Pageviews. Column header click cycles asc/desc. Row hover #F0F9FF.
+  RIGHT SIDEBAR (#F9FAFB, border-left): "Traffic by Source" horizontal bar rows, each source a distinct muted color. Separator. "Top Referrers" list with numeric counts right-aligned.
+Interactivity: tab switching swaps Chart.js datasets; checkbox filters show/hide table rows by data-cat attr; column sort; hover.
 
-COLORS: Editorial neutral — white center, #F9FAFB sidebars, #2D6A4F or #0D9488 accent (deep green/teal), #374151 primary text, #6B7280 secondary text, #E5E7EB borders. No purple/blue gradients. Traffic bars each get a distinct muted color (not all the same).
-TYPOGRAPHY: font-variant-numeric: tabular-nums on all KPI numbers. Section headings: Playfair Display or Georgia serif 1rem bold. Data rows: Inter or system-sans 13–14px.
-CHART: Stacked area chart, 4–5 colored series matching Traffic panel colors. X-axis: time labels (hours for TODAY, days for 7-DAY/30-DAY). Y-axis: concurrent count. Use placeholder coherent data when transcript lacks specifics; add a discreet "Example data" footnote beneath chart.
-DATA: Extract all engagement figures, traffic sources, article/content titles, time ranges from the transcript. When the meeting is conceptual or lacks exact figures, use plausible round-number placeholders so the dashboard reads as a convincing preview.
+━━━ VARIANT B — Executive KPI Command Center ━━━
+Full-width sticky header row: 4–5 KPI tiles side by side, each tile = white card, number 2.5rem bold, label below, tiny up/down % change badge (green/red). Examples: Total Engaged Users, Avg. Engaged Time, Recirculation Rate, Newsletter Opens, CTR.
+Below header: two-column split (60% | 40%) —
+  LEFT: Chart.js multi-line chart (line per channel), period toggle THIS WEEK / LAST 4 WEEKS / LAST 3 MONTHS. Below chart: summary table (Channel | Sessions | Engaged | CTR | Δ vs prev) with sortable columns.
+  RIGHT: Doughnut/ring chart (Chart.js) showing traffic source share, legend below. Below doughnut: "Top Pages" ranked list — rank number + title + engaged-time + pageview count, alternating #F9FAFB rows.
+Interactivity: period toggle swaps all chart datasets; doughnut legend click toggles segment; table sort.
 
-DO NOT use dark HMI backgrounds. DO NOT use pump/hardware templates. DO NOT generate a plain bullet-list summary.`,
+━━━ VARIANT C — Campaign Attribution Breakdown ━━━
+Header bar: campaign name badge + date range pill + "Active Campaigns: N" counter. Below: three zones (30% | 40% | 30%):
+  LEFT: Vertical conversion funnel — 4–5 steps (Impressions → Clicks → Engaged Visits → Leads → Conversions). Each step: colored bar tapering left-to-right, step name, count, conversion-rate badge. SVG or CSS clip-path.
+  CENTER: Grouped horizontal bar chart (Chart.js) — rows = channels (Email / Social / Search / Display / Direct), bars = Reach / Clicks / Conversions per channel. Toggle button "Absolute / Indexed" switches between raw numbers and index-100 bars.
+  RIGHT: Campaign card list — each card: campaign name bold, status chip (Active=teal / Paused=amber / Ended=gray), CTR %, CPC metric, sparkline (Chart.js mini line). Cards clickable (toggle expanded/collapsed state showing more metrics).
+Interactivity: Absolute/Indexed toggle; card expand/collapse; bar hover tooltip.
+
+━━━ VARIANT D — Content Engagement Heatmap ━━━
+Top bar: metric selector pills (Pageviews / Engaged Time / CTR / Social Shares — clicking changes heatmap color mapping). Date range: LAST 7 DAYS / 30 DAYS / 90 DAYS tabs. Below: two zones (70% | 30%):
+  LEFT: Content heatmap grid — rows = article/content titles (8–12 rows), columns = days/weeks. Each cell: background color from pale (#FEF3C7) → deep (#92400E) for teal variant, or pale (#ECFDF5) → deep (#065F46), intensity = metric value. Cell tooltip on hover shows exact value.
+  RIGHT: Sparkline table — for each article row: title (truncated) + 14-day mini chart.js line chart + current metric value + Δ badge. "Author" filter dropdown at top filters rows.
+Bottom strip: summary bar — top performer highlight card, avg. engaged time, total unique articles tracked.
+Interactivity: metric pill changes heatmap colors + sparkline y-axis; date tabs recompute all values; author filter; cell hover tooltip.
+
+━━━ VARIANT E — Audience Segmentation Explorer ━━━
+Top: page title "Audience Intelligence" + date range badge.
+Row 1 — three donut/ring charts side by side (Chart.js Doughnut): (1) Device split Mobile/Desktop/Tablet, (2) Subscriber type Guest/Registered/Paid/GDPR-deleted, (3) Traffic source Direct/Search/Social/Email/Internal. Each has a bold center label (largest segment name) and a legend below.
+Row 2 — Cohort Retention heatmap (CSS Grid table): rows = weekly cohorts (Week 0 … Week 8), columns = weeks since first visit (W0 … W6). Cells colored by retention % — #F0FDF4 (100%) to #166534 (0%, effectively dark green scale). Cell value = "N%" text. Row header = cohort start date. Column header = "Week N".
+Row 3 — Behavioral funnel strip: horizontal funnel (5 steps) showing visitor → content-engaged → recirculated → subscribed → retained. Each step: count + drop-off % badge.
+Bottom: GDPR/consent note strip in muted style: "Data shown is post-consent and anonymised per…" (fill plausibly).
+Interactivity: donut legend click toggles segment; cohort table row hover highlights full row; funnel step hover shows tooltip.
+
+━━━ SHARED RULES (all variants) ━━━
+CHART LIBRARY: Chart.js from cdn.jsdelivr.net/npm/chart.js — always inline dataset arrays, never fetch().
+DATA: Extract figures/titles/channels from the transcript. When not available, use coherent round-number placeholders; add small italic "Example data — replace with live feed" footnote.
+COLORS: #374151 primary text, #6B7280 secondary, #E5E7EB borders, #F9FAFB panel bg. Accent: deep green/teal (#0D9488 / #065F46) or muted coral/amber for contrast. Each data series gets a DISTINCT muted color — never all the same hue.
+TYPOGRAPHY: font-variant-numeric: tabular-nums on all numbers. Headings: Outfit 600 or Georgia serif. Body/data rows: Inter or system-sans 13–14px. Import Outfit from Google Fonts.
+DO NOT: dark HMI chrome, pump hardware, plain bullet list, all-same-layout every session.`,
 
   ux_prototype: `GENERATE: CLICKABLE MULTI-SCREEN UX PROTOTYPE — navigable interactive mockup.
 
