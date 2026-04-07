@@ -42,6 +42,8 @@ export function useVisualizeStream() {
   const [meta, setMeta] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
   const [debugInfo, setDebugInfo] = useState<VizDebugInfo | null>(null);
+  /** Family resolved from the earliest SSE event — drives the loading skeleton variant. */
+  const [streamFamily, setStreamFamily] = useState<string | null>(null);
   const streamFlushRafRef = useRef<number | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
@@ -69,6 +71,7 @@ export function useVisualizeStream() {
       setError(null);
       setMeta(null);
       setDebugInfo(null);
+      setStreamFamily(null);
       const genStartTime = performance.now();
 
       try {
@@ -140,8 +143,19 @@ export function useVisualizeStream() {
                 if (parsed.type === "chunk" && parsed.text) {
                   completeHtml += parsed.text;
                   scheduleStreamFlush();
+                } else if (parsed.type === "meta") {
+                  // meta arrives before any chunks — grab family for skeleton immediately
+                  if (parsed.classification?.family) {
+                    setStreamFamily((prev) => prev ?? parsed.classification.family);
+                  }
                 } else if (parsed.type === "debug") {
                   setDebugInfo((prev) => ({ ...prev, ...parsed }));
+                  // debug carries resolvedFamily — more authoritative than meta.classification.family
+                  if (parsed.resolvedFamily) {
+                    setStreamFamily(parsed.resolvedFamily);
+                  } else if (parsed.classification?.family) {
+                    setStreamFamily((prev) => prev ?? parsed.classification.family);
+                  }
                 } else if (parsed.type === "debug_prompt") {
                   setDebugInfo((prev) => ({
                     ...prev,
@@ -277,5 +291,6 @@ export function useVisualizeStream() {
     meta,
     error,
     debugInfo,
+    streamFamily,
   };
 }

@@ -345,6 +345,7 @@ export default function Room() {
     meta: streamMeta,
     error: vizStreamError,
     debugInfo,
+    streamFamily,
   } = useVisualizeStream();
 
   const activeHtml = isGenerating ? streamedHtml : displayHtml || sseViz.html;
@@ -3199,6 +3200,7 @@ export default function Room() {
               reasoningText={reasoningText}
               isLoadingActions={isLoadingActions}
               debugInfo={displayDebug}
+              streamFamily={isGenerating ? streamFamily : null}
               onAnnotate={handleVizAnnotate}
             />
           </div>
