@@ -156,7 +156,7 @@ export default function Home() {
         >
           <div className="text-center mb-10">
             <h1 className="text-3xl font-display font-bold text-white mb-2">Meeting AI Visualizer</h1>
-            <p className="text-muted-foreground">Real-time industrial systems modeling from speech.</p>
+            <p className="text-muted-foreground">Live AI-generated visualizations from speech.</p>
           </div>
 
           <div className="space-y-8">

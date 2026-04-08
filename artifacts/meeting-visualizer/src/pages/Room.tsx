@@ -1222,7 +1222,7 @@ export default function Room() {
 
   // If the user hasn't typed a custom prompt, fall back to the generic domain hint
   const effectiveOpenaiPrompt = useMemo(
-    () => openaiPrompt.trim() || getDomainPrompt(null, openaiLanguage),
+    () => openaiPrompt.trim() || getDomainPrompt("generic", openaiLanguage),
     [openaiPrompt, openaiLanguage],
   );
 
@@ -1405,6 +1405,7 @@ export default function Room() {
       }, 100);
       return () => clearTimeout(t);
     }
+    return undefined;
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sketchId]);
 

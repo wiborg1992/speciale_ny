@@ -26,13 +26,7 @@ export const VIZ_MODELS = [
   { value: "gemini-pro", label: "Gemini Pro" },
 ] as const;
 
-export const WORKSPACE_DOMAINS = [
-  { value: "grundfos", label: "Grundfos" },
-  { value: "gabriel", label: "Gabriel (data)" },
-  { value: "generic", label: "Generic" },
-] as const;
-
-export const WORKSHOP_ROSTER_DEFAULT = "Jesper,Klaus,Maria,Anna,Facilitator";
+export const WORKSHOP_ROSTER_DEFAULT = "Speaker 1,Speaker 2,Speaker 3,Facilitator";
 
 export const MAX_VIZ_HISTORY = 100;
 export const MAX_PASTE_HISTORY = 25;

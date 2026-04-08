@@ -54,7 +54,7 @@ function main(): void {
 
   for (const s of file.scenarios) {
     const domains: WorkspaceDomain[] =
-      s.domains ?? (["grundfos", "gabriel"] as WorkspaceDomain[]);
+      s.domains ?? (["generic"] as WorkspaceDomain[]);
 
     for (const domain of domains) {
       const expected = s.expectedFamily[domain];
