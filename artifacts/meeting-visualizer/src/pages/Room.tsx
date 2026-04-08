@@ -1344,8 +1344,8 @@ export default function Room() {
           context: getMeetingContext(),
           freshStart,
           ...(sketchId ? { sketchId } : {}),
-          // Manual click always bypasses the word-growth gate; auto-trigger respects it
-          ...(!auto ? { forceVisualize: true } : {}),
+          // Altid forceVisualize: auto-viz må aldrig vise disambiguation-dialog
+          forceVisualize: true,
           // Annotation-trigger: bypass disambiguation-dialog (altid "refine") + ord-gate
           ...(isAnnotationTrigger ? {
             isAnnotation: true,
@@ -1469,6 +1469,20 @@ export default function Room() {
   useEffect(() => {
     isGeneratingRef.current = isGenerating;
   }, [isGenerating]);
+  const isRecordingRef = useRef(isRecording);
+  useEffect(() => {
+    isRecordingRef.current = isRecording;
+  }, [isRecording]);
+  const stopRecordingRef = useRef(stopRecording);
+  useEffect(() => {
+    stopRecordingRef.current = stopRecording;
+  }, [stopRecording]);
+  const toggleRecordingRef = useRef(toggleRecording);
+  useEffect(() => {
+    toggleRecordingRef.current = toggleRecording;
+  }, [toggleRecording]);
+  // Sættes til true mens auto-viz genererer — bruges til at genstarte optagelse bagefter
+  const autoVizInFlightRef = useRef(false);
 
   // Track word count at last generation to avoid redundant auto-viz triggers
   const lastVizWordCountRef = useRef(0);
@@ -1478,11 +1492,34 @@ export default function Room() {
   // VIGTIGT: currentWordCount må IKKE være i dependency-arrayet —
   // ellers nulstilles lastVizWordCountRef ved hvert nyt ord og hasNewContent
   // bliver altid false (auto-viz triggeres aldrig).
+  const prevIsGeneratingRef = useRef(isGenerating);
   useEffect(() => {
+    const wasGenerating = prevIsGeneratingRef.current;
+    prevIsGeneratingRef.current = isGenerating;
+
     if (!isGenerating) {
       lastVizWordCountRef.current = currentWordCountRef.current;
       autoVizCountdownRef.current = 45;
       setAutoVizCountdown(45);
+    }
+
+    // Genstart optagelse og ryd transskript efter auto-viz "klip"
+    if (wasGenerating && !isGenerating && autoVizInFlightRef.current) {
+      autoVizInFlightRef.current = false;
+      // Ryd segmenter stille (ingen confirm-dialog) for at starte en ny cyklus
+      if (roomId) {
+        fetch(`${BASE}api/meetings/${encodeURIComponent(roomId)}/clear-transcript`, {
+          method: "POST",
+        })
+          .then(() => clearSegmentsLocally())
+          .catch(() => {});
+      }
+      // Genstart mikrofon automatisk
+      setTimeout(() => {
+        if (!isRecordingRef.current) {
+          void toggleRecordingRef.current();
+        }
+      }, 400);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isGenerating]);
@@ -1509,6 +1546,9 @@ export default function Room() {
           currentWordCountRef.current >= MIN_WORDS_FOR_VISUALIZATION &&
           !isGeneratingRef.current
         ) {
+          // Stop optagelse ("klip") så vi fanger et fast snapshot
+          if (isRecordingRef.current) stopRecordingRef.current();
+          autoVizInFlightRef.current = true;
           handleGenerateRef.current(true);
         }
         autoVizCountdownRef.current = 45;
