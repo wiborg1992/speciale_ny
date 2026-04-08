@@ -51,6 +51,7 @@ import { useSessionEvalLog } from "@/hooks/use-session-eval-log";
 import { recordMeetingVisit } from "@/lib/recent-meetings-log";
 import { getDomainPrompt } from "@/lib/domain-prompts";
 import type { SessionEvalVizSource } from "@/lib/session-eval-report";
+import { readFileContent } from "@/lib/file-reader";
 import { useOpenSessions } from "@/hooks/use-open-sessions";
 import { SessionTabs } from "@/components/SessionTabs";
 import {
@@ -250,7 +251,7 @@ export default function Room() {
   const [ctxAttend, setCtxAttend] = useState("");
   const [ctxExtra, setCtxExtra] = useState("");
   const [uploadedFiles, setUploadedFiles] = useState<
-    { name: string; content: string }[]
+    { name: string; content: string; loading?: boolean }[]
   >([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -511,15 +512,21 @@ export default function Room() {
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const files = Array.from(e.target.files ?? []);
       files.forEach((file) => {
-        const reader = new FileReader();
-        reader.onload = (ev) => {
-          const content = ev.target?.result as string;
-          setUploadedFiles((prev) => {
-            if (prev.some((f) => f.name === file.name)) return prev;
-            return [...prev, { name: file.name, content }];
+        setUploadedFiles((prev) => {
+          if (prev.some((f) => f.name === file.name)) return prev;
+          return [...prev, { name: file.name, content: "", loading: true }];
+        });
+        readFileContent(file)
+          .then((content) => {
+            setUploadedFiles((prev) =>
+              prev.map((f) =>
+                f.name === file.name ? { name: f.name, content, loading: false } : f,
+              ),
+            );
+          })
+          .catch(() => {
+            setUploadedFiles((prev) => prev.filter((f) => f.name !== file.name));
           });
-        };
-        reader.readAsText(file);
       });
       if (fileInputRef.current) fileInputRef.current.value = "";
     },
@@ -536,8 +543,9 @@ export default function Room() {
     if (ctxProjects) parts.push("Projects/systems: " + ctxProjects);
     if (ctxAttend) parts.push("Participants: " + ctxAttend);
     if (ctxExtra) parts.push("Context: " + ctxExtra);
-    if (uploadedFiles.length > 0) {
-      uploadedFiles.forEach((f) => {
+    const readyFiles = uploadedFiles.filter((f) => !f.loading && f.content);
+    if (readyFiles.length > 0) {
+      readyFiles.forEach((f) => {
         parts.push(`\n--- FILE: ${f.name} ---\n${f.content}\n--- END FILE ---`);
       });
     }
@@ -2506,7 +2514,7 @@ export default function Room() {
               ref={fileInputRef}
               type="file"
               multiple
-              accept=".md,.txt,.yaml,.yml,.json,.csv,.ts,.js,.py,.xml,.toml,.ini,.conf,.log"
+              accept=".pdf,.md,.txt,.yaml,.yml,.json,.csv,.ts,.js,.py,.xml,.toml,.ini,.conf,.log"
               className="hidden"
               onChange={handleFileUpload}
             />
@@ -2577,17 +2585,31 @@ export default function Room() {
                       {uploadedFiles.map((f) => (
                         <span
                           key={f.name}
-                          className="flex items-center gap-1 h-7 px-2 rounded bg-primary/10 border border-primary/30 text-xs font-mono text-primary"
+                          className={cn(
+                            "flex items-center gap-1 h-7 px-2 rounded border text-xs font-mono",
+                            f.loading
+                              ? "bg-muted/40 border-border text-muted-foreground"
+                              : "bg-primary/10 border-primary/30 text-primary",
+                          )}
                         >
-                          <FileText className="w-3 h-3 shrink-0" />
+                          {f.loading ? (
+                            <svg className="w-3 h-3 shrink-0 animate-spin" viewBox="0 0 24 24" fill="none">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                            </svg>
+                          ) : (
+                            <FileText className="w-3 h-3 shrink-0" />
+                          )}
                           {f.name}
-                          <button
-                            type="button"
-                            onClick={() => removeUploadedFile(f.name)}
-                            className="ml-0.5 hover:text-red-400 transition-colors"
-                          >
-                            <X className="w-3 h-3" />
-                          </button>
+                          {!f.loading && (
+                            <button
+                              type="button"
+                              onClick={() => removeUploadedFile(f.name)}
+                              className="ml-0.5 hover:text-red-400 transition-colors"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          )}
                         </span>
                       ))}
                     </div>
