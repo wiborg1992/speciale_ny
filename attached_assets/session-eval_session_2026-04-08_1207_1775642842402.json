@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 2,
+  "exportedAt": "2026-04-08T10:07:15.928Z",
+  "session": {
+    "roomId": "EVKFYA",
+    "meetingTitle": "",
+    "sessionStartedAt": "2026-04-08T10:04:33.680Z",
+    "sessionEndedAt": "2026-04-08T10:07:15.928Z"
+  },
+  "summary": {
+    "transcriptWordCountApprox": 119,
+    "segmentCount": 1,
+    "participantNames": [
+      "Speaker 2"
+    ],
+    "visualizationEventCount": 1,
+    "skippedCount": 0,
+    "errorCount": 0
+  },
+  "reviewerNotes": "Denne visualisering er repræsentativ for hvordan pump login interace  skal se ud.",
+  "events": [
+    {
+      "kind": "visualization",
+      "at": "2026-04-08T10:04:33.860Z",
+      "source": "sse_peer",
+      "version": 1,
+      "vizName": "Heat Pump Login Interface",
+      "htmlChars": 10749,
+      "debug": null,
+      "facit": {
+        "expectedIntent": "new_viz",
+        "actualIntentNotes": "Visualiseringen er er lavet som det skal ud fra tranksriptionen. ",
+        "disambiguationShown": false,
+        "severity": "p3"
+      }
+    }
+  ]
+}

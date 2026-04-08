@@ -66,7 +66,11 @@ export function useVisualizeStream() {
         cancelAnimationFrame(streamFlushRafRef.current);
         streamFlushRafRef.current = null;
       }
-      abortRef.current?.abort();
+      if (abortRef.current) {
+        console.error("[viz] generate() called while a generation was in progress — ABORTING previous fetch!");
+        console.trace("[viz] caller stack:");
+        abortRef.current.abort();
+      }
       const ac = new AbortController();
       abortRef.current = ac;
       const signal = ac.signal;

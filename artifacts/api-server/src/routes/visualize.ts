@@ -882,11 +882,12 @@ router.post("/visualize", async (req, res, next): Promise<void> => {
                 null) as VizFamily | null,
             );
           }
-          if (!clientDisconnected) {
-            broadcastEvent(roomId, "visualization", { html: cleanHtml, meta });
-          } else {
+          // Broadcast via SSE uanset om HTTP-streamen er afbrudt.
+          // Klientens SSE-kanal er separat — de modtager viz selv hvis fetch-POST er droppet.
+          broadcastEvent(roomId, "visualization", { html: cleanHtml, meta });
+          if (clientDisconnected) {
             console.log(
-              `[viz-orphan] Client disconnected during generation — saved to DB and updated in-memory state (room=${roomId}, family=${resolvedFamily ?? classification?.family}, took=${Math.round(performance.now() - streamT0)}ms)`,
+              `[viz-orphan] Client HTTP-stream disconnected — viz broadcast via SSE (room=${roomId}, family=${resolvedFamily ?? classification?.family}, took=${Math.round(performance.now() - streamT0)}ms)`,
             );
           }
         }

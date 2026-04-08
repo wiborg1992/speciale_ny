@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Heat Pump Interface Login Panel</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      background: #f8fafc;
+      font-family: 'Outfit', sans-serif;
+      padding: 32px 20px;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+    }
+    .container {
+      width: 100%;
+      max-width: 900px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 24px;
+    }
+    .header {
+      text-align: center;
+      margin-bottom: 8px;
+    }
+    .header h1 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 2.2rem;
+      font-weight: 700;
+      color: #002a5c;
+      letter-spacing: -0.5px;
+    }
+    .header p {
+      font-size: 0.85rem;
+      color: #5a6a7a;
+      margin-top: 4px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    .svg-wrapper {
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 2px 8px rgba(0, 42, 92, 0.08), 0 0 0 1px rgba(0, 42, 92, 0.06);
+      min-height: 500px;
+    }
+    svg {
+      width: 100%;
+      max-width: 550px;
+      height: auto;
+      filter: drop-shadow(0 4px 12px rgba(0, 42, 92, 0.12));
+    }
+    .info-grid {
+      width: 100%;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-top: 12px;
+    }
+    .info-card {
+      background: white;
+      border: 1px solid #cbd5e1;
+      border-left: 4px solid #0077c8;
+      border-radius: 8px;
+      padding: 14px 16px;
+      box-shadow: 0 1px 3px rgba(0, 42, 92, 0.04);
+    }
+    .info-card-label {
+      font-size: 0.68rem;
+      color: #5a6a7a;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+    .info-card-value {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.95rem;
+      color: #1e293b;
+      font-weight: 700;
+    }
+    .footer {
+      text-align: center;
+      margin-top: 20px;
+      font-size: 0.62rem;
+      color: #94a3b8;
+      letter-spacing: 0.08em;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>Heat Pump Login Interface</h1>
+      <p>Cyber Resilience Compliant</p>
+    </div>
+
+    <div class="svg-wrapper">
+      <svg viewBox="0 0 520 580" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="panelGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" style="stop-color:#f5f7fa;stop-opacity:1" />
+            <stop offset="100%" style="stop-color:#e8f0f8;stop-opacity:1" />
+          </linearGradient>
+          <linearGradient id="displayGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" style="stop-color:#1a2a4a;stop-opacity:1" />
+            <stop offset="100%" style="stop-color:#0f1f35;stop-opacity:1" />
+          </linearGradient>
+          <linearGradient id="strengthGradWeak" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" style="stop-color:#ff6b6b;stop-opacity:1" />
+            <stop offset="100%" style="stop-color:#ff8888;stop-opacity:1" />
+          </linearGradient>
+          <linearGradient id="strengthGradMed" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" style="stop-color:#ffa500;stop-opacity:1" />
+            <stop offset="100%" style="stop-color:#ffb84d;stop-opacity:1" />
+          </linearGradient>
+          <linearGradient id="strengthGradStrong" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" style="stop-color:#22c55e;stop-opacity:1" />
+            <stop offset="100%" style="stop-color:#4ade80;stop-opacity:1" />
+          </linearGradient>
+          <filter id="panelShadow">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="2" />
+            <feOffset dx="0" dy="2" result="offsetblur" />
+            <feComponentTransfer>
+              <feFuncA type="linear" slope="0.15" />
+            </feComponentTransfer>
+            <feMerge>
+              <feMergeNode />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+        </defs>
+
+        <!-- Main Panel Background -->
+        <rect x="30" y="20" width="460" height="540" rx="14" fill="url(#panelGrad)" stroke="#cbd5e1" stroke-width="1.5" filter="url(#panelShadow)" />
+
+        <!-- Brand Header Bar -->
+        <rect x="30" y="20" width="460" height="60" rx="14 14 0 0" fill="#002a5c" />
+        <text x="50" y="45" font-family="Outfit" font-size="18" font-weight="700" fill="#ffffff">GRUNDFOS Heat Pump</text>
+        <text x="50" y="62" font-family="Outfit" font-size="10" fill="#a8b8cc" letter-spacing="1">AUTHENTICATION</text>
+
+        <!-- Display Area -->
+        <rect x="45" y="95" width="430" height="160" rx="8" fill="url(#displayGrad)" stroke="#0077c8" stroke-width="1" opacity="0.8" />
+        
+        <!-- Display Header -->
+        <text x="60" y="115" font-family="Space Mono" font-size="11" fill="#5a9fd4" letter-spacing="0.5">LOGIN MODE</text>
+        
+        <!-- Display Status Text -->
+        <text x="60" y="145" font-family="Outfit" font-size="16" font-weight="600" fill="#ffffff">Secure Passphrase Entry</text>
+        <text x="60" y="165" font-family="Outfit" font-size="13" fill="#a8b8cc">Cyber Resilience Act Compliant</text>
+        
+        <!-- Instruction Text -->
+        <text x="60" y="192" font-family="Outfit" font-size="10" fill="#7a9cb5">Create a random, strong passphrase:</text>
+        <text x="60" y="207" font-family="Outfit" font-size="10" fill="#7a9cb5">No factory codes • No simple patterns</text>
+
+        <!-- Input Field Label -->
+        <text x="60" y="240" font-family="Outfit" font-size="11" fill="#5a6a7a" font-weight="600" letter-spacing="0.1">PASSPHRASE</text>
+        
+        <!-- Password Input Field -->
+        <rect x="60" y="250" width="400" height="42" rx="6" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5" />
+        <text x="75" y="277" font-family="Space Mono" font-size="14" fill="#1e293b">••••••••••••••••</text>
+        
+        <!-- Strength Meter Label -->
+        <text x="60" y="310" font-family="Outfit" font-size="10" fill="#5a6a7a" font-weight="600" letter-spacing="0.1">STRENGTH</text>
+        
+        <!-- Strength Meter Background -->
+        <rect x="60" y="320" width="400" height="24" rx="4" fill="#f0f4f8" stroke="#cbd5e1" stroke-width="1" />
+        
+        <!-- Strength Fill (animated visual cue) -->
+        <rect x="60" y="320" width="280" height="24" rx="4" fill="url(#strengthGradMed)" opacity="0.85" />
+        
+        <!-- Strength Indicator Label -->
+        <text x="370" y="337" font-family="Outfit" font-size="11" font-weight="600" fill="#1e293b">GOOD</text>
+        
+        <!-- Criteria Checkmarks (Visual Guidance, Not Text List) -->
+        <circle cx="75" cy="365" r="6" fill="#22c55e" opacity="0.8" />
+        <text x="85" y="370" font-family="Outfit" font-size="11" fill="#1e293b">Random Characters</text>
+        
+        <circle cx="75" cy="395" r="6" fill="#22c55e" opacity="0.8" />
+        <text x="85" y="400" font-family="Outfit" font-size="11" fill="#1e293b">Length &gt; 12 chars</text>
+        
+        <circle cx="310" cy="365" r="6" fill="#22c55e" opacity="0.8" />
+        <text x="320" y="370" font-family="Outfit" font-size="11" fill="#1e293b">Mixed Types</text>
+        
+        <circle cx="310" cy="395" r="6" fill="#22c55e" opacity="0.8" />
+        <text x="320" y="400" font-family="Outfit" font-size="11" fill="#1e293b">No Common Words</text>
+
+        <!-- Action Buttons -->
+        <rect x="60" y="430" width="190" height="44" rx="6" fill="#0077c8" stroke="#0055a0" stroke-width="1.5" />
+        <text x="155" y="458" font-family="Outfit" font-size="13" font-weight="700" fill="#ffffff" text-anchor="middle">CREATE</text>
+
+        <rect x="270" y="430" width="190" height="44" rx="6" fill="#f0f4f8" stroke="#cbd5e1" stroke-width="1.5" />
+        <text x="365" y="458" font-family="Outfit" font-size="13" font-weight="700" fill="#5a6a7a" text-anchor="middle">CANCEL</text>
+
+        <!-- Footer Info Bar -->
+        <rect x="45" y="485" width="430" height="35" rx="6" fill="#eff6ff" stroke="#0077c8" stroke-width="0.5" opacity="0.6" />
+        <text x="60" y="505" font-family="Outfit" font-size="10" fill="#0055a0" font-weight="600">✓ Compliant</text>
+        <text x="130" y="505" font-family="Outfit" font-size="10" fill="#5a6a7a">EU 2024/2847 Cyber Resilience Act</text>
+
+        <!-- Callout: Real-Time Strength Indicator -->
+        <line x1="280" y1="320" x2="280" y2="280" stroke="#0077c8" stroke-width="2" stroke-dasharray="3,3" opacity="0.6" />
+        <rect x="220" y="255" width="120" height="24" rx="4" fill="#0077c8" opacity="0.1" stroke="#0077c8" stroke-width="1" />
+        <text x="280" y="271" font-family="Outfit" font-size="9" font-weight="600" fill="#0055a0" text-anchor="middle">Real-time Meter</text>
+
+        <!-- Callout: No Factory Codes -->
+        <line x1="75" y1="250" x2="30" y2="220" stroke="#ff6b6b" stroke-width="2" stroke-dasharray="3,3" opacity="0.7" />
+        <text x="25" y="205" font-family="Outfit" font-size="9" font-weight="600" fill="#c53030">Legacy codes blocked</text>
+        <text x="25" y="218" font-family="Outfit" font-size="8" fill="#7f1d1d">(admin, 1234, patterns)</text>
+
+        <!-- Callout: Secure by Default -->
+        <line x1="460" y1="115" x2="495" y2="100" stroke="#22c55e" stroke-width="2" stroke-dasharray="3,3" opacity="0.7" />
+        <text x="500" y="105" font-family="Outfit" font-size="9" font-weight="600" fill="#166534">Secure by Default</text>
+      </svg>
+    </div>
+
+    <div class="info-grid">
+      <div class="info-card">
+        <div class="info-card-label">Regulation Status</div>
+        <div class="info-card-value">EU 2024/2847 CRA</div>
+      </div>
+      <div class="info-card">
+        <div class="info-card-label">Authentication Method</div>
+        <div class="info-card-value">Random Passphrase</div>
+      </div>
+    </div>
+
+    <div class="footer">
+      Generated by Meeting AI Visualizer
+    </div>
+  </div>
+
+  <script>
+    (function() {
+      document.addEventListener('DOMContentLoaded', function() {
+        // Placeholder for future interactivity
+        console.log('Heat Pump Login Interface loaded');
+      });
+    })();
+  </script>
+</body>
+</html>
