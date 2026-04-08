@@ -597,12 +597,13 @@ router.post("/visualize", async (req, res, next): Promise<void> => {
     // ─── Ambiguity guard ──────────────────────────────────────────────────────
     // Klassifikatoren er ikke sikker på typen OG der er ingen tidligere
     // visualisering at opdatere — generér ikke generisk HTML, vent på mere indhold.
-    // Bypasses hvis: bruger har valgt type, refinement er detekteret, focusSegment.
+    // Bypasses hvis: bruger har valgt type, refinement er detekteret, focusSegment, forceVisualize.
     if (
       !sketchId &&
       !userPickedType &&
       !refinementDirective &&
       !focusSegment &&
+      !forceVisualize &&
       !effectivePreviousHtml &&
       classification?.ambiguous
     ) {
