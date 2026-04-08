@@ -1610,6 +1610,20 @@ export async function* streamVisualization(
     !freshStart && !!previousHtml && previousHtml.trim().length > 80;
 
   let userMessage = "";
+
+  // ─── Refinement instruction header (HIGHEST PRIORITY) ────────────────────
+  // When the orchestrator chose mode=refine and provided a refinementNote,
+  // prepend it at the very top of the message so it outweighs all other context.
+  // This prevents the viz LLM from discarding the existing layout and regenerating from scratch.
+  if (isIncremental && refinementDirective) {
+    userMessage +=
+      `⚡ REFINEMENT INSTRUCTION (HIGHEST PRIORITY) — READ THIS FIRST:\n` +
+      `The orchestrator has issued a targeted modification request for the existing visualization.\n` +
+      `You MUST apply this instruction surgically — do NOT regenerate the visualization from scratch.\n` +
+      `⛔ NEVER discard the existing HTML structure and rewrite it entirely. Only make the changes below:\n\n` +
+      `${refinementDirective}\n\n`;
+  }
+
   if (title) userMessage += `Meeting title: ${title}\n\n`;
   if (context)
     userMessage += `ADDITIONAL MEETING CONTEXT (from facilitator — structured notes/files):\n${context}\n\n`;

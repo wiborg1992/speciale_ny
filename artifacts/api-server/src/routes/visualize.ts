@@ -30,6 +30,8 @@ import {
 import {
   orchestratorVizDecision,
   isOrchestratorEnabled,
+  parseRefinementNote,
+  applyStructureGuard,
   type OrchestratorDecision,
 } from "../lib/orchestrator-viz.js";
 import {
@@ -608,8 +610,11 @@ router.post("/visualize", async (req, res, next): Promise<void> => {
     // was in-flight. Await here — immediately before resolveFamily.
     const orchestratorResult = await orchestratorPromise;
 
-    // Keep the orchestrator result for SSE meta-emission (Fase D)
+    // Keep the orchestrator result for SSE meta-emission and viz-decision-trace (Fase D)
     let orchestratorMeta: { rationale: string; mode: string; confidence: number } | null = null;
+    let structureGuardApplied = false;
+    let refinementNoteValid: boolean | null = null;
+    let effectiveConfidence: number | null = null;
 
     let resolvedFamily: VizFamily | null;
 
@@ -687,30 +692,53 @@ router.post("/visualize", async (req, res, next): Promise<void> => {
         return;
       }
 
-      // Map orchestrator output til resolvedFamily + mode
-      resolvedFamily = oc.vizFamily as VizFamily;
+      // ─── Structure guard — applied before resolving family ───────────────────
+      // applyStructureGuard returns an overridden decision (mode=fresh) when the
+      // vizFamily + lastFamily pair is structurally incompatible with refine mode.
+      // OrchestratorDecision itself is immutable — guard produces a new object.
+      const guardResult = applyStructureGuard(oc, lastFamily);
+      const effectiveOc = guardResult.decision;
+      structureGuardApplied = guardResult.guardApplied;
 
-      if (oc.mode === "fresh") {
+      // ─── Parse refinementNote format ─────────────────────────────────────────
+      // Validates that the note starts with ADD:/UPDATE:/REMOVE:/FOCUS:.
+      // Invalid format → valid=false, effectiveConfidence reduced by 0.1.
+      // Visualization always continues regardless of validity.
+      const parsedNote = parseRefinementNote(effectiveOc.refinementNote);
+      refinementNoteValid = effectiveOc.mode === "refine" ? parsedNote.valid : null;
+
+      // effectiveConfidence: local computation — OrchestratorDecision stays immutable.
+      // Penalize by 0.1 when refinementNote format is invalid (signals uncertain orchestrator output).
+      const orchestratorConfidence = effectiveOc.confidence;
+      effectiveConfidence =
+        refinementNoteValid === false
+          ? Math.max(0, orchestratorConfidence - 0.1)
+          : orchestratorConfidence;
+
+      // Map orchestrator output til resolvedFamily + mode
+      resolvedFamily = effectiveOc.vizFamily as VizFamily;
+
+      if (effectiveOc.mode === "fresh") {
         effectivePreviousHtml = undefined;
         refinementDirective = null;
-      } else if (oc.mode === "refine") {
+      } else if (effectiveOc.mode === "refine") {
         if (!effectivePreviousHtml && roomId) {
           const room = getRoom(roomId);
           if (room?.lastVisualization) effectivePreviousHtml = room.lastVisualization;
         }
-        if (oc.refinementNote) {
-          refinementDirective = oc.refinementNote;
+        if (parsedNote.note) {
+          refinementDirective = parsedNote.note;
         }
       }
 
       orchestratorMeta = {
-        rationale: oc.rationale,
-        mode: oc.mode,
-        confidence: oc.confidence,
+        rationale: effectiveOc.rationale,
+        mode: effectiveOc.mode,
+        confidence: effectiveOc.confidence,
       };
 
       console.log(
-        `[orchestrator-viz] decision applied: family=${resolvedFamily} mode=${oc.mode} confidence=${oc.confidence}`,
+        `[orchestrator-viz] decision applied: family=${resolvedFamily} mode=${effectiveOc.mode} confidence=${effectiveOc.confidence} effectiveConfidence=${effectiveConfidence} guardApplied=${structureGuardApplied} refinementNoteValid=${refinementNoteValid}`,
       );
     } else {
       // ─── Fallback path: P0–P8 decision order ─────────────────────────────
@@ -789,10 +817,15 @@ router.post("/visualize", async (req, res, next): Promise<void> => {
       }
     }
 
-    // ─── Structural incompatibility defense ──────────────────────────────────
+    // ─── Structural incompatibility defense (fallback path only) ─────────────
     // Ekstra forsvar: selv hvis topic-shift clear ikke kørte (fx resolvedFamily ===
     // lastFamily pga edge case), tving fresh start for inkompatible familiepar.
+    //
+    // ORCHESTRATOR-GATE: Skip when orchestrator is active — orchestrator has authority and
+    // structural incompatibility is already handled by applyStructureGuard (P2).
+    // AUTO_FRESH_FAMILIES heuristic only applies on P3 keyword-fallback path.
     if (
+      (!orchestratorResult || !isOrchestratorEnabled()) &&
       resolvedFamily &&
       lastFamily &&
       resolvedFamily !== lastFamily &&
@@ -1094,6 +1127,31 @@ router.post("/visualize", async (req, res, next): Promise<void> => {
         `data: ${JSON.stringify({
           type: "meta",
           orchestrator: orchestratorMeta,
+        })}\n\n`,
+      );
+    }
+
+    // ─── viz-decision-trace SSE event ─────────────────────────────────────────
+    // Emitted once per visualization with full routing trace for observability.
+    // routingAuthority: "orchestrator" when orchestrator was active and returned a result,
+    //                   "fallback" when P0–P8 keyword path was used (orchestrator off/timeout/error).
+    // Always emitted — both paths — so analytics consumers get a stable schema every request.
+    {
+      const traceT0 = Date.now();
+      const isOrchestratorPath = !!(orchestratorResult && isOrchestratorEnabled());
+      res.write(
+        `data: ${JSON.stringify({
+          type: "viz-decision-trace",
+          event: "viz-decision-trace",
+          roomId: roomId ?? null,
+          vizFamily: resolvedFamily ?? null,
+          mode: isOrchestratorPath ? (orchestratorMeta?.mode ?? null) : null,
+          routingAuthority: isOrchestratorPath ? "orchestrator" : "fallback",
+          structureGuardApplied: isOrchestratorPath ? structureGuardApplied : false,
+          orchestratorConfidence: isOrchestratorPath ? (orchestratorResult?.confidence ?? null) : null,
+          effectiveConfidence: isOrchestratorPath ? (effectiveConfidence ?? orchestratorResult?.confidence ?? null) : null,
+          refinementNoteValid: isOrchestratorPath ? refinementNoteValid : null,
+          elapsedMs: traceT0 - vizStartedAt,
         })}\n\n`,
       );
     }

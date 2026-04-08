@@ -88,8 +88,8 @@ Visualization families:
 - hmi_interface: Digital screen UI, HMI/SCADA, operator panels, tabs, screens
 - user_journey: Customer/user journey map, touchpoints, experience stages, pain points
 - workflow_process: Process flow, flowchart, swimlanes, decision diamonds, BPMN
-- physical_product: Physical pump hardware, front panel, LEDs, device illustration
-- mobile_app: Grundfos GO app, mobile application, phone app screens
+- physical_product: Physical hardware device, front panel, LEDs, enclosure, device illustration (NOT an app)
+- mobile_app: Mobile application screens, phone app UI, app navigation, app features
 - requirements_matrix: Requirements list, MoSCoW, traceability, kravspec
 - management_summary: Executive summary, timeline, Gantt, milestones, decision log
 - engagement_analytics: Digital analytics, CTR, traffic, dashboards, CRM metrics
@@ -100,9 +100,51 @@ Visualization families:
 - ux_prototype: Clickable prototype, wireframe, screen flow, interactive mockup
 - generic: None of the above / unclear
 
+━━━ DISAMBIGUATION RULES — COMMONLY CONFUSED FAMILY PAIRS ━━━
+
+RULE A — mobile_app vs physical_product:
+  • mobile_app: discussion focuses on app screens, navigation, gestures, in-app features, notifications, or the software experience ON a phone. Example: "the GO app shows the pump status and lets you change setpoints from your phone."
+  • physical_product: discussion focuses on the physical enclosure, front panel buttons, LED indicators, display mounted ON the device, or the hardware itself. Example: "the control unit has a 4-line LCD and three push buttons on the front face."
+  • AMBIGUOUS / insufficient signal: mentions of "app" or "phone" without describing screens → do NOT choose mobile_app based on a single word alone. A front-panel UI described without any mobile context → physical_product, not hmi_interface.
+
+RULE B — user_journey vs workflow_process:
+  • user_journey: named actors (customer, installer, end-user) experiencing a sequence of emotional stages, touchpoints, pain points, or opportunities over time. The perspective is human experience. Example: "the installer feels frustrated when the commissioning takes more than 30 minutes."
+  • workflow_process: process steps, decision diamonds, swim lanes, BPMN-style logic, system triggers, or procedural flows without a named actor's emotional perspective. Example: "the alarm triggers a relay check, then the system logs the fault code."
+  • Key differentiator: Is there a named human actor whose subjective experience is the focus? → user_journey. Is it a process or system flow with decisions? → workflow_process.
+
+RULE C — hmi_interface vs ux_prototype:
+  • hmi_interface: operational/runtime UI for monitoring and controlling a live industrial system (SCADA, control panel, real-time dashboards, operator screens). Context: the UI IS the product for plant operators.
+  • ux_prototype: a design-phase mockup, wireframe, or clickable prototype being reviewed in a design meeting. Context: designers or product managers discussing what screens SHOULD look like.
+  • Key differentiator: Is the team operating the system, or designing it? Operating → hmi_interface. Designing/reviewing mockups → ux_prototype.
+
+RULE D — service_blueprint vs user_journey:
+  • service_blueprint: multi-layer diagram showing frontstage, backstage, and support processes simultaneously — typically used by service designers mapping an entire service system. Includes line of visibility, internal processes, and technology layers.
+  • user_journey: single-actor lens through phases of an experience — no explicit backstage/frontstage layer distinction.
+  • Key differentiator: multiple service layers + internal processes → service_blueprint. Single actor experience arc → user_journey.
+
+RULE E — management_summary vs requirements_matrix:
+  • management_summary: strategic overview for executives — timelines, decisions, milestones, KPIs, Gantt, roadmap. Audience: decision-makers.
+  • requirements_matrix: structured list of specific functional/non-functional requirements with priority, owner, and status. Audience: engineers and project managers.
+  • Key differentiator: "what did we decide and when" → management_summary. "what must the system do, at what priority" → requirements_matrix.
+
+━━━ REFINE CONSTRAINT — STRUCTURAL INCOMPATIBILITY ━━━
+The following family pairs are structurally incompatible: their HTML layouts cannot be incrementally updated
+into each other without producing corrupt output. When mode would be refine but vizFamily differs from
+lastFamily AND the pair is in this list, you MUST return mode=fresh instead:
+
+INCOMPATIBLE PAIRS (order-independent):
+  • user_journey ↔ physical_product
+  • user_journey ↔ mobile_app
+  • physical_product ↔ mobile_app
+  • hmi_interface ↔ physical_product
+
+Note: workflow_process is intentionally excluded — it can often be refined to/from many families.
+
+If the new vizFamily and lastFamily form one of the above pairs: return mode=fresh (not refine).
+
 Mode rules:
-- fresh: new topic or cold start
-- refine: same family, user wants to modify existing viz
+- fresh: new topic or cold start, OR incompatible family shift (see REFINE CONSTRAINT above)
+- refine: same family (or compatible families), user wants to modify existing viz
 - skip: not enough signal (use sparingly)
 - ask_user: confidence < 0.45 OR genuinely ambiguous with existing viz
 
@@ -111,14 +153,14 @@ CRITICAL RULES:
 - If session summary shows established family and transcript continues same topic → refine
 - If transcript clearly pivots to a new family → fresh
 - Confidence reflects how sure you are about the vizFamily choice
-- refinementNote: brief instruction for the incremental viz generation (only when mode=refine)
+- refinementNote: brief instruction for the incremental viz generation (only when mode=refine); format MUST start with ADD:, UPDATE:, REMOVE:, or FOCUS: followed by specific instruction
 - sessionSummaryUpdate: max 500 chars, updated meeting context summary (include dominant topic, family chosen, any key decisions)
 
 Respond ONLY with a JSON object matching this exact schema (no markdown, no backticks):
 {
   "vizFamily": "<family_id>",
   "mode": "fresh|refine|skip|ask_user",
-  "refinementNote": "<optional, only for refine mode>",
+  "refinementNote": "<optional, only for refine mode — MUST start with ADD:, UPDATE:, REMOVE:, or FOCUS:>",
   "confidence": 0.0-1.0,
   "rationale": "<brief explanation, max 2 sentences>",
   "sessionSummaryUpdate": "<updated session summary, max 500 chars>"
@@ -327,6 +369,96 @@ export async function orchestratorVizDecision(
   }
 
   return result;
+}
+
+/**
+ * Validates the format of a refinementNote returned by the orchestrator.
+ * Valid format: must contain at least one directive keyword (ADD:, UPDATE:, REMOVE:, or FOCUS:)
+ * followed by non-empty content.
+ *
+ * Returns { note, valid: true } on match.
+ * Returns { note: fallback, valid: false } with console.warn on format violation.
+ * Never throws — visualization always continues regardless of note validity.
+ */
+export function parseRefinementNote(raw: string | undefined): {
+  note: string;
+  valid: boolean;
+} {
+  if (!raw || raw.trim().length === 0) {
+    return { note: "", valid: false };
+  }
+
+  const REFINEMENT_NOTE_PATTERN = /^(?:ADD|UPDATE|REMOVE|FOCUS):\s*.+$/i;
+  if (REFINEMENT_NOTE_PATTERN.test(raw)) {
+    return { note: raw.trim(), valid: true };
+  }
+
+  console.warn(
+    `[orchestrator-viz] refinementNote format invalid (no ADD:/UPDATE:/REMOVE:/FOCUS: directive) — falling back to raw note. raw="${raw.slice(0, 80)}"`,
+  );
+  return { note: raw.trim(), valid: false };
+}
+
+/**
+ * Structurally incompatible family pairs.
+ * When mode=refine and the chosen vizFamily + lastFamily form one of these pairs,
+ * the HTML structures are incompatible and refine would produce corrupt output.
+ *
+ * Note: workflow_process is intentionally excluded — it can often be refined to/from many families.
+ */
+export const INCOMPATIBLE_FAMILY_PAIRS: ReadonlyArray<
+  readonly [string, string]
+> = [
+  ["user_journey", "physical_product"],
+  ["user_journey", "mobile_app"],
+  ["physical_product", "mobile_app"],
+  ["hmi_interface", "physical_product"],
+] as const;
+
+/**
+ * Applies a structural guard on the orchestrator decision.
+ * If mode=refine but vizFamily and lastFamily are structurally incompatible,
+ * forces mode=fresh and clears effectivePreviousHtml.
+ *
+ * Returns a new decision object (OrchestratorDecision remains immutable) plus a flag
+ * indicating whether the guard was applied.
+ */
+export function applyStructureGuard(
+  decision: OrchestratorDecision,
+  lastFamily: VizFamily | null,
+): { decision: OrchestratorDecision; guardApplied: boolean } {
+  if (decision.mode !== "refine" || !lastFamily) {
+    return { decision, guardApplied: false };
+  }
+
+  const isIncompatible = INCOMPATIBLE_FAMILY_PAIRS.some(
+    ([a, b]) =>
+      (decision.vizFamily === a && lastFamily === b) ||
+      (decision.vizFamily === b && lastFamily === a),
+  );
+
+  if (!isIncompatible) {
+    return { decision, guardApplied: false };
+  }
+
+  console.log(
+    JSON.stringify({
+      event: "structural_guard_overrides_refine",
+      vizFamily: decision.vizFamily,
+      lastFamily,
+      originalMode: "refine",
+      forcedMode: "fresh",
+      reason: `Incompatible family pair: ${decision.vizFamily} ↔ ${lastFamily}`,
+    }),
+  );
+
+  const overriddenDecision: OrchestratorDecision = {
+    ...decision,
+    mode: "fresh",
+    refinementNote: undefined,
+  };
+
+  return { decision: overriddenDecision, guardApplied: true };
 }
 
 export type { VizFamily };
