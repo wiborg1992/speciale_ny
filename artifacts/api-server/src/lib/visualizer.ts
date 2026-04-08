@@ -1131,36 +1131,67 @@ EXTRACT FROM TRANSCRIPT:
 DO NOT modify the renderer script. DO NOT use Mermaid. DO NOT add sidebars.
 Target ~1,200–1,600 tokens of HTML output.`,
 
-  physical_product: `GENERATE: PHYSICAL PRODUCT FRONT PANEL — the control face / display / interface IS the visualization. NOT the full product body or housing.
+  physical_product: `GENERATE: GRUNDFOS PUMP FRONT PANEL ILLUSTRATION — a photorealistic SVG of the physical control face. NOT a web UI, NOT a dashboard, NOT a card layout.
 
-FOCUS — NON-NEGOTIABLE:
-  Show the USER-FACING CONTROL FACE of the product: the screen, button layout, panel, or interface described in the transcript.
-  Do NOT draw the whole product body with pipes, cables, flanges, or housing.
-  Derive the panel shape and style from what the transcript describes — screen type, form factor, brand colours.
+═══════════════════════════════════════════════════════
+WHAT THIS MUST LOOK LIKE — MANDATORY REFERENCE AESTHETIC
+═══════════════════════════════════════════════════════
+You are drawing the PHYSICAL HARDWARE FACE of a Grundfos pump controller. These look like one of:
 
-TRANSCRIPT EXTRACTION — READ CAREFULLY BEFORE DRAWING:
-  Scan the ENTIRE transcript for these specifics and use them in the SVG:
-  ① PRODUCT / MODEL NAME → set as title and label on the panel
-  ② KEY VALUES (measurements, settings, flow, pressure, temperature, RPM, %) → show on display or info box
-  ③ OPERATING MODE / STATE → mode text on display or panel label
-  ④ ALARMS / FAULTS → alarm icon active (red/amber) if mentioned
-  ⑤ NAMED FEATURES → callout annotation (<line>+<text>) pointing to that element
-  If a value is mentioned → USE IT. If not → use a neutral placeholder. NEVER invent values not in the transcript.
+A) CIRCULAR PANEL (comfort/residential pumps — e.g. Comfort TA, UPM3):
+   • Dark charcoal/black circular housing, ~300–350px diameter in SVG
+   • GRUNDFOS logo (italic X mark + wordmark) centered at top inside the circle
+   • Product model name in small caps below logo (e.g. "COMFORT TA", "AUTO ADAPT")
+   • Icon row: 2–4 small pictograms (temperature leaf, clock/timer, wifi arcs, warning triangle)
+   • QR code block lower-left (4×4 grid of small squares — simplified is fine)
+   • One large circular button lower-center (chevron ›, play, or OK symbol inside)
+   • Subtle radial highlight gradient on the face: darkest at edges, slightly lighter center
+   • Optional: thin colored LED ring or 1–3 small dot LEDs near icons
 
-LAYOUT — NON-NEGOTIABLE:
-  The SVG panel illustration must occupy at LEAST 70% of the viewport and be centered.
-  Below it: MAXIMUM 2 compact info boxes — short label + 1–2 key values from transcript only.
-  NO requirements lists. NO long descriptions. NO specification tables.
+B) RECTANGULAR LCD PANEL (industrial/commercial — e.g. LC 231, CU 352):
+   • Dark grey/anthracite rectangular housing with rounded corners
+   • Large 7-segment style display area showing measurements (e.g. "3.24 ft", "52 Hz", "18.5°C")
+   • Green/amber LED indicator strips or dots labelled "1" and "2" (pump channels)
+   • Navigation buttons: ▲ ▼ OK (sometimes reset, WiFi icon)
+   • Model number in top-left corner, GRUNDFOS logo bottom-right
+   • Raised button bezels with subtle shadow/bevel
 
-SVG QUALITY RULES:
-  • Build the SVG from scratch using gradients, shadows, and highlight effects — no flat placeholder shapes
-  • Display text must use monospace font with extracted values
-  • Callout annotations are SVG <line>+<text> elements placed outside the panel, NOT card sections
-  • Use brand colours from transcript if mentioned; otherwise neutral greys and blues
+C) CIRCULAR FACE WITH COLOR SCREEN (smart pumps — e.g. MAGNA3, Scala2):
+   • Large circular black face, ~350–380px diameter
+   • Centered color TFT screen (small, ~100×70px inside circle) showing a menu or value
+   • Navigation button cluster below screen: Home (house icon), 4-way OK pad, Back (arrow)
+   • Single green LED indicator dot above the screen
+   • "MAGNA3" or model name printed at bottom inside circle, small uppercase
+   • Dark metallic frame with bevel edge
 
-EMBED in clean white (#F8FAFC) page: Outfit font title above, SVG fills width, max 2 items below.
-DO NOT use dark HMI dashboard layouts. DO NOT generate spec card grids or text-heavy requirement sections.
-The visualization IS the front panel — large, detailed, faithful to the product.
+CHOOSE the form factor that best matches what the transcript describes. If unclear: default to form C (MAGNA3-style).
+
+═══════════════════════════════════════════════════════
+TRANSCRIPT EXTRACTION — READ BEFORE DRAWING
+═══════════════════════════════════════════════════════
+Scan the transcript for:
+  ① PRODUCT / MODEL NAME → engrave/print it on the panel
+  ② KEY VALUES (flow, pressure, temp, RPM, kW, Hz, %) → show on the display/screen
+  ③ OPERATING MODE → mode label on screen or panel (e.g. "AUTO ADAPT", "FLOWADAPT", "Constant pressure")
+  ④ ALARMS / FAULTS → if mentioned: amber warning triangle LED lit, alarm text on screen
+  ⑤ SPECIFIC BUTTONS / FEATURES → callout annotation (SVG <line>+<text> outside panel) pointing to that element
+  Use transcript values. If a value is not mentioned, use a plausible hardware default. NEVER show web/app UI text.
+
+═══════════════════════════════════════════════════════
+SVG CONSTRUCTION — NON-NEGOTIABLE RULES
+═══════════════════════════════════════════════════════
+• Background: white #F8FAFC page. The PANEL is the visual focus — large, centered, fills 70%+ of viewport.
+• Panel itself: dark charcoal (#1C1C1E or #2A2A2D) with radial gradient highlight, drop shadow (filter: drop-shadow).
+• Buttons: raised circles or rounded rectangles with inner bevel — use two concentric shapes with gradient fills (#3A3A3E outer, #505058 inner highlight).
+• LEDs: small circles with radial glow gradient. Green = #22C55E glow when active. Amber = #F59E0B. Red = #EF4444.
+• Logos: Grundfos X mark = two crossing diagonal lines forming an X with triangular serifs. Wordmark = "GRUNDFOS" in uppercase tracking.
+• Screen (if form B or C): thin bezel, dark LCD background #0D1117, content in white/green text. For 7-segment: use thick pixel segments.
+• NO CSS cards, NO web fonts loaded externally (use system sans-serif or monospace), NO sidebar/nav, NO table layouts.
+• Callout annotations: SVG <line stroke="#6B7280"> from panel edge to <text> label outside the panel silhouette.
+• Below the SVG: MAXIMUM 2 small grey info chips (operating mode + one key value). No paragraphs. No lists.
+
+OUTPUT: Single self-contained HTML page. Inline SVG fills full width. Outfit font title above. Max 2 chips below.
+FORBIDDEN: web dashboard grids, card sections, specification tables, requirements lists, HMI menus as web UI, dark-mode app layouts.
 `,
 
   requirements_matrix: `GENERATE: REQUIREMENTS TRACEABILITY MATRIX — structured table layout, FULLY INTERACTIVE.
