@@ -630,7 +630,7 @@ router.post("/visualize", async (req, res, next): Promise<void> => {
       // Orchestrator returnerede en valideret beslutning.
       const oc = orchestratorResult;
 
-      if (oc.mode === "ask_user" || oc.confidence < 0.45) {
+      if (!forceVisualize && (oc.mode === "ask_user" || oc.confidence < 0.45)) {
         // Lav confidence → emit orchestrator SSE meta FØR need_intent.
         // Set SSE headers first (headers not yet committed in early-return paths),
         // then write meta event, then call sendNeedIntent (which guards headersSent).
@@ -680,7 +680,7 @@ router.post("/visualize", async (req, res, next): Promise<void> => {
         return;
       }
 
-      if (oc.mode === "skip") {
+      if (!forceVisualize && oc.mode === "skip") {
         // Skip: emit orchestrator SSE meta FØR skipped-event.
         // Set SSE headers first, then write meta, then sendSkipped (guards headersSent).
         console.log(`[orchestrator-viz] skip mode — orchestrator chose to skip`);
