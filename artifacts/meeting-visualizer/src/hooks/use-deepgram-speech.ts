@@ -131,13 +131,13 @@ export function useDeepgramSpeech({
       if (!tokenRes.ok) throw new Error("Could not fetch Deepgram token from server");
       const { key } = await tokenRes.json();
 
-      // 2. Request microphone — high-quality capture for better recognition
+      // 2. Request microphone — lad Deepgram håndtere støjfiltrering selv
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           channelCount: 1,
           sampleRate: { ideal: 48000, min: 16000 },
-          echoCancellation: true,
-          noiseSuppression: true,
+          echoCancellation: false,
+          noiseSuppression: false,
           autoGainControl: true,
         },
       });
