@@ -5,7 +5,7 @@ const TOOLBAR_ID = "__speciale-viz-float-toolbar";
 
 export type SpecialeVizEditBridge = {
   repositionToolbar: (el: Element) => void;
-  showFloatToolbar: (iframe: HTMLIFrameElement, el: Element) => void;
+  showFloatToolbar: (iframe: HTMLIFrameElement, el: Element, allSel: Element[]) => void;
   hideFloatToolbar: () => void;
   notifyChange: () => void;
   rgbToHex: (rgb: string) => string | null;
@@ -45,9 +45,16 @@ function buildInjectedEditorScript(): string {
     return false;
   }
 
-  var sel = null;
-  var dragEl = null, dragStartX = 0, dragStartY = 0, mouseDownX = 0, mouseDownY = 0, isDragging = false;
+  // ── Tilstand ───────────────────────────────────────────────────────────────
+  var selSet = new Set();   // alle valgte elementer
+  var primarySel = null;    // sidst klikket — toolbar-target
 
+  var dragEls = [];         // [{ el, startX, startY }]
+  var dragClientX0 = 0, dragClientY0 = 0;
+  var mouseDownX = 0, mouseDownY = 0;
+  var isDragging = false;
+
+  // Gem original-styles til reset
   var __origTransforms = new Map();
   document.querySelectorAll('*').forEach(function(el) {
     if (!SKIP.has(el.tagName)) {
@@ -59,6 +66,16 @@ function buildInjectedEditorScript(): string {
     }
   });
 
+  // Tildel start-z-index i DOM-rækkefølge (så lagdeling er synlig med det samme)
+  var allEls = Array.from(document.querySelectorAll('*')).filter(function(el) {
+    return !SKIP.has(el.tagName) && !isChrome(el);
+  });
+  allEls.forEach(function(el, i) {
+    var cs = window.getComputedStyle(el);
+    if (!el.style.zIndex && (cs.position !== 'static' || cs.zIndex !== 'auto')) return;
+    if (!el.style.zIndex) el.style.zIndex = String(i + 1);
+  });
+
   window.__vizResetPositions = function() {
     __origTransforms.forEach(function(orig, el) {
       if (!document.contains(el)) return;
@@ -67,41 +84,84 @@ function buildInjectedEditorScript(): string {
       el.style.zIndex = orig.zIndex;
       el.style.cursor = '';
     });
-    if (sel) deselect();
+    deselectAll();
   };
 
+  // ── Badge ──────────────────────────────────────────────────────────────────
   var badge = document.createElement('div');
   badge.id = '__viz-editor-badge';
   badge.style.cssText = 'position:fixed;bottom:8px;left:50%;transform:translateX(-50%);max-width:96vw;background:rgba(37,99,235,.92);color:#fff;font-size:.62rem;padding:6px 14px;border-radius:10px;z-index:2147483646;pointer-events:none;font-family:system-ui;text-align:center;line-height:1.35';
-  badge.textContent = 'Redigering: klik = vælg · dobbeltklik = tekst · træk = flyt · Esc = afvælg · Del = slet — filtre/tabs virker stadig';
+  badge.textContent = 'Redigering: klik=vælg · Shift+klik=multi-vælg · dobbelt=tekst · træk=flyt · Esc=afvælg · Del=slet';
   document.body.appendChild(badge);
 
+  // ── Hjælpere ───────────────────────────────────────────────────────────────
   function getTransform(el) {
     var m = (el.style.transform || '').match(/translate\\((-?[\\d.]+)px,\\s*(-?[\\d.]+)px\\)/);
     return m ? { x: parseFloat(m[1]), y: parseFloat(m[2]) } : { x: 0, y: 0 };
   }
 
-  function select(el) {
-    if (sel && sel !== el) deselect();
-    sel = el;
-    el.setAttribute('data-orig-outline', el.style.outline || '');
+  function outlineOn(el) {
+    if (!el.hasAttribute('data-orig-outline')) {
+      el.setAttribute('data-orig-outline', el.style.outline || '');
+    }
     el.style.outline = '2px solid #3b82f6';
     el.style.outlineOffset = '2px';
     el.style.cursor = 'grab';
-    BR.showFloatToolbar(window.frameElement, el);
   }
 
-  function deselect() {
-    if (!sel) return;
-    sel.style.outline = sel.getAttribute('data-orig-outline') || '';
-    sel.style.outlineOffset = '';
-    sel.style.cursor = '';
-    if (sel.contentEditable === 'true') sel.contentEditable = 'false';
-    sel.removeAttribute('contenteditable');
-    sel = null;
+  function outlineOff(el) {
+    el.style.outline = el.getAttribute('data-orig-outline') || '';
+    el.style.outlineOffset = '';
+    el.style.cursor = '';
+    el.removeAttribute('data-orig-outline');
+  }
+
+  function showToolbar() {
+    if (primarySel) BR.showFloatToolbar(window.frameElement, primarySel, Array.from(selSet));
+  }
+
+  function deselectAll() {
+    selSet.forEach(function(s) {
+      outlineOff(s);
+      if (s.contentEditable === 'true') { s.contentEditable = 'false'; s.removeAttribute('contenteditable'); }
+    });
+    selSet.clear();
+    primarySel = null;
     BR.hideFloatToolbar();
   }
 
+  function toggleSelect(el, addToSet) {
+    if (!addToSet) {
+      // Ryd alle andre valgte elementer
+      selSet.forEach(function(s) {
+        if (s !== el) outlineOff(s);
+      });
+      var hadEl = selSet.has(el);
+      selSet.clear();
+      if (hadEl) {
+        // Klik på allerede-valgt alene → afvælg
+        outlineOff(el);
+        primarySel = null;
+        BR.hideFloatToolbar();
+        return;
+      }
+    } else {
+      // Shift/Ctrl: toggle dette element
+      if (selSet.has(el)) {
+        outlineOff(el);
+        selSet.delete(el);
+        if (primarySel === el) primarySel = selSet.size > 0 ? Array.from(selSet).pop() : null;
+        if (primarySel) showToolbar(); else BR.hideFloatToolbar();
+        return;
+      }
+    }
+    outlineOn(el);
+    selSet.add(el);
+    primarySel = el;
+    showToolbar();
+  }
+
+  // ── Mus-events ─────────────────────────────────────────────────────────────
   function onMouseDown(e) {
     if (e.button !== 0) return;
     if (!e.target || isChrome(e.target)) return;
@@ -109,39 +169,47 @@ function buildInjectedEditorScript(): string {
     if (t.nodeType === 3) t = t.parentElement;
     if (!t || SKIP.has(t.tagName)) return;
     if (t.contentEditable === 'true') return;
-    var existing = getTransform(t);
-    dragEl = t;
-    dragStartX = e.clientX - existing.x;
-    dragStartY = e.clientY - existing.y;
+
+    // Forbered drag — hvis t er en del af selektion, drag alle; ellers kun t
+    var targets = selSet.has(t) ? Array.from(selSet) : [t];
+    dragEls = targets.map(function(el) {
+      var existing = getTransform(el);
+      return { el: el, startX: existing.x, startY: existing.y };
+    });
+    dragClientX0 = e.clientX;
+    dragClientY0 = e.clientY;
     mouseDownX = e.clientX;
     mouseDownY = e.clientY;
     isDragging = false;
   }
 
   function onMouseMove(e) {
-    if (!dragEl) return;
+    if (!dragEls.length) return;
     if (!isDragging) {
       if (Math.abs(e.clientX - mouseDownX) + Math.abs(e.clientY - mouseDownY) < 5) return;
       isDragging = true;
-      dragEl.style.cursor = 'grabbing';
+      dragEls.forEach(function(d) { d.el.style.cursor = 'grabbing'; });
       document.body.style.userSelect = 'none';
     }
-    var dx = e.clientX - dragStartX;
-    var dy = e.clientY - dragStartY;
-    dragEl.style.transform = 'translate(' + dx + 'px,' + dy + 'px)';
-    dragEl.style.position = 'relative';
-    dragEl.style.zIndex = '1000';
-    BR.repositionToolbar(dragEl);
+    var ddx = e.clientX - dragClientX0;
+    var ddy = e.clientY - dragClientY0;
+    dragEls.forEach(function(d) {
+      var dx = d.startX + ddx;
+      var dy = d.startY + ddy;
+      d.el.style.transform = 'translate(' + dx + 'px,' + dy + 'px)';
+      if (!d.el.style.position || d.el.style.position === 'static') d.el.style.position = 'relative';
+    });
+    if (primarySel) BR.repositionToolbar(primarySel);
   }
 
   function onMouseUp() {
-    if (!dragEl) return;
+    if (!dragEls.length) return;
     if (isDragging) {
-      dragEl.style.cursor = dragEl === sel ? 'grab' : '';
+      dragEls.forEach(function(d) { d.el.style.cursor = selSet.has(d.el) ? 'grab' : ''; });
       document.body.style.userSelect = '';
       BR.notifyChange();
     }
-    dragEl = null;
+    dragEls = [];
   }
 
   function onClick(e) {
@@ -152,8 +220,8 @@ function buildInjectedEditorScript(): string {
     if (t.nodeType === 3) t = t.parentElement;
     if (!t || SKIP.has(t.tagName)) return;
     e.stopPropagation();
-    if (sel === t) { deselect(); return; }
-    select(t);
+    var addToSet = e.shiftKey || e.ctrlKey || e.metaKey;
+    toggleSelect(t, addToSet);
   }
 
   function onDblClick(e) {
@@ -163,7 +231,7 @@ function buildInjectedEditorScript(): string {
     if (!t || SKIP.has(t.tagName)) return;
     e.preventDefault();
     e.stopPropagation();
-    select(t);
+    toggleSelect(t, false);
     t.contentEditable = 'true';
     t.style.cursor = 'text';
     t.focus();
@@ -175,28 +243,29 @@ function buildInjectedEditorScript(): string {
   }
 
   function onKeyDown(e) {
-    if (!sel) return;
-    if (sel.contentEditable === 'true') return;
+    if (!selSet.size) return;
+    if (primarySel && primarySel.contentEditable === 'true') return;
     if (e.key === 'Delete' || e.key === 'Backspace') {
       e.preventDefault();
-      sel.remove();
-      sel = null;
+      selSet.forEach(function(s) { s.remove(); });
+      selSet.clear();
+      primarySel = null;
       BR.hideFloatToolbar();
       BR.notifyChange();
     }
-    if (e.key === 'Escape') deselect();
+    if (e.key === 'Escape') deselectAll();
   }
 
   function onMouseOver(e) {
     var t = e.target;
-    if (!t || t.nodeType !== 1 || SKIP.has(t.tagName) || t === sel || dragEl || isChrome(t)) return;
+    if (!t || t.nodeType !== 1 || SKIP.has(t.tagName) || selSet.has(t) || dragEls.length || isChrome(t)) return;
     if (!t.__hoverSaved) t.__hoverSaved = t.style.outline || 'none';
     t.style.outline = '1px dashed rgba(59,130,246,.45)';
   }
 
   function onMouseOut(e) {
     var t = e.target;
-    if (t && t !== sel && t.__hoverSaved !== undefined) {
+    if (t && !selSet.has(t) && t.__hoverSaved !== undefined) {
       t.style.outline = t.__hoverSaved === 'none' ? '' : t.__hoverSaved;
     }
   }
@@ -271,14 +340,25 @@ function ensureFloatToolbar(
     <button type="button" id="__fbt-italic" title="Kursiv" style="${btnBase}"><i>I</i></button>
     <div style="width:1px;height:20px;background:#334155;margin:0 2px"></div>
     <button type="button" id="__fbt-layer-up" title="Lag fremad (z-index +1)" style="${btnBase}">▲</button>
+    <span id="__fbt-layer-num" title="Nuværende lag (z-index)" style="font-size:10px;color:#94a3b8;min-width:32px;text-align:center;font-variant-numeric:tabular-nums">z:0</span>
     <button type="button" id="__fbt-layer-dn" title="Lag bagud (z-index −1)" style="${btnBase}">▼</button>
     <div style="width:1px;height:20px;background:#334155;margin:0 2px"></div>
-    <button type="button" id="__fbt-del" title="Slet" style="${btnBase};color:#f87171;font-weight:700">✕</button>
+    <span id="__fbt-sel-count" style="font-size:9px;color:#64748b;min-width:20px;text-align:center"></span>
+    <button type="button" id="__fbt-del" title="Slet valgte" style="${btnBase};color:#f87171;font-weight:700">✕</button>
   `;
   document.body.appendChild(t);
 
-  type FloatTarget = { iframe: HTMLIFrameElement; el: HTMLElement };
+  type FloatTarget = { iframe: HTMLIFrameElement; el: HTMLElement; allSel: HTMLElement[] };
   let floatTarget: FloatTarget | null = null;
+
+  const updateLayerBadge = () => {
+    if (!floatTarget) return;
+    const cs = floatTarget.iframe.contentWindow?.getComputedStyle(floatTarget.el);
+    if (!cs) return;
+    const z = parseInt(cs.zIndex, 10);
+    const badge = t!.querySelector<HTMLSpanElement>("#__fbt-layer-num");
+    if (badge) badge.textContent = `z:${isNaN(z) ? 0 : z}`;
+  };
 
   const syncFloatTargetStyles = () => {
     if (!floatTarget) return;
@@ -286,10 +366,17 @@ function ensureFloatToolbar(
     if (!cs) return;
     const c = rgbToHex(cs.color);
     const bg = rgbToHex(cs.backgroundColor);
-    const inC = t.querySelector<HTMLInputElement>("#__fbt-color");
-    const inB = t.querySelector<HTMLInputElement>("#__fbt-bg");
+    const inC = t!.querySelector<HTMLInputElement>("#__fbt-color");
+    const inB = t!.querySelector<HTMLInputElement>("#__fbt-bg");
     if (c && inC) inC.value = c;
     if (bg && inB) inB.value = bg;
+    updateLayerBadge();
+    // Vis antal valgte elementer
+    const countEl = t!.querySelector<HTMLSpanElement>("#__fbt-sel-count");
+    if (countEl) {
+      const n = floatTarget.allSel.length;
+      countEl.textContent = n > 1 ? `×${n}` : "";
+    }
   };
 
   const repositionToolbar = (el: Element) => {
@@ -300,48 +387,44 @@ function ensureFloatToolbar(
     const top = iRect.top + eRect.top - 52;
     const left = iRect.left + eRect.left;
     t.style.top = `${Math.max(8, top)}px`;
-    t.style.left = `${Math.max(8, Math.min(window.innerWidth - 360, left))}px`;
+    t.style.left = `${Math.max(8, Math.min(window.innerWidth - 400, left))}px`;
   };
 
   const hideFloatToolbar = () => {
     t!.style.display = "none";
-    if (floatTarget?.el) {
-      floatTarget.el.style.outline = floatTarget.el.getAttribute("data-orig-outline") || "";
-      floatTarget.el.style.outlineOffset = "";
-    }
     floatTarget = null;
   };
 
-  const showFloatToolbar = (iframe: HTMLIFrameElement, el: Element) => {
-    floatTarget = { iframe, el: el as HTMLElement };
+  const showFloatToolbar = (iframe: HTMLIFrameElement, el: Element, allSel: Element[]) => {
+    floatTarget = { iframe, el: el as HTMLElement, allSel: allSel as HTMLElement[] };
     syncFloatTargetStyles();
     repositionToolbar(el);
     t!.style.display = "flex";
   };
 
   t.querySelector<HTMLInputElement>("#__fbt-color")!.oninput = (e) => {
-    if (floatTarget) {
-      floatTarget.el.style.color = (e.target as HTMLInputElement).value;
-      onMutated?.();
-    }
+    if (!floatTarget) return;
+    const color = (e.target as HTMLInputElement).value;
+    floatTarget.allSel.forEach((el) => { el.style.color = color; });
+    onMutated?.();
   };
   t.querySelector<HTMLInputElement>("#__fbt-bg")!.oninput = (e) => {
-    if (floatTarget) {
-      floatTarget.el.style.backgroundColor = (e.target as HTMLInputElement).value;
-      onMutated?.();
-    }
+    if (!floatTarget) return;
+    const color = (e.target as HTMLInputElement).value;
+    floatTarget.allSel.forEach((el) => { el.style.backgroundColor = color; });
+    onMutated?.();
   };
   (t.querySelector("#__fbt-bold") as HTMLButtonElement).onclick = () => {
     if (!floatTarget?.iframe.contentWindow) return;
     const fw = floatTarget.iframe.contentWindow.getComputedStyle(floatTarget.el).fontWeight;
-    floatTarget.el.style.fontWeight =
-      parseInt(fw, 10) >= 700 || fw === "bold" ? "400" : "700";
+    const isBold = parseInt(fw, 10) >= 700 || fw === "bold";
+    floatTarget.allSel.forEach((el) => { el.style.fontWeight = isBold ? "400" : "700"; });
     onMutated?.();
   };
   (t.querySelector("#__fbt-italic") as HTMLButtonElement).onclick = () => {
     if (!floatTarget?.iframe.contentWindow) return;
     const fs = floatTarget.iframe.contentWindow.getComputedStyle(floatTarget.el).fontStyle;
-    floatTarget.el.style.fontStyle = fs === "italic" ? "normal" : "italic";
+    floatTarget.allSel.forEach((el) => { el.style.fontStyle = fs === "italic" ? "normal" : "italic"; });
     onMutated?.();
   };
 
@@ -351,9 +434,9 @@ function ensureFloatToolbar(
     const current = parseInt(cs.zIndex, 10);
     const next = (isNaN(current) ? 0 : current) + delta;
     floatTarget.el.style.zIndex = String(next);
-    // z-index kræver at elementet er positioned
     const pos = floatTarget.el.style.position || cs.position;
     if (!pos || pos === "static") floatTarget.el.style.position = "relative";
+    updateLayerBadge();
     onMutated?.();
   };
   (t.querySelector("#__fbt-layer-up") as HTMLButtonElement).onclick = () => adjustLayer(1);
@@ -361,7 +444,7 @@ function ensureFloatToolbar(
 
   (t.querySelector("#__fbt-del") as HTMLButtonElement).onclick = () => {
     if (floatTarget) {
-      floatTarget.el.remove();
+      floatTarget.allSel.forEach((el) => el.remove());
       hideFloatToolbar();
       onMutated?.();
     }
