@@ -1474,14 +1474,18 @@ export default function Room() {
   const lastVizWordCountRef = useRef(0);
   const autoVizCountdownRef = useRef(45);
 
-  // Reset countdown whenever a generation completes (manual or auto)
+  // Reset countdown whenever a generation completes (manual or auto).
+  // VIGTIGT: currentWordCount må IKKE være i dependency-arrayet —
+  // ellers nulstilles lastVizWordCountRef ved hvert nyt ord og hasNewContent
+  // bliver altid false (auto-viz triggeres aldrig).
   useEffect(() => {
     if (!isGenerating) {
-      lastVizWordCountRef.current = currentWordCount;
+      lastVizWordCountRef.current = currentWordCountRef.current;
       autoVizCountdownRef.current = 45;
       setAutoVizCountdown(45);
     }
-  }, [isGenerating, currentWordCount]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isGenerating]);
 
   // Auto-viz: 45-second countdown
   useEffect(() => {
