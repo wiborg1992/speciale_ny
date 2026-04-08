@@ -796,7 +796,96 @@ function main(): void {
   console.log("R17 ✓ physical_product + refinement + high lead → P6 vinder");
 
   console.log("\nAlle edge case tests OK (R11–R14) + physical_product tests (R15–R17).");
-  console.log("\n=== Alle route-tests bestået: R1–R17 + D1–D20 ===");
+
+  // ─── E2E simulation: physical_product fresh-start at varying leads ────────
+  // Simulates the full route decision pipeline: resolveFamily → auto-switch →
+  // topic-shift clear → structural incompatibility → isIncremental check.
+  console.log("\nE2E physical_product fresh-start simulation (S1–S3):\n");
+
+  function simulatePhysicalProductSwitch(lead: number): {
+    resolvedFamily: string | null;
+    isIncremental: boolean;
+    previousHtmlCleared: boolean;
+  } {
+    const classification = makeClassification({
+      family: "physical_product",
+      lead,
+      hardOverride: lead >= 999,
+    });
+    const lastFamily: VizFamily = "user_journey";
+    let effectivePreviousHtml: string | undefined = "<html>prev user journey</html>";
+
+    // Step 1: resolveFamily
+    let resolvedFamily = resolveFamily({
+      classification,
+      lastFamily,
+      hasFocusSegment: false,
+      refinementDetected: false,
+    });
+
+    // Step 2: physical_product auto-switch (mirrors route handler logic)
+    const PHYSICAL_PRODUCT_AUTO_SWITCH_LEAD = 6;
+    if (
+      classification.family === "physical_product" &&
+      lastFamily !== "physical_product" &&
+      (resolvedFamily === lastFamily || resolvedFamily === null) &&
+      (classification.lead ?? 0) >= PHYSICAL_PRODUCT_AUTO_SWITCH_LEAD
+    ) {
+      resolvedFamily = "physical_product";
+    }
+
+    // Step 3: topic-shift clear
+    if (resolvedFamily && lastFamily !== resolvedFamily) {
+      effectivePreviousHtml = undefined;
+    }
+
+    // Step 4: structural incompatibility defense
+    const AUTO_FRESH = ["physical_product"];
+    if (
+      resolvedFamily &&
+      resolvedFamily !== lastFamily &&
+      effectivePreviousHtml &&
+      (AUTO_FRESH.includes(resolvedFamily) || AUTO_FRESH.includes(lastFamily))
+    ) {
+      effectivePreviousHtml = undefined;
+    }
+
+    return {
+      resolvedFamily,
+      isIncremental: !!effectivePreviousHtml,
+      previousHtmlCleared: effectivePreviousHtml === undefined,
+    };
+  }
+
+  // S1: lead=15 (above CLASSIFY_SWITCH_LEAD) → P6 switch → fresh
+  {
+    const r = simulatePhysicalProductSwitch(15);
+    assertEq("S1 resolvedFamily=physical_product (lead=15)", r.resolvedFamily, "physical_product");
+    assertEq("S1 isIncremental=false (lead=15)", r.isIncremental, false);
+    assertEq("S1 previousHtmlCleared=true (lead=15)", r.previousHtmlCleared, true);
+    console.log("S1 ✓ lead=15 → physical_product, fresh start (P6 switch)");
+  }
+
+  // S2: lead=10 (between auto-switch threshold 6 and CLASSIFY_SWITCH_LEAD 12) → auto-switch → fresh
+  {
+    const r = simulatePhysicalProductSwitch(10);
+    assertEq("S2 resolvedFamily=physical_product (lead=10)", r.resolvedFamily, "physical_product");
+    assertEq("S2 isIncremental=false (lead=10)", r.isIncremental, false);
+    assertEq("S2 previousHtmlCleared=true (lead=10)", r.previousHtmlCleared, true);
+    console.log("S2 ✓ lead=10 → physical_product, fresh start (auto-switch)");
+  }
+
+  // S3: lead=6 (exact auto-switch threshold) → auto-switch → fresh
+  {
+    const r = simulatePhysicalProductSwitch(6);
+    assertEq("S3 resolvedFamily=physical_product (lead=6)", r.resolvedFamily, "physical_product");
+    assertEq("S3 isIncremental=false (lead=6)", r.isIncremental, false);
+    assertEq("S3 previousHtmlCleared=true (lead=6)", r.previousHtmlCleared, true);
+    console.log("S3 ✓ lead=6 → physical_product, fresh start (auto-switch at threshold)");
+  }
+
+  console.log("\nAlle E2E simulations OK (S1–S3, alle lead-niveauer giver fresh start).");
+  console.log("\n=== Alle route-tests bestået: R1–R17 + D1–D20 + S1–S3 ===");
 }
 
 main();
