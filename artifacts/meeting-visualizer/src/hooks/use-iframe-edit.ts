@@ -260,16 +260,20 @@ function ensureFloatToolbar(
     "box-shadow:0 8px 32px rgba(0,0,0,.55)",
     "font-family:system-ui,sans-serif",
   ].join(";");
+  const btnBase = "width:28px;height:28px;border:none;background:transparent;color:#94a3b8;border-radius:5px;cursor:pointer;font-size:14px";
   t.innerHTML = `
     <label style="font-size:9px;color:#64748b;font-weight:600">Txt</label>
     <input type="color" id="__fbt-color" title="Tekstfarve" style="width:28px;height:26px;padding:0;border:1px solid #334155;border-radius:4px;cursor:pointer"/>
     <label style="font-size:9px;color:#64748b;font-weight:600">Bg</label>
     <input type="color" id="__fbt-bg" title="Baggrund" style="width:28px;height:26px;padding:0;border:1px solid #334155;border-radius:4px;cursor:pointer"/>
     <div style="width:1px;height:20px;background:#334155;margin:0 2px"></div>
-    <button type="button" id="__fbt-bold" title="Fed" style="width:28px;height:28px;border:none;background:transparent;color:#94a3b8;border-radius:5px;cursor:pointer"><b>B</b></button>
-    <button type="button" id="__fbt-italic" title="Kursiv" style="width:28px;height:28px;border:none;background:transparent;color:#94a3b8;border-radius:5px;cursor:pointer"><i>I</i></button>
+    <button type="button" id="__fbt-bold" title="Fed" style="${btnBase}"><b>B</b></button>
+    <button type="button" id="__fbt-italic" title="Kursiv" style="${btnBase}"><i>I</i></button>
     <div style="width:1px;height:20px;background:#334155;margin:0 2px"></div>
-    <button type="button" id="__fbt-del" title="Slet" style="width:28px;height:28px;border:none;background:transparent;color:#f87171;border-radius:5px;cursor:pointer;font-weight:700">✕</button>
+    <button type="button" id="__fbt-layer-up" title="Lag fremad (z-index +1)" style="${btnBase}">▲</button>
+    <button type="button" id="__fbt-layer-dn" title="Lag bagud (z-index −1)" style="${btnBase}">▼</button>
+    <div style="width:1px;height:20px;background:#334155;margin:0 2px"></div>
+    <button type="button" id="__fbt-del" title="Slet" style="${btnBase};color:#f87171;font-weight:700">✕</button>
   `;
   document.body.appendChild(t);
 
@@ -340,6 +344,21 @@ function ensureFloatToolbar(
     floatTarget.el.style.fontStyle = fs === "italic" ? "normal" : "italic";
     onMutated?.();
   };
+
+  const adjustLayer = (delta: number) => {
+    if (!floatTarget?.iframe.contentWindow) return;
+    const cs = floatTarget.iframe.contentWindow.getComputedStyle(floatTarget.el);
+    const current = parseInt(cs.zIndex, 10);
+    const next = (isNaN(current) ? 0 : current) + delta;
+    floatTarget.el.style.zIndex = String(next);
+    // z-index kræver at elementet er positioned
+    const pos = floatTarget.el.style.position || cs.position;
+    if (!pos || pos === "static") floatTarget.el.style.position = "relative";
+    onMutated?.();
+  };
+  (t.querySelector("#__fbt-layer-up") as HTMLButtonElement).onclick = () => adjustLayer(1);
+  (t.querySelector("#__fbt-layer-dn") as HTMLButtonElement).onclick = () => adjustLayer(-1);
+
   (t.querySelector("#__fbt-del") as HTMLButtonElement).onclick = () => {
     if (floatTarget) {
       floatTarget.el.remove();
