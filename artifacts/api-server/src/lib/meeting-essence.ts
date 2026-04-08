@@ -67,11 +67,13 @@ function extractContentFromTail(transcript: string): {
     if (DA_EN_STOPWORDS.has(clean)) continue;
     freq.set(clean, (freq.get(clean) ?? 0) + 1);
   }
-  const topKeywords = [...freq.entries()]
-    .filter(([, c]) => c >= 2) // min. 2 forekomster
-    .sort(([, a], [, b]) => b - a)
-    .slice(0, 5)
-    .map(([w]) => w);
+  const sortedFreq = [...freq.entries()].sort(([, a], [, b]) => b - a);
+  // Primary: min. 2 forekomster
+  let topKeywords = sortedFreq.filter(([, c]) => c >= 2).slice(0, 5).map(([w]) => w);
+  // Fallback: tag de 3 hyppigste selv med 1 forekomst (sikrer altid mindst ét keyword-bullet)
+  if (topKeywords.length === 0) {
+    topKeywords = sortedFreq.slice(0, 3).map(([w]) => w);
+  }
 
   // 3) Nøgletal og specs (flow, pressure, temperature, %)
   const specPattern = /\d+(?:[.,]\d+)?\s*(?:m³\/h|bar|°[cCf]|rpm|kw|%|hz|db)/gi;
