@@ -77,9 +77,6 @@ export default defineConfig({
     port,
     host: "0.0.0.0",
     allowedHosts: true,
-    headers: {
-      "Permissions-Policy": "microphone=*",
-    },
     fs: {
       strict: true,
       deny: ["**/.*"],
