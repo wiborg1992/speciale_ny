@@ -32,6 +32,8 @@ const router: IRouter = Router();
 /** Mindste lead før vi spørger brugeren ved “blødt” emneskift (undgå støj ved lead 0–2). */
 const UNCERTAIN_TOPIC_SHIFT_MIN_LEAD = 4;
 
+const AUTO_FRESH_FAMILIES: VizFamily[] = ["physical_product"];
+
 // ─── resolveFamily — P1–P8 decision order ────────────────────────────────────
 // P0 (userPickedType) løses i route-handleren før dette kald.
 // Ren funktion: ingen side-effects, ingen adgang til room-state.
@@ -252,7 +254,7 @@ export function checkDisambiguationGate(params: {
     lastFamily &&
     classification.family !== lastFamily &&
     !!effectivePreviousHtml &&
-    // !refinementDirective-kravet fjernet: gate dækker nu også refinement+lav lead+familie-konflikt
+    !AUTO_FRESH_FAMILIES.includes(classification.family) &&
     classification.lead >= UNCERTAIN_TOPIC_SHIFT_MIN_LEAD &&
     classification.lead < CLASSIFY_SWITCH_LEAD
   ) {
@@ -572,6 +574,24 @@ router.post("/visualize", async (req, res, next): Promise<void> => {
         effectivePreviousHtml = undefined;
         refinementDirective = null;
       }
+    }
+
+    // ─── Structural incompatibility defense ──────────────────────────────────
+    // Ekstra forsvar: selv hvis topic-shift clear ikke kørte (fx resolvedFamily ===
+    // lastFamily pga edge case), tving fresh start for inkompatible familiepar.
+    if (
+      resolvedFamily &&
+      lastFamily &&
+      resolvedFamily !== lastFamily &&
+      effectivePreviousHtml &&
+      (AUTO_FRESH_FAMILIES.includes(resolvedFamily) ||
+        AUTO_FRESH_FAMILIES.includes(lastFamily))
+    ) {
+      console.log(
+        `[structural-incompat] ${lastFamily} ↔ ${resolvedFamily} — forcing fresh (clearing previousHtml)`,
+      );
+      effectivePreviousHtml = undefined;
+      refinementDirective = null;
     }
 
     const vizPerfStart = performance.now();

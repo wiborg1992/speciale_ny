@@ -627,8 +627,57 @@ function main(): void {
     console.log("D18 ✓ lead<UNCERTAIN_MIN → ingen uncertain gate");
   }
 
+  // D19: physical_product at lead 6-11 → NO dialog (AUTO_FRESH_FAMILIES skips Gate 3)
+  {
+    const g = checkDisambiguationGate({
+      refinementDirective: null,
+      classification: makeClassification({
+        family: "physical_product",
+        ambiguous: false,
+        lead: 8,
+        hardOverride: false,
+      }),
+      lastFamily: "user_journey",
+      effectivePreviousHtml: "<html>prev</html>",
+      userPickedType: false,
+      focusSegment: null,
+      userVizIntent: null,
+    });
+    assertEq(
+      "D19 needsIntent=false (physical_product auto-fresh, no dialog)",
+      g.needsIntent,
+      false,
+    );
+    console.log("D19 ✓ physical_product lead=8 → auto-fresh, ingen dialog (AUTO_FRESH_FAMILIES)");
+  }
+
+  // D20: non-physical_product at same lead → STILL shows dialog (regression check)
+  {
+    const g = checkDisambiguationGate({
+      refinementDirective: null,
+      classification: makeClassification({
+        family: "comparison_evaluation",
+        ambiguous: false,
+        lead: 8,
+        hardOverride: false,
+      }),
+      lastFamily: "user_journey",
+      effectivePreviousHtml: "<html>prev</html>",
+      userPickedType: false,
+      focusSegment: null,
+      userVizIntent: null,
+    });
+    assertEq(
+      "D20 needsIntent=true (non-physical_product still shows dialog)",
+      g.needsIntent,
+      true,
+    );
+    assertEq("D20 reason=uncertain_topic_shift", g.reason, "uncertain_topic_shift");
+    console.log("D20 ✓ comparison_evaluation lead=8 → uncertain_topic_shift dialog (regression OK)");
+  }
+
   console.log(
-    "\nAlle disambiguation gate-tests OK (D1–D18, alle betingelser og grænseværdier verificeret).",
+    "\nAlle disambiguation gate-tests OK (D1–D20, alle betingelser og grænseværdier verificeret).",
   );
 
   // ─── resolveFamily edge case tests (R11–R14) ─────────────────────────────
@@ -691,8 +740,63 @@ function main(): void {
     `R14 ✓ eksakt grænse: lead===${CLASSIFY_SWITCH_LEAD} → comparison_evaluation (skift)`,
   );
 
-  console.log("\nAlle edge case tests OK (R11–R14).");
-  console.log("\n=== Alle route-tests bestået: R1–R14 + D1–D18 ===");
+  // ─── physical_product specific tests (R15–R17) ────────────────────────────
+  console.log("\nphysical_product routing tests (R15–R17):\n");
+
+  // R15: physical_product med lead=8 (under CLASSIFY_SWITCH_LEAD) + user_journey som lastFamily
+  // → auto-switch blokken i route-handleren ville skifte (lead >= 6), men resolveFamily
+  // returnerer inertia (P8). Testen bekræfter at resolveFamily alene giver P8-inertia.
+  assertEq(
+    "R15 physical_product lead=8 (P8 inertia i resolveFamily alene)",
+    resolveFamily({
+      classification: makeClassification({
+        family: "physical_product",
+        lead: 8,
+      }),
+      lastFamily: "user_journey",
+      hasFocusSegment: false,
+      refinementDetected: false,
+    }),
+    "user_journey",
+  );
+  console.log(
+    "R15 ✓ physical_product lead=8 → P8 inertia (auto-switch i route-handler løser det)",
+  );
+
+  // R16: physical_product med lead >= CLASSIFY_SWITCH_LEAD → P6 skifter normalt
+  assertEq(
+    "R16 physical_product lead=15 → P6 switch",
+    resolveFamily({
+      classification: makeClassification({
+        family: "physical_product",
+        lead: 15,
+      }),
+      lastFamily: "user_journey",
+      hasFocusSegment: false,
+      refinementDetected: false,
+    }),
+    "physical_product",
+  );
+  console.log("R16 ✓ physical_product lead=15 → P6 switch");
+
+  // R17: physical_product med refinement + lead >= CLASSIFY_SWITCH_LEAD → Strategi B, P6 vinder
+  assertEq(
+    "R17 physical_product lead=15 + refinement → P6 overrules P5 (Strategi B)",
+    resolveFamily({
+      classification: makeClassification({
+        family: "physical_product",
+        lead: 15,
+      }),
+      lastFamily: "user_journey",
+      hasFocusSegment: false,
+      refinementDetected: true,
+    }),
+    "physical_product",
+  );
+  console.log("R17 ✓ physical_product + refinement + high lead → P6 vinder");
+
+  console.log("\nAlle edge case tests OK (R11–R14) + physical_product tests (R15–R17).");
+  console.log("\n=== Alle route-tests bestået: R1–R17 + D1–D20 ===");
 }
 
 main();
