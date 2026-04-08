@@ -32,6 +32,10 @@ import {
   isOrchestratorEnabled,
   type OrchestratorDecision,
 } from "../lib/orchestrator-viz.js";
+import {
+  getPhysicalProductReferenceImages,
+  getMobileAppReferenceImages,
+} from "../lib/reference-images.js";
 
 const router: IRouter = Router();
 
@@ -1141,6 +1145,19 @@ router.post("/visualize", async (req, res, next): Promise<void> => {
       : null;
 
     try {
+      // Load reference images for vision-guided families
+      const referenceImages =
+        resolvedFamily === "physical_product"
+          ? getPhysicalProductReferenceImages()
+          : resolvedFamily === "mobile_app"
+            ? getMobileAppReferenceImages()
+            : undefined;
+      if (referenceImages && referenceImages.length > 0) {
+        console.log(
+          `[ref-images] injecting ${referenceImages.length} images for family=${resolvedFamily}`,
+        );
+      }
+
       for await (const chunk of streamVisualization(
         {
           transcript: normalized,
@@ -1160,6 +1177,7 @@ router.post("/visualize", async (req, res, next): Promise<void> => {
             : null,
           sketchPngBase64,
           isAnnotation: !!isAnnotation,
+          referenceImages,
         },
         (c) => {
           if (firstChunkMs == null)

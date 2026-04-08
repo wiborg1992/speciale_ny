@@ -1,0 +1,280 @@
+<style>
+@keyframes ledAlarm{0%,100%{opacity:1}50%{opacity:.25}}
+@keyframes fadeIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.6;transform:scale(.97)}}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#111;display:flex;align-items:flex-start;justify-content:center;min-height:100vh;padding:32px 16px 48px;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Helvetica Neue',sans-serif}
+.phone-wrap{max-width:390px;width:100%;background:#1a1a1e;border-radius:44px;box-shadow:0 0 0 10px #0a0a0a,0 40px 80px rgba(0,0,0,.7);overflow:hidden;position:relative}
+.phone-notch{width:120px;height:34px;background:#000;border-radius:0 0 22px 22px;margin:0 auto;position:relative;z-index:10}
+.status-bar{background:#000;display:flex;align-items:center;justify-content:space-between;padding:4px 20px 6px;font-size:12px;font-weight:600;color:#fff}
+.status-icons{display:flex;align-items:center;gap:5px;color:#fff;font-size:11px}
+.screen{background:#000;min-height:780px;position:relative;overflow:hidden}
+.bottom-nav{position:sticky;bottom:0;background:rgba(0,0,0,.92);backdrop-filter:blur(12px);border-top:1px solid #2c2c2e;display:flex;align-items:center;justify-content:space-around;padding:8px 0 20px;z-index:100}
+.tab-btn{display:flex;flex-direction:column;align-items:center;gap:3px;background:none;border:none;cursor:pointer;padding:4px 8px;min-width:72px}
+.tab-btn svg{width:22px;height:22px}
+.tab-btn span{font-size:10px;font-weight:500;letter-spacing:-.2px}
+.tab-btn.active svg,.tab-btn.active span{color:#0077C8;fill:#0077C8}
+.tab-btn:not(.active) svg,.tab-btn:not(.active) span{color:#8e8e93;fill:#8e8e93}
+.screen-section{display:none;animation:fadeIn .25s ease both}
+.screen-section.active{display:block}
+.screen-pad{padding:0 16px}
+.section-header{font-size:22px;font-weight:700;color:#fff;padding:18px 16px 10px;letter-spacing:-.4px}
+.list-card{background:#1a1a1e;border-radius:14px;margin:0 16px 16px;overflow:hidden}
+.list-item{display:flex;align-items:center;padding:15px 16px;border-bottom:1px solid #2c2c2e;gap:12px;cursor:pointer}
+.list-item:last-child{border-bottom:none}
+.list-item-icon{width:32px;height:32px;border-radius:8px;background:#0077c81a;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.list-item-text{flex:1;font-size:16px;color:#fff;font-weight:400}
+.list-item-sub{font-size:12px;color:#8e8e93;margin-top:2px}
+.chevron{color:#8e8e93;font-size:16px}
+.blue-btn{display:block;width:calc(100% - 32px);margin:12px 16px;background:#0077C8;color:#fff;border:none;border-radius:25px;padding:15px;font-size:17px;font-weight:600;cursor:pointer;text-align:center;letter-spacing:-.2px}
+.blue-btn:active{background:#005fa3}
+.pincode-display{background:#1a1a1e;border-radius:14px;margin:0 16px 14px;padding:18px 16px}
+.pincode-label{font-size:12px;color:#8e8e93;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;font-weight:500}
+.pincode-dots{display:flex;align-items:center;gap:10px}
+.pin-dot{width:38px;height:38px;border-radius:10px;background:#2c2c2e;border:1.5px solid #3a3a3c;display:flex;align-items:center;justify-content:center}
+.pin-dot.filled{background:#0077c820;border-color:#0077C8}
+.pin-dot.filled::after{content:'';width:12px;height:12px;border-radius:50%;background:#0077C8;display:block}
+.pin-dot.active{border-color:#0077C8;animation:blink 1s infinite}
+.pin-mode-row{display:flex;gap:8px;margin:0 16px 14px}
+.pin-mode-chip{flex:1;background:#1a1a1e;border-radius:10px;padding:10px 8px;text-align:center;cursor:pointer;border:1.5px solid #2c2c2e}
+.pin-mode-chip.selected{border-color:#0077C8;background:#0077c815}
+.pin-mode-chip .chip-label{font-size:12px;font-weight:600;color:#8e8e93}
+.pin-mode-chip.selected .chip-label{color:#0077C8}
+.pin-mode-chip .chip-sub{font-size:11px;color:#8e8e93;margin-top:2px}
+.menu-card{background:#1a1a1e;border-radius:14px;margin:0 16px 14px;overflow:hidden}
+.menu-row{display:flex;align-items:center;padding:14px 16px;border-bottom:1px solid #2c2c2e;cursor:pointer;gap:10px}
+.menu-row:last-child{border-bottom:none}
+.menu-row-label{flex:1;font-size:16px;color:#fff}
+.menu-row-label.active-item{color:#0077C8;font-weight:600}
+.menu-row-indicator{width:8px;height:8px;border-radius:50%;background:#0077C8;margin-right:6px;flex-shrink:0}
+.menu-row-indicator.dim{background:#2c2c2e}
+.dpad-wrap{display:flex;align-items:center;justify-content:center;padding:18px 0 10px}
+.dpad{position:relative;width:110px;height:110px}
+.dpad-btn{position:absolute;width:36px;height:36px;border-radius:50%;background:#1a1a1e;border:1.5px solid #3a3a3c;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#fff;font-size:16px;transition:background .15s}
+.dpad-btn:hover,.dpad-btn:active{background:#0077c820;border-color:#0077C8;color:#0077C8}
+.dpad-up{top:0;left:50%;transform:translateX(-50%)}
+.dpad-down{bottom:0;left:50%;transform:translateX(-50%)}
+.dpad-left{left:0;top:50%;transform:translateY(-50%)}
+.dpad-right{right:0;top:50%;transform:translateY(-50%)}
+.dpad-center{top:50%;left:50%;transform:translate(-50%,-50%);background:#0077c820;border-color:#0077C8;width:28px;height:28px;border-radius:50%}
+.panel-title-bar{display:flex;align-items:center;justify-content:space-between;padding:14px 16px 8px}
+.panel-title{font-size:20px;font-weight:700;color:#fff;letter-spacing:-.3px}
+.panel-sub{font-size:13px;color:#8e8e93;padding:0 16px 14px}
+.divider{height:1px;background:#2c2c2e;margin:0 16px}
+.tag{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600}
+.tag-blue{background:#0077c820;color:#0077C8}
+.tag-green{background:#30d15820;color:#30D158}
+.tag-amber{background:#ffd60a20;color:#FFD60A}
+.setup-progress-bar{height:4px;background:#2c2c2e;margin:0}
+.setup-progress-fill{height:4px;background:#0077C8;transition:width .4s ease;border-radius:0 2px 2px 0}
+.setup-step{display:none;animation:fadeIn .2s ease both}
+.setup-step.active{display:block}
+.radio-list{margin:0 16px 10px}
+.radio-item{display:flex;align-items:flex-start;gap:12px;background:#1a1a1e;border-radius:12px;padding:14px;margin-bottom:10px;cursor:pointer;border:1.5px solid #2c2c2e;transition:border-color .15s}
+.radio-item.selected{border-color:#0077C8;background:#0077c810}
+.radio-circle{width:22px;height:22px;border-radius:50%;border:2px solid #3a3a3c;flex-shrink:0;margin-top:1px;display:flex;align-items:center;justify-content:center;transition:border-color .15s}
+.radio-item.selected .radio-circle{border-color:#0077C8;background:#0077C8}
+.radio-item.selected .radio-circle::after{content:'';width:8px;height:8px;border-radius:50%;background:#fff}
+.radio-text{flex:1}
+.radio-title{font-size:15px;color:#fff;font-weight:500}
+.radio-desc{font-size:12px;color:#8e8e93;margin-top:3px}
+.setup-img-area{display:flex;align-items:center;justify-content:center;padding:20px 0 10px}
+.connect-area{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 20px}
+.wifi-rings{position:relative;width:120px;height:120px;display:flex;align-items:center;justify-content:center}
+.ring{position:absolute;border-radius:50%;border:2px solid #0077C8;animation:pulse 2s ease-in-out infinite}
+.ring1{width:120px;height:120px;opacity:.15;animation-delay:0s}
+.ring2{width:90px;height:90px;opacity:.25;animation-delay:.3s}
+.ring3{width:62px;height:62px;opacity:.4;animation-delay:.6s}
+.wifi-icon-center{width:44px;height:44px;background:#0077C8;border-radius:50%;display:flex;align-items:center;justify-content:center;z-index:2}
+.success-circle{width:80px;height:80px;border-radius:50%;background:#30d15820;border:3px solid #30D158;display:flex;align-items:center;justify-content:center;margin:24px auto 16px}
+.summary-table{background:#1a1a1e;border-radius:14px;margin:0 16px 16px;overflow:hidden}
+.summary-row{display:flex;justify-content:space-between;align-items:center;padding:13px 16px;border-bottom:1px solid #2c2c2e}
+.summary-row:last-child{border-bottom:none}
+.summary-key{font-size:14px;color:#8e8e93}
+.summary-val{font-size:14px;color:#fff;font-weight:500;text-align:right}
+.screen-scroll{overflow-y:auto;max-height:700px;padding-bottom:10px}
+.back-btn{background:none;border:none;color:#0077C8;font-size:16px;cursor:pointer;padding:0;display:flex;align-items:center;gap:4px}
+.close-btn{background:none;border:none;color:#8e8e93;font-size:22px;cursor:pointer;padding:0}
+.nav-top-bar{display:flex;align-items:center;justify-content:space-between;padding:12px 16px 8px}
+.step-indicator{font-size:13px;color:#8e8e93;font-weight:500}
+.alert-card{background:#ffd60a18;border:1px solid #ffd60a40;border-radius:12px;margin:0 16px 12px;padding:13px 14px;display:flex;gap:10px;align-items:flex-start}
+.alert-icon{font-size:18px;color:#FFD60A;flex-shrink:0;margin-top:1px}
+.alert-text{font-size:13px;color:#fff;line-height:1.45}
+.alert-sub{font-size:11px;color:#8e8e93;margin-top:3px}
+.status-row-card{background:#1a1a1e;border-radius:12px;margin:0 16px 12px;padding:14px 16px;display:flex;align-items:center;gap:10px}
+.green-dot{width:9px;height:9px;border-radius:50%;background:#30D158;box-shadow:0 0 6px #30d15870;flex-shrink:0}
+.status-label{flex:1;font-size:15px;color:#fff;font-weight:500}
+.stop-btn{background:#ff453a20;color:#FF453A;border:1.5px solid #ff453a60;border-radius:20px;padding:7px 18px;font-size:13px;font-weight:600;cursor:pointer}
+.setpoint-row{background:#1a1a1e;border-radius:12px;margin:0 16px 12px;padding:14px 16px;display:flex;align-items:center}
+.sp-label{font-size:14px;color:#8e8e93;flex:1}
+.sp-val{font-size:20px;font-weight:700;color:#fff;font-family:-apple-system,monospace;margin-right:4px}
+.sp-unit{font-size:13px;color:#8e8e93}
+.mfg-badge{background:#0077c815;border:1px solid #0077c840;border-radius:20px;display:inline-flex;align-items:center;gap:5px;padding:4px 12px;margin:4px 0}
+.mfg-badge span{font-size:11px;color:#0077C8;font-weight:600}
+.info-chip{display:inline-flex;align-items:center;gap:5px;background:#1a1a1e;border-radius:8px;padding:5px 10px;font-size:11px;color:#8e8e93}
+</style>
+
+<div style="background:#111;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:32px 16px 56px">
+  <div style="font-size:11px;color:#555;letter-spacing:.15em;text-transform:uppercase;margin-bottom:24px;font-weight:500">COMFORT GO — PHYSICAL PANEL &amp; APP SETUP JOURNEY</div>
+
+  <div class="phone-wrap" style="max-width:390px;width:100%">
+    <div class="phone-notch"></div>
+    <div class="status-bar" style="background:#000">
+      <span>9:41</span>
+      <div class="status-icons">
+        <svg width="16" height="11" viewBox="0 0 16 11" fill="none"><rect x="0" y="3" width="3" height="8" rx="1" fill="#fff"/><rect x="4.5" y="2" width="3" height="9" rx="1" fill="#fff"/><rect x="9" y="1" width="3" height="10" rx="1" fill="#fff"/><rect x="13.5" y="0" width="3" height="11" rx="1" fill="#fff" opacity=".3"/></svg>
+        <svg width="15" height="11" viewBox="0 0 15 11" fill="none"><rect x="1" y="1" width="12" height="9" rx="2" stroke="#fff" stroke-width="1"/><rect x="2.5" y="2.5" width="7.5" height="6" rx="1" fill="#30D158"/><rect x="13" y="3.5" width="1.5" height="4" rx=".75" fill="#fff" opacity=".5"/></svg>
+      </div>
+    </div>
+
+    <div class="screen" data-viz-nav-root>
+
+      <!-- ═══════════════════════════════════════ PANEL SECTION ═══════════════════════════════════ -->
+      <div class="screen-section active screen-scroll" data-viz-section="panel">
+        <div class="panel-title-bar">
+          <div>
+            <div class="panel-title">Front Panel</div>
+            <div style="font-size:12px;color:#8e8e93;margin-top:2px">COMFORT GO — Control Unit</div>
+          </div>
+          <div class="mfg-badge"><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="4" stroke="#0077C8" stroke-width="1.5"/><path d="M3 5l1.5 1.5L7 3.5" stroke="#0077C8" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>CRA Compliant</span></div>
+        </div>
+
+        <!-- PIN MODE SELECTOR -->
+        <div style="padding:0 16px 8px">
+          <div style="font-size:11px;color:#8e8e93;text-transform:uppercase;letter-spacing:.09em;font-weight:600;margin-bottom:8px">PIN Code Mode</div>
+          <div class="pin-mode-row" style="margin:0 0 12px">
+            <div class="pin-mode-chip selected" id="mode-tech" onclick="selectMode('tech')">
+              <div style="font-size:16px;margin-bottom:3px">&#128295;</div>
+              <div class="chip-label">Technician</div>
+              <div class="chip-sub">Manufacturing PIN</div>
+            </div>
+            <div class="pin-mode-chip" id="mode-cust" onclick="selectMode('cust')">
+              <div style="font-size:16px;margin-bottom:3px">&#128100;</div>
+              <div class="chip-label">Customer</div>
+              <div class="chip-sub">Personal PIN</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- PIN ENTRY DISPLAY -->
+        <div class="pincode-display">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+            <div class="pincode-label">PIN Code Entry</div>
+            <div class="tag tag-blue" id="mode-tag">Technician</div>
+          </div>
+          <div class="pincode-dots" id="pin-dots">
+            <div class="pin-dot filled"></div>
+            <div class="pin-dot filled"></div>
+            <div class="pin-dot filled"></div>
+            <div class="pin-dot active"></div>
+            <div class="pin-dot"></div>
+            <div class="pin-dot"></div>
+            <div class="pin-dot"></div>
+          </div>
+          <div style="font-size:11px;color:#8e8e93;margin-top:10px">Use directional buttons to enter &bull; Press &#9711; to confirm</div>
+        </div>
+
+        <!-- DISPLAY MENU -->
+        <div style="padding:0 16px 8px">
+          <div style="font-size:11px;color:#8e8e93;text-transform:uppercase;letter-spacing:.09em;font-weight:600;margin-bottom:8px">Display Menu</div>
+        </div>
+        <div class="menu-card">
+          <div class="menu-row" onclick="selectMenu(this)">
+            <div class="menu-row-indicator dim" id="ind-settings"></div>
+            <div class="menu-row-label active-item" id="lbl-settings">Settings</div>
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M5 3l4 4-4 4" stroke="#8e8e93" stroke-width="1.5" stroke-linecap="round"/></svg>
+          </div>
+          <div class="menu-row" onclick="selectMenu(this)">
+            <div class="menu-row-indicator dim" id="ind-mfg"></div>
+            <div class="menu-row-label" id="lbl-mfg">Manufacturing</div>
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M5 3l4 4-4 4" stroke="#8e8e93" stroke-width="1.5" stroke-linecap="round"/></svg>
+          </div>
+          <div class="menu-row" onclick="selectMenu(this)">
+            <div class="menu-row-indicator dim" id="ind-security"></div>
+            <div class="menu-row-label" id="lbl-security">Security</div>
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M5 3l4 4-4 4" stroke="#8e8e93" stroke-width="1.5" stroke-linecap="round"/></svg>
+          </div>
+        </div>
+
+        <!-- SELECTED MENU DETAIL -->
+        <div id="menu-detail" style="margin:0 16px 14px;background:#0077c810;border:1px solid #0077c840;border-radius:12px;padding:13px 14px;display:none">
+          <div style="font-size:12px;color:#0077C8;font-weight:600;margin-bottom:5px" id="detail-title">Settings</div>
+          <div style="font-size:13px;color:#a0a0aa;line-height:1.5" id="detail-body">Pump operation settings, setpoint configuration, regulation mode selection and schedule programming.</div>
+        </div>
+
+        <!-- D-PAD -->
+        <div style="padding:0 16px 8px">
+          <div style="font-size:11px;color:#8e8e93;text-transform:uppercase;letter-spacing:.09em;font-weight:600;margin-bottom:6px">Navigation Buttons</div>
+        </div>
+        <div style="background:#1a1a1e;border-radius:14px;margin:0 16px 16px;padding:16px">
+          <div class="dpad-wrap" style="padding:8px 0">
+            <div class="dpad">
+              <div class="dpad-btn dpad-up" onclick="dpadPress('up')">&#8593;</div>
+              <div class="dpad-btn dpad-left" onclick="dpadPress('left')">&#8592;</div>
+              <div class="dpad-center"></div>
+              <div class="dpad-btn dpad-right" onclick="dpadPress('right')">&#8594;</div>
+              <div class="dpad-btn dpad-down" onclick="dpadPress('down')">&#8595;</div>
+            </div>
+          </div>
+          <div style="text-align:center;font-size:11px;color:#5a5a62;margin-top:6px" id="dpad-label">Up / Down / Left / Right navigation</div>
+        </div>
+
+        <!-- INFO ROW -->
+        <div style="display:flex;gap:8px;padding:0 16px 20px;flex-wrap:wrap">
+          <div class="info-chip">&#128279; Bluetooth 5.2</div>
+          <div class="info-chip">&#128274; PIN protected</div>
+          <div class="info-chip" style="color:#30D158">&#9679; Online</div>
+        </div>
+      </div>
+
+      <!-- ═══════════════════════════════════════ CONNECT SECTION ═══════════════════════════════════ -->
+      <div class="screen-section screen-scroll" data-viz-section="connect">
+        <div class="nav-top-bar">
+          <div style="font-size:18px;font-weight:700;color:#fff">Opret forbindelse</div>
+          <div style="font-size:13px;color:#0077C8;cursor:pointer">Demofunktion</div>
+        </div>
+        <div class="connect-area">
+          <div class="wifi-rings">
+            <div class="ring ring1"></div>
+            <div class="ring ring2"></div>
+            <div class="ring ring3"></div>
+            <div class="wifi-icon-center">
+              <svg width="24" height="20" viewBox="0 0 24 20" fill="none"><path d="M1.5 7C6.02 2.67 10.67 1 12 1s5.98 1.67 10.5 6" stroke="#fff" stroke-width="2" stroke-linecap="round"/><path d="M4.5 10.5C7.5 7.67 10 6.5 12 6.5s4.5 1.17 7.5 4" stroke="#fff" stroke-width="2" stroke-linecap="round"/><path d="M7.5 14C9 12.17 10.5 11.5 12 11.5s3 .67 4.5 2.5" stroke="#fff" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="18" r="1.5" fill="#fff"/></svg>
+            </div>
+          </div>
+          <div style="font-size:20px;font-weight:700;color:#fff;margin-top:24px;text-align:center">Opret forbindelse til<br>Grundfos-produktet</div>
+          <div style="font-size:14px;color:#8e8e93;text-align:center;margin-top:10px;line-height:1.5">Hold din telefon tæt på pumpen<br>og tryk for at oprette forbindelse</div>
+          <button class="blue-btn" style="width:100%;margin:28px 0 0" onclick="goToSetup()">Tryk for at oprette forbindelse</button>
+          <div style="font-size:14px;color:#0077C8;margin-top:16px;cursor:pointer;display:flex;align-items:center;gap:6px">
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><rect x="1" y="1" width="7" height="7" rx="1" stroke="#0077C8" stroke-width="1.5"/><rect x="10" y="1" width="7" height="7" rx="1" stroke="#0077C8" stroke-width="1.5"/><rect x="1" y="10" width="7" height="7" rx="1" stroke="#0077C8" stroke-width="1.5"/><rect x="10" y="12" width="2" height="2" rx=".5" fill="#0077C8"/><rect x="13" y="10" width="2" height="2" rx=".5" fill="#0077C8"/><rect x="16" y="12" width="2" height="2" rx=".5" fill="#0077C8"/><rect x="10" y="15" width="2" height="2" rx=".5" fill="#0077C8"/><rect x="13" y="15" width="5" height="2" rx=".5" fill="#0077C8"/></svg>
+            Scan QR-kode
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══════════════════════════════════════ SETUP SECTION ═══════════════════════════════════ -->
+      <div class="screen-section screen-scroll" data-viz-section="setup">
+        <div class="setup-progress-bar"><div class="setup-progress-fill" id="setup-progress" style="width:14%"></div></div>
+        <div class="nav-top-bar">
+          <button class="back-btn" onclick="setupBack()">&#8249; Back</button>
+          <div class="step-indicator" id="step-counter">Step 1 of 5</div>
+          <button class="close-btn">&#10005;</button>
+        </div>
+
+        <!-- STEP 1 — Identify pump -->
+        <div class="setup-step active" id="step-1">
+          <div style="padding:8px 16px 6px;font-size:22px;font-weight:700;color:#fff;letter-spacing:-.4px">Bekræft pumpe-type</div>
+          <div style="padding:0 16px 16px;font-size:14px;color:#8e8e93;line-height:1.5">Vælg den pumpe du er ved at installere. Tekniker-PIN er verificeret.</div>
+          <div class="setup-img-area">
+            <svg width="120" height="100" viewBox="0 0 120 100" fill="none">
+              <rect x="20" y="40" width="80" height="45" rx="6" fill="#1a1a1e" stroke="#0077C8" stroke-width="1.5"/>
+              <ellipse cx="60" cy="40" rx="25" ry="16" fill="#1a1a1e" stroke="#0077C8" stroke-width="1.5"/>
+              <rect x="45" y="55" width="30" height="20" rx="3" fill="#0077c830"/>
+              <line x1="60" y1="24" x2="60" y2="10" stroke="#0077C8" stroke-width="2" stroke-dasharray="3 2"/>
+              <circle cx="60" cy="8" r="4" fill="#0077C8"/>
+              <rect x="10" y="58" width="10" height="8" rx="2" fill="#2c2c2e" stroke="#3a3a3c"/>
+              <rect x="100" y="58" width="10" height="8" rx="2" fill="#2c2c

@@ -873,6 +873,11 @@ export interface VisualizerParams {
   sketchPngBase64?: string | null;
   /** Sand: skitsen er en annotation oven på en eksisterende viz (ikke en ny skitse) */
   isAnnotation?: boolean;
+  /**
+   * Visuelle referencebilleder der sendes til Claude som inspiration til illustrationen.
+   * physical_product → pumpe-hardware fotos; mobile_app → Grundfos GO-screenshots.
+   */
+  referenceImages?: Array<{ data: string; mediaType: "image/png" | "image/jpeg" }>;
 }
 
 /** Maps server-side family IDs to clear, unambiguous instructions for the AI */
@@ -1570,6 +1575,7 @@ export async function* streamVisualization(
     orchestratorSessionSummary,
     sketchPngBase64,
     isAnnotation,
+    referenceImages,
   } = params;
 
   const systemPrompt = systemPromptForDomain();
@@ -1626,6 +1632,16 @@ export async function* streamVisualization(
     userMessage += `⚡ ${source} — follow these instructions exactly:\n${familyDirective}\n\n`;
   } else if (vizType && vizType !== "auto") {
     userMessage += `⚡ USER-SELECTED TYPE: Generate SPECIFICALLY this visualization type — nothing else: ${vizType}\n\n`;
+  }
+
+  if (referenceImages && referenceImages.length > 0) {
+    const label =
+      resolvedFamily === "mobile_app"
+        ? "screenshots of the real Grundfos GO mobile app"
+        : resolvedFamily === "physical_product"
+          ? "photos of the real Grundfos pump hardware control panels"
+          : "reference photos of the product";
+    userMessage += `📸 REFERENCE IMAGES (${referenceImages.length} attached above): These are ${label}. Use them as the visual starting point — extract color palette, shapes, typography, spacing, and component style from them. Your output must feel visually related to these images. You are NOT reproducing them pixel-for-pixel; you are creating an original illustration INSPIRED by them.\n\n`;
   }
 
   const primaryFocus = focusSegment
@@ -1801,19 +1817,33 @@ ${snippet}${tail}`;
           );
         }
 
+        // Build image blocks: reference images first, then sketch if present
+        const imageBlocks: Anthropic.Messages.ImageBlockParam[] = [];
+        if (referenceImages && referenceImages.length > 0) {
+          for (const img of referenceImages) {
+            imageBlocks.push({
+              type: "image" as const,
+              source: {
+                type: "base64" as const,
+                media_type: img.mediaType,
+                data: img.data,
+              },
+            });
+          }
+        }
+        if (sketchPngBase64) {
+          imageBlocks.push({
+            type: "image" as const,
+            source: {
+              type: "base64" as const,
+              media_type: "image/png" as const,
+              data: sketchPngBase64,
+            },
+          });
+        }
         const userContent: Anthropic.Messages.MessageParam["content"] =
-          sketchPngBase64
-            ? [
-                {
-                  type: "image" as const,
-                  source: {
-                    type: "base64" as const,
-                    media_type: "image/png" as const,
-                    data: sketchPngBase64,
-                  },
-                },
-                { type: "text" as const, text: userMessage },
-              ]
+          imageBlocks.length > 0
+            ? [...imageBlocks, { type: "text" as const, text: userMessage }]
             : userMessage;
 
         const stream = client.messages.stream(
