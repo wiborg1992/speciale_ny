@@ -317,6 +317,7 @@ export async function getMeetingTranscript(roomId: string): Promise<{
   createdAt: Date;
   wordCount: number;
   transcript: string;
+  lastVisualization: string | null;
 } | null> {
   if (!db) return null;
 
@@ -329,11 +330,19 @@ export async function getMeetingTranscript(roomId: string): Promise<{
   if (meetings.length === 0) return null;
   const meeting = meetings[0];
 
-  const segments = await db
-    .select()
-    .from(segmentsTable)
-    .where(eq(segmentsTable.meetingId, meeting.id))
-    .orderBy(segmentsTable.timestamp);
+  const [segments, latestViz] = await Promise.all([
+    db
+      .select()
+      .from(segmentsTable)
+      .where(eq(segmentsTable.meetingId, meeting.id))
+      .orderBy(segmentsTable.timestamp),
+    db
+      .select({ html: visualizationsTable.html })
+      .from(visualizationsTable)
+      .where(eq(visualizationsTable.meetingId, meeting.id))
+      .orderBy(desc(visualizationsTable.version))
+      .limit(1),
+  ]);
 
   const MAX_WORDS = 3000;
   const formattedLines = segments.map((s) => `[${s.speakerName}]: ${s.text}`);
@@ -365,5 +374,6 @@ export async function getMeetingTranscript(roomId: string): Promise<{
     createdAt: meeting.createdAt,
     wordCount: meeting.wordCount,
     transcript,
+    lastVisualization: latestViz[0]?.html ?? null,
   };
 }

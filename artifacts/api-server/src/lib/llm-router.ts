@@ -85,14 +85,31 @@ export async function llmRouteDecision(params: {
     .map((s) => `${s.family}: ${s.score}`)
     .join(", ");
 
-  const essenceBlock =
-    params.meetingEssenceBullets.length > 0
-      ? `Meeting context bullets:\n${params.meetingEssenceBullets.map((b) => `- ${b}`).join("\n")}`
-      : "No meeting context available yet.";
+  // B1: billig routing-call — brug kun essence-bullets + classifier-scores når de findes.
+  // Kun fallback til raw transcript ved første viz (ingen bullets endnu).
+  const hasEssence = params.meetingEssenceBullets.length > 0;
 
-  const userPrompt = `Current visualization: ${params.lastFamily ?? "none"} — "${params.lastVizTitle ?? "no title"}"
+  let userPrompt: string;
+  if (hasEssence) {
+    // Cheap path: essence bullets + scores er nok til at disambiguere
+    const essenceBlock = params.meetingEssenceBullets.map((b) => `- ${b}`).join("\n");
+    userPrompt = `Current visualization: ${params.lastFamily ?? "none"} — "${params.lastVizTitle ?? "no title"}"
 Keyword classifier top scores: ${topScores || "none"}
+Meeting context (from last visualization):
 ${essenceBlock}
+
+Recent topic signal (first 400 chars of new transcript):
+"""
+${params.recentTranscript.slice(0, 400)}
+"""
+
+Respond with ONLY a JSON object (no markdown, no backticks):
+{"family": "<family_id>", "isRefinement": true/false, "confidence": 0.0-1.0, "reason": "<brief explanation>"}`;
+  } else {
+    // Full path: ingen historik — brug hele transcript-slicen
+    userPrompt = `Current visualization: ${params.lastFamily ?? "none"} — "${params.lastVizTitle ?? "no title"}"
+Keyword classifier top scores: ${topScores || "none"}
+No meeting context available yet.
 
 Recent transcript (last ~500 words):
 """
@@ -101,6 +118,7 @@ ${params.recentTranscript.slice(-3000)}
 
 Respond with ONLY a JSON object (no markdown, no backticks):
 {"family": "<family_id>", "isRefinement": true/false, "confidence": 0.0-1.0, "reason": "<brief explanation>"}`;
+  }
 
   try {
     const controller = new AbortController();
@@ -159,7 +177,7 @@ Respond with ONLY a JSON object (no markdown, no backticks):
     };
 
     console.log(
-      `[llm-router] family=${result.family} isRefinement=${result.isRefinement} confidence=${result.confidence} reason="${result.reason}"`,
+      `[llm-router] path=${hasEssence ? "cheap" : "full"} family=${result.family} isRefinement=${result.isRefinement} confidence=${result.confidence} reason="${result.reason}"`,
     );
     return result;
   } catch (err: unknown) {

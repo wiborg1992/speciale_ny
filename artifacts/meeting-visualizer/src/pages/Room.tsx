@@ -262,6 +262,7 @@ export default function Room() {
     createdAt: string;
     wordCount: number;
     transcript: string;
+    lastVisualization: string | null;
   };
   const [previousSessions, setPreviousSessions] = useState<PreviousSessionMeta[]>([]);
   const [showSessionPicker, setShowSessionPicker] = useState(false);
@@ -560,10 +561,16 @@ export default function Room() {
 
       setUploadedFiles((prev) => {
         const slots = MAX_CONTEXT_FILES - prev.length;
-        if (slots <= 0) return prev;
+        if (slots <= 0) {
+          toast({ title: `Maks ${MAX_CONTEXT_FILES} filer`, description: "Fjern et fil for at tilføje et nyt." });
+          return prev;
+        }
         const toAdd = incoming
           .filter((f) => !prev.some((p) => p.name === f.name))
           .slice(0, slots);
+        if (toAdd.length < incoming.length) {
+          toast({ title: `Maks ${MAX_CONTEXT_FILES} filer`, description: `${incoming.length - toAdd.length} fil(er) blev ignoreret.` });
+        }
 
         toAdd.forEach((file) => {
           readFileContent(file)
@@ -692,6 +699,7 @@ export default function Room() {
               createdAt: data.createdAt,
               wordCount: data.wordCount,
               transcript: data.transcript,
+              lastVisualization: data.lastVisualization ?? null,
             },
           ];
         });
@@ -1329,13 +1337,20 @@ export default function Room() {
 
       const previous = !freshStart ? prevHtmlRef.current || null : null;
 
+      // Hvis der ikke er nogen eksisterende viz i denne session, brug evt. foregående sessions
+      // seneste visualisering som style reference (sættes som previousHtml til LLM)
+      const styleRef =
+        !previous && !isAnnotationSketch
+          ? (previousSessions.find((s) => s.lastVisualization)?.lastVisualization ?? null)
+          : null;
+
       // Annotation-triggered viz skal altid køre uanset nye ords antal
       const isAnnotationTrigger = isAnnotationSketch && !!sketchId;
 
       generate(
         {
           transcript,
-          previousHtml: previous,
+          previousHtml: previous ?? styleRef,
           roomId,
           speakerName,
           vizType: vizType !== "auto" ? vizType : null,
@@ -1377,6 +1392,7 @@ export default function Room() {
       appendPasteHistoryIfNeeded,
       sessionEval.onStreamDiagnostic,
       stopRecording,
+      previousSessions,
     ],
   );
 
@@ -2634,7 +2650,7 @@ export default function Room() {
               ref={fileInputRef}
               type="file"
               multiple
-              accept=".pdf,.md,.txt,.yaml,.yml,.json,.csv,.ts,.js,.py,.xml,.toml,.ini,.conf,.log"
+              accept="*/*"
               className="hidden"
               onChange={handleFileUpload}
             />

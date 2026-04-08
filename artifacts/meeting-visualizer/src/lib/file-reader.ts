@@ -27,9 +27,26 @@ function readAsText(file: File): Promise<string> {
   });
 }
 
+const TEXT_MIME_PREFIXES = ["text/", "application/json", "application/xml", "application/javascript", "application/typescript"];
+const TEXT_EXTENSIONS = new Set([
+  "txt","md","csv","json","yaml","yml","toml","ini","conf","log","ts","tsx","js","jsx","py","rb","go","rs","java","kt","swift","c","cpp","h","hpp","cs","sh","bash","zsh","fish","ps1","html","htm","css","scss","sass","less","svg","xml","graphql","gql","sql","env","dockerfile","gitignore","editorconfig",
+]);
+
+function isBinaryFile(file: File): boolean {
+  if (file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")) return false;
+  const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
+  if (TEXT_EXTENSIONS.has(ext)) return false;
+  if (TEXT_MIME_PREFIXES.some((p) => file.type.startsWith(p))) return false;
+  if (!file.type) return false; // unknown type → try as text
+  return true;
+}
+
 export async function readFileContent(file: File): Promise<string> {
   if (file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")) {
     return extractPdfText(file);
+  }
+  if (isBinaryFile(file)) {
+    return `[Binær fil — indhold ikke læsbart som tekst: ${file.name}]`;
   }
   return readAsText(file);
 }

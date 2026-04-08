@@ -94,6 +94,14 @@ export function useVisualizeStream() {
         });
 
         if (!response.ok) {
+          if (response.status === 503) {
+            toast({
+              title: "Server midlertidigt overbelastet",
+              description: "Prøv igen om et øjeblik — visualiseringen kunne ikke starte.",
+            });
+            diag?.({ type: "request_error", message: "503 Service Unavailable" });
+            return;
+          }
           let detail = "";
           try {
             const raw = await response.text();
@@ -267,11 +275,22 @@ export function useVisualizeStream() {
           setStreamedHtml("");
           return;
         }
-        if (completeHtml.trim().length > 50) {
+        const htmlTrimmed = completeHtml.trim();
+        const isCompleteEnough = htmlTrimmed.length > 50 && htmlTrimmed.includes("<");
+        if (isCompleteEnough) {
           setStreamedHtml(completeHtml);
+        } else if (!streamFailed && htmlTrimmed.length > 0) {
+          // Stream afsluttede men HTML er ufærdig
+          const msg = "Visualisering afbrudt — ufærdig HTML modtaget";
+          diag?.({ type: "stream_error", message: msg });
+          toast({
+            title: "Visualisering ufærdig",
+            description: "Streamen sluttede inden HTML var komplet. Prøv igen.",
+          });
+          setError(msg);
         }
-        if (!streamFailed && completeHtml.trim().length > 50) {
-          options?.onStreamComplete?.(completeHtml.trim());
+        if (!streamFailed && isCompleteEnough) {
+          options?.onStreamComplete?.(htmlTrimmed);
         }
       } catch (err: unknown) {
         const aborted =
