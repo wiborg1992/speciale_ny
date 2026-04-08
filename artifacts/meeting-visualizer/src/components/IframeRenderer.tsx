@@ -159,8 +159,6 @@ interface IframeRendererProps {
   roomId?: string | null;
   title?: string | null;
   context?: string | null;
-  /** grundfos | gabriel | generic — passed to lazy tab fill API */
-  workspaceDomain?: string | null;
   /** Kaldes med screenshot af visualiseringen når brugeren klikker "Tegn på" */
   onAnnotate?: (screenshotDataUrl: string) => void;
   /** Aktiv version — når denne ændrer sig tvinges et nyt iframe-skriv selv om HTML'en er den samme */
@@ -174,7 +172,6 @@ export function IframeRenderer({
   roomId,
   title,
   context,
-  workspaceDomain,
   onAnnotate,
   activeVersion,
 }: IframeRendererProps) {
@@ -277,7 +274,7 @@ ${t}
       const res = await fetch(`${BASE}api/viz/fill-tab-panels`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ transcript, roomId, title, context, tabs, workspaceDomain }),
+        body: JSON.stringify({ transcript, roomId, title, context, tabs }),
       });
       if (!res.ok) return;
       const data = await res.json();
@@ -295,7 +292,7 @@ ${t}
     } finally {
       fillPendingRef.current = false;
     }
-  }, [roomId, title, context, workspaceDomain]);
+  }, [roomId, title, context]);
 
   const writeHtmlToIframe = useCallback((rawHtml: string) => {
     if (!iframeRef.current) return;

@@ -30,7 +30,6 @@ function baseReportParams(events: SessionEvalEvent[]) {
   return {
     roomId: "room-x",
     meetingTitle: "Møde",
-    workspaceDomain: "grundfos",
     sessionStartedAt: 1_700_000_000_000,
     reviewerNotes: "  note  ",
     events,

@@ -16,7 +16,6 @@ interface RoomOutputPanelsProps {
   roomId: string | undefined;
   meetingTitle: string;
   meetingContextForIframe: string | null;
-  workspaceDomain: string;
   segments: TranscriptSegment[];
   interimText: string;
   currentWordCount: number;
@@ -142,10 +141,6 @@ function buildThinkingSteps(info: VizDebugInfo): ThinkingStep[] {
     if (info.focusSegment) {
       approach.push(`Focus segment active`);
       reasoning.push(`User clicked transcript segment: "${info.focusSegment}" — prompt focuses on that excerpt`);
-    }
-
-    if (info.workspaceDomain) {
-      reasoning.push(`Workspace domain: ${info.workspaceDomain} — domain-specific prompt rules applied`);
     }
 
     steps.push({
@@ -274,7 +269,6 @@ export function RoomOutputPanels({
   roomId,
   meetingTitle,
   meetingContextForIframe,
-  workspaceDomain,
   segments,
   interimText,
   currentWordCount,
@@ -296,7 +290,6 @@ export function RoomOutputPanels({
             roomId={roomId}
             title={meetingTitle || null}
             context={meetingContextForIframe}
-            workspaceDomain={workspaceDomain}
             onAnnotate={onAnnotate}
             activeVersion={activeVersion}
           />
@@ -530,17 +523,12 @@ export function RoomOutputPanels({
                 ))}
               </ul>
 
-              {/* Model + workspace footer */}
-              {(debugInfo.vizModel || debugInfo.workspaceDomain) && (
+              {/* Model footer */}
+              {debugInfo.vizModel && (
                 <div className="mt-2 pt-3 border-t border-border/40 flex flex-wrap gap-x-4 gap-y-1">
                   {debugInfo.vizModel && (
                     <span className="text-[10px] font-mono text-muted-foreground/50">
                       model: {debugInfo.vizModel}
-                    </span>
-                  )}
-                  {debugInfo.workspaceDomain && (
-                    <span className="text-[10px] font-mono text-muted-foreground/50">
-                      workspace: {debugInfo.workspaceDomain}
                     </span>
                   )}
                   {debugInfo.transcriptTotalWords != null && (

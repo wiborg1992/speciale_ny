@@ -7,7 +7,6 @@ const router: IRouter = Router();
 
 const ClassifyBodySchema = z.object({
   transcript: z.string(),
-  workspaceDomain: z.string().optional().nullable(),
   context: z.string().optional().nullable(),
 });
 
@@ -66,7 +65,7 @@ router.post("/classify", (req, res): void => {
     return;
   }
 
-  const { transcript, workspaceDomain, context } = parsed.data;
+  const { transcript, context } = parsed.data;
 
   if (!transcript.trim()) {
     res.status(400).json({ error: "Transcript is empty." });
@@ -81,7 +80,7 @@ router.post("/classify", (req, res): void => {
 
   const classification = classifyVisualizationIntent(
     normalized,
-    workspaceDomain,
+    null,
     null,
     normalized,
   );

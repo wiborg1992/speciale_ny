@@ -22,7 +22,6 @@ export function slimVizTraceForReasoning(
     vizType: info.vizType,
     vizModel: info.vizModel,
     resolvedFamily: info.resolvedFamily ?? undefined,
-    workspaceDomain: info.workspaceDomain ?? undefined,
     isIncremental: info.isIncremental,
     isRefinement: info.isRefinement,
     hasPreviousHtml: info.hasPreviousHtml,

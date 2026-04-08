@@ -49,7 +49,7 @@ import type { VizDebugInfo } from "@/types/viz-debug";
 import type { NeedIntentPayload } from "@/types/need-intent";
 import { useSessionEvalLog } from "@/hooks/use-session-eval-log";
 import { recordMeetingVisit } from "@/lib/recent-meetings-log";
-import { getDomainPrompt, getDomainPromptLabel } from "@/lib/domain-prompts";
+import { getDomainPrompt } from "@/lib/domain-prompts";
 import type { SessionEvalVizSource } from "@/lib/session-eval-report";
 import { useOpenSessions } from "@/hooks/use-open-sessions";
 import { SessionTabs } from "@/components/SessionTabs";
@@ -77,7 +77,6 @@ import type {
 import {
   VIZ_TYPES,
   VIZ_MODELS,
-  WORKSPACE_DOMAINS,
   WORKSHOP_ROSTER_DEFAULT,
   MAX_VIZ_HISTORY,
   MAX_PASTE_HISTORY,
@@ -186,10 +185,6 @@ export default function Room() {
   const [workshopRosterCsv, setWorkshopRosterCsv] = useLocalStorage(
     "meetingVisualizer_workshopRoster",
     WORKSHOP_ROSTER_DEFAULT,
-  );
-  const [workspaceDomain, setWorkspaceDomain] = useLocalStorage(
-    "meetingVisualizer_workspaceDomain",
-    "grundfos",
   );
   const [isEditingName, setIsEditingName] = useState(false);
   const [editNameValue, setEditNameValue] = useState("");
@@ -1086,46 +1081,7 @@ export default function Room() {
       "sammenligning:4",
       "designsystem:4",
     ];
-    const domainKeywords =
-      workspaceDomain === "grundfos"
-        ? [
-            "pumpe:5",
-            "pumper:5",
-            "Grundfos:5",
-            "iSolutions:5",
-            "tryktab:3",
-            "vandmåler:3",
-            "CRA:5",
-            "Cyber Resilience Act:5",
-            "NIS2:4",
-            "Alpha GO:5",
-            "CU 200:5",
-            "CU 352:4",
-            "commissioning:4",
-            "installer:4",
-            "firmware:3",
-            "access control:4",
-            "compliance:4",
-            "conformity:3",
-            "IEC 62443:4",
-            "ATEX:3",
-            "motor:3",
-            "impeller:3",
-            "flange:3",
-            "frequency converter:4",
-          ]
-        : workspaceDomain === "gabriel"
-          ? [
-              "Gabriel:5",
-              "tekstil:5",
-              "stoffer:4",
-              "kollektion:4",
-              "møbel:3",
-              "polstring:3",
-              "bæredygtighed:4",
-              "certificering:3",
-            ]
-          : [];
+    const domainKeywords: string[] = [];
     const ctxWords =
       [ctxPurpose, ctxProjects, ctxExtra]
         .join(" ")
@@ -1229,7 +1185,7 @@ export default function Room() {
       .slice(0, 100);
 
     return capped.map(([kw, boost]) => `${kw}:${boost}`);
-  }, [workspaceDomain, ctxPurpose, ctxProjects, ctxExtra]);
+  }, [ctxPurpose, ctxProjects, ctxExtra]);
 
   const browserSpeech = useSpeech({
     onSegmentFinalized: handleFinalSegment,
@@ -1243,10 +1199,10 @@ export default function Room() {
     speakerNames: deepgramSpeakerNames,
   });
 
-  // If the user hasn't typed a custom prompt, fall back to the domain word list
+  // If the user hasn't typed a custom prompt, fall back to the generic domain hint
   const effectiveOpenaiPrompt = useMemo(
-    () => openaiPrompt.trim() || getDomainPrompt(workspaceDomain, openaiLanguage),
-    [openaiPrompt, workspaceDomain, openaiLanguage],
+    () => openaiPrompt.trim() || getDomainPrompt(null, openaiLanguage),
+    [openaiPrompt, openaiLanguage],
   );
 
   const openaiSpeech = useOpenAISpeech({
@@ -1324,7 +1280,6 @@ export default function Room() {
           title: meetingTitle || null,
           context: getMeetingContext(),
           freshStart,
-          workspaceDomain,
           ...(sketchId ? { sketchId } : {}),
           // Manual click always bypasses the word-growth gate; auto-trigger respects it
           ...(!auto ? { forceVisualize: true } : {}),
@@ -1353,7 +1308,6 @@ export default function Room() {
       meetingTitle,
       getMeetingContext,
       generate,
-      workspaceDomain,
       inputTab,
       sketchId,
       isAnnotationSketch,
@@ -1381,7 +1335,6 @@ export default function Room() {
           title: meetingTitle || null,
           context: getMeetingContext(),
           freshStart: isFresh,
-          workspaceDomain,
           focusSegment: `${seg.speakerName}: ${seg.text}`,
         },
         {
@@ -1399,7 +1352,6 @@ export default function Room() {
       meetingTitle,
       getMeetingContext,
       generate,
-      workspaceDomain,
       sessionEval.onStreamDiagnostic,
       stopRecording,
     ],
@@ -1518,7 +1470,6 @@ export default function Room() {
           roomId,
           title: meetingTitle || null,
           context: getMeetingContext(),
-          workspaceDomain,
           vizTrace,
         }),
       });
@@ -1557,7 +1508,6 @@ export default function Room() {
     roomId,
     meetingTitle,
     getMeetingContext,
-    workspaceDomain,
     displayDebug,
   ]);
 
@@ -1607,7 +1557,6 @@ export default function Room() {
       {pendingDirectionPick && (
         <DirectionCardDialog
           transcript={pendingDirectionPick.transcript}
-          workspaceDomain={workspaceDomain}
           context={getMeetingContext()}
           mode="fixation_breaker"
           onPick={(familyId, shownFamilies) => {
@@ -1633,7 +1582,6 @@ export default function Room() {
                 title: meetingTitle || null,
                 context: getMeetingContext(),
                 freshStart,
-                workspaceDomain,
               },
               {
                 onSessionDiagnostic: sessionEval.onStreamDiagnostic,
@@ -2494,19 +2442,6 @@ export default function Room() {
                 className="flex-1 min-w-[160px] max-w-[240px] h-8 bg-secondary/50 border border-border rounded px-3 text-sm font-mono text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-primary/40"
               />
 
-              <select
-                value={workspaceDomain}
-                onChange={(e) => setWorkspaceDomain(e.target.value)}
-                title="Workspace — Gabriel: Excel/meeting data &amp; visualization (Gabriel-minded style)"
-                className="h-8 bg-secondary/50 border border-border rounded px-2 text-xs font-mono text-foreground focus:outline-none cursor-pointer max-w-[140px]"
-              >
-                {WORKSPACE_DOMAINS.map((d) => (
-                  <option key={d.value} value={d.value}>
-                    {d.label}
-                  </option>
-                ))}
-              </select>
-
               {/* Viz type */}
               <select
                 value={vizType}
@@ -3131,10 +3066,6 @@ export default function Room() {
                           </div>
                           <div>
                             <span className="text-muted-foreground">
-                              Domain:
-                            </span>{" "}
-                            {displayDebug.workspaceDomain ?? "none"} ·{" "}
-                            <span className="text-muted-foreground">
                               Words:
                             </span>{" "}
                             {displayDebug.transcriptTotalWords} ·{" "}
@@ -3207,7 +3138,6 @@ export default function Room() {
               roomId={roomId}
               meetingTitle={meetingTitle}
               meetingContextForIframe={meetingContextForIframe}
-              workspaceDomain={workspaceDomain}
               segments={segments}
               interimText={interimText}
               currentWordCount={currentWordCount}
@@ -3228,7 +3158,6 @@ export default function Room() {
         events={sessionEval.events}
         roomId={roomId}
         meetingTitle={meetingTitle}
-        workspaceDomain={workspaceDomain}
         sessionStartedAtRef={sessionStartedAtRef}
         getTranscriptWordCount={getEvalWordCount}
         getSegmentCount={() => segments.length}

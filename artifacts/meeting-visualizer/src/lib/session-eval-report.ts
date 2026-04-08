@@ -124,7 +124,6 @@ export interface SessionEvalReport {
   session: {
     roomId: string;
     meetingTitle: string;
-    workspaceDomain: string;
     sessionStartedAt: string;
     sessionEndedAt: string;
   };
@@ -169,7 +168,6 @@ export function sanitizeDebugForExport(
     focusSegment: info.focusSegment
       ? String(info.focusSegment).slice(0, 280)
       : null,
-    workspaceDomain: info.workspaceDomain ?? null,
     transcriptTotalWords: info.transcriptTotalWords ?? null,
     roomId: info.roomId ?? null,
     performanceMs: info.performanceMs ?? null,
@@ -217,7 +215,6 @@ export function mergeFacitIntoEvents(
 export function buildSessionEvalReport(params: {
   roomId: string;
   meetingTitle: string;
-  workspaceDomain: string;
   sessionStartedAt: number;
   reviewerNotes: string;
   events: SessionEvalEvent[];
@@ -242,7 +239,6 @@ export function buildSessionEvalReport(params: {
     session: {
       roomId: params.roomId,
       meetingTitle: params.meetingTitle || "",
-      workspaceDomain: params.workspaceDomain,
       sessionStartedAt: new Date(params.sessionStartedAt).toISOString(),
       sessionEndedAt: new Date(now).toISOString(),
     },

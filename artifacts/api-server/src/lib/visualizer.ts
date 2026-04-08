@@ -9,13 +9,6 @@ import {
   MAGNA3_DISPLAY_TEMPLATE,
   PUMP_TEMPLATE_INSTRUCTIONS,
 } from "./pump-svg-templates.js";
-import {
-  adaptAuxiliarySystemPrompt,
-  adaptSystemPromptForDomain,
-  brandNameForDomain,
-  normalizeWorkspaceDomain,
-  type WorkspaceDomain,
-} from "./workspace-domain.js";
 import type { MeetingEssenceForPrompt } from "./meeting-essence.js";
 
 const client = new Anthropic();
@@ -107,7 +100,7 @@ function truncatePreviousViz(html: string): {
   return { snippet, truncated: true };
 }
 
-const SYSTEM_PROMPT_GRUNDFOS = `You are an expert at analysing meeting transcripts from Grundfos and generating the single most appropriate professional HTML visualisation for the participants.
+const SYSTEM_PROMPT_BASE = `You are an expert at analysing professional meeting transcripts from any organisation and generating the single most appropriate professional HTML visualisation for the participants.
 
 Return ONLY valid HTML — no markdown, no explanations, no code fences, no preamble.
 Your first character MUST be '<' and your last character MUST be '>'.
@@ -126,36 +119,15 @@ This product is Meeting AI **Visualizer**: participants expect a **designed visu
   • ALL transcript content — including spoken UI change requests, button changes, layout feedback — must be incorporated INTO the visualization as actual visual changes (new/updated components, revised labels, changed layouts), NEVER as a text note appended below.
   Dense editorial layouts (management summary, decision log) are allowed when the type calls for it — but they MUST still use **structured sections** (KPI row, timeline bar, decision **cards**, owner chips) — never a plain "notepad" aesthetic.
 
-━━━ DOMAIN CONTEXT: GRUNDFOS UX & CRA (Cyber Resilience Act) ━━━
-You are operating in the context of Grundfos's UX/UI Design Platform team, which works across four divisions 
-(Water Utility, Commercial Building Services, Domestic Building Services, Industry). The team handles UX research, 
-platform design, interaction design, product design, and design system management.
+━━━ WORKSPACE CONTEXT ━━━
+Domain knowledge, organisation, terminology, and focus areas are provided dynamically by the facilitator via the
+"ADDITIONAL MEETING CONTEXT" block in the user message. Treat that block as authoritative background — it may
+contain company context files, project briefs, regulatory docs, persona sheets, or any other relevant material.
 
-CRITICAL REGULATORY CONTEXT — CRA (Cyber Resilience Act):
-The EU Cyber Resilience Act (Regulation EU 2024/2847) is a horizontal cybersecurity regulation requiring ALL 
-products with digital elements placed on the EU market to meet essential cybersecurity requirements throughout 
-their lifecycle. This is a major driver for Grundfos UX work. Key CRA concepts you MUST understand:
+If no workspace context is supplied, infer all domain knowledge purely from the transcript itself: industry terms,
+product names, roles, processes, and regulatory requirements mentioned by the speakers.
 
-• 13 CRA compliance functions identified at Grundfos: secure default configuration, software update mechanism, 
-  access control, transmitted data protection, process data handling, logging/monitoring, vulnerability handling, 
-  cryptographic controls, input validation, secure boot, firmware integrity, data minimisation, resilience/availability
-• Access control: encompasses PIN codes, passwords, tokens, trust chains, role-based access — a key UX challenge 
-  across HMI panels (small screens with limited buttons), mobile apps (Grundfos GO), and desktop tools
-• Product lifecycle security: from production → warehouse → installation → commissioning → operation → end-of-life, 
-  each phase has CRA implications for UX (who can configure access, update firmware, manage credentials)
-• Stakeholders affected: installers, electricians, system integrators, facility managers, homeowners — each with 
-  different security permissions and access levels
-• Conformity assessment: products must undergo assessment (self-assessment or third-party) before CE marking
-• Support period: manufacturers must provide security updates for the product's expected lifetime
-• Vulnerability disclosure: coordinated vulnerability reporting obligations
-
-When CRA, cybersecurity, EU regulation, compliance, or access control topics come up in the transcript, incorporate 
-this domain knowledge into the visualization. For example:
-  - Requirements visualizations should use CRA article references and compliance status tracking
-  - User journeys should show security touchpoints and access control friction across the installation lifecycle
-  - Service blueprints should include backstage security processes and trust chain flows
-  - Workflows should map CRA compliance steps, certification pathways, or security update deployment processes
-  - Comparison matrices should evaluate security implementation approaches (tokens vs PIN vs password)
+Do NOT assume any specific company, product line, or industry by default.
 
 ━━━ RULE 1: FOLLOW THE SERVER DIRECTIVE — DO NOT OVERRIDE IT ━━━
 The user message will begin with ⚡ SERVER CLASSIFICATION or ⚡ USER-SELECTED TYPE.
@@ -241,7 +213,7 @@ TYPE: MANAGEMENT SUMMARY / TIMELINE — best practices:
   • Horizontal Gantt/timeline SVG: phase bars with month labels on x-axis
   • Summary KPI row: 3-4 large metric cards (number + label)
   • Decision log section: cards with date, decision text, owner
-  • Color: Grundfos navy + blue, subtle red accents for risk items
+  • Color: derive from workspace context — navy/blue is a safe professional default; red accents for risk items
   • Footer: Generated by Meeting AI Visualizer
 
 TYPE: HMI / SCADA DASHBOARD — best practices (see full spec below):
@@ -259,34 +231,25 @@ Når dette format optræder:
 - I beslutningslog, kanban, osv.: angiv ansvarlig person baseret på hvem der nævnte opgaven/beslutningen
 - Brug talernavn til at vise ejerskab, ansvar og handlingspunkter
 
-━━━ GRUNDFOS BRAND IDENTITET ━━━
-Når mødet omhandler Grundfos eller Grundfos-produkter, skal du ALTID anvende Grundfos' officielle brandfarver:
-  - Primær (navy):     #002A5C  (baggrunde, overskrifter, headers)
-  - Sekundær (blå):    #0077C8  (accenter, knapper, highlights)
-  - Lys blå:           #E8F4FD  (baggrunde, kort)
-  - Hvid:              #FFFFFF  (tekst på mørk baggrund, kort-baggrunde)
-  - Mørkegrå:          #333333  (brødtekst)
-  - Lysegrå:           #F5F5F5  (neutrale baggrunde)
+━━━ VISUAL IDENTITY ━━━
+Derive the visual identity from workspace context (uploaded files) or the transcript itself:
+  - If the workspace context specifies brand colours, fonts, or style guidelines — use them exactly
+  - If no brand is specified: use a clean professional palette derived from the industry and tone of the meeting
+  - Safe defaults: light background (#F8FAFC), strong dark header accent, one primary accent colour, #333333 body text
+  - Always: clean engineering/professional look — sharp lines, structured layouts, minimal noise
 
-Brug altid et rent, ingeniørmæssigt/professionelt look med skarpe linjer, strukturerede layouts og minimal støj.
+━━━ TECHNICAL DOMAIN ━━━
+Infer all domain-specific vocabulary, measurements, standards, product types, and stakeholder roles from the
+transcript itself. Do not assume any specific industry, product line, or technology unless explicitly mentioned.
+Adapt the visual language to match whatever technical context the speakers describe.
 
-━━━ PUMP- OG TEKNISK DOMÆNE ━━━
-Grundfos laver industri- og kommercielle pumper. Relevante begreber i møder kan inkludere:
-  - Hydrauliske parametre: flow (m³/h eller l/s), tryk/løftehøjde (m eller bar), NPSH, virkningsgrad (η)
-  - Pumpetyper: centrifugalpumpe, in-line pumpe, submersible, doserpumpe, cirkulationspumpe
-  - Systemer: BMS-integration, CIM-modul, MGE-motor, IE-klasse (energiklasse)
-  - Kravspecifikationer: min/max flow, driftstryk, medietemperatur, materiale (rustfrit, støbejern), Ex-klassificering
-  - Standarder: EN ISO 9906, ATEX, IP-klasse
-
-Når sådanne begreber optræder, tilpas visualiseringen til en teknisk ingeniørkontekst.
-
-━━━ HMI / SCADA INTERFACE — GRUNDFOS iSOLUTIONS DESIGN LANGUAGE ━━━
+━━━ HMI / SCADA INTERFACE — DARK INDUSTRIAL DASHBOARD DESIGN LANGUAGE ━━━
 USE WHEN: transcript discusses HMI, SCADA, control panel, digital screen design, display interface, betjeningspanel, iSolutions, or WHEN someone describes building a UI/app/interface with navigation panels, tabs, or screens (even if not using the word "HMI").
-DO NOT USE for: general pump mentions, user journeys, workflows, physical hardware, or any non-UI discussion.
+DO NOT USE for: general product mentions, user journeys, workflows, physical hardware, or any non-UI discussion.
 
-When active, generate an interface indistinguishable from Grundfos iSolutions Suite — all details below. Everything must look like real production software.
+When active, generate a convincing industrial control-room / operations dashboard that looks like real production software. Adapt system IDs, labels, and terminology to match the transcript's domain — do not default to pump or water-system chrome unless the transcript explicitly discusses those.
 
-━━━ GRUNDFOS HMI FARVEPALETTE (IKKE VALGFRI) ━━━
+━━━ HMI FARVEPALETTE (IKKE VALGFRI) ━━━
   App baggrund:         #0d1421   ← meget mørk navy (ALDRIG ren sort)
   Panel primær:         #111827   ← lidt lysere navy
   Panel sekundær:       #141e2e   ← kort og tiles
@@ -308,12 +271,11 @@ When active, generate an interface indistinguishable from Grundfos iSolutions Su
   ─────────────────────────────────────────────
   Aktiv tile gradient:  linear-gradient(135deg, #0096b8 0%, #00c8ff 60%, #00e5ff 100%)
   Inaktiv tile:         linear-gradient(135deg, #1e2d40 0%, #2a3d55 100%)
-  Grundfos navy:        #002A5C   ← brandfarve til logo
   ─────────────────────────────────────────────
   Monospace font:       'Courier New', 'Consolas', monospace  (alle numeriske værdier)
   UI font:              system-ui, -apple-system, 'Segoe UI', sans-serif
 
-━━━ PRIMÆR LAYOUT — GRUNDFOS iSOLUTIONS SUITE (GiS) ━━━
+━━━ PRIMÆR LAYOUT — INDUSTRIAL CONTROL DASHBOARD ━━━
 
 Dette er din PRIMÆRE layoutreference. Generer altid i denne struktur for HMI/dashboard-visualiseringer.
 
@@ -337,7 +299,7 @@ OVERORDNET STRUKTUR (hele viewporten):
 background: #080e1a; border-right: 1px solid rgba(0,200,255,0.12);
 display:flex; flex-direction:column; align-items:center; padding:12px 0; gap:8px;
 
-Grundfos X-logo øverst (SVG, 28px, color:#0077C8), derefter icon-knapper:
+System icon or lettermark øverst (SVG, 28px — use workspace brand colour or default #0077C8), derefter icon-knapper:
   <div style="width:40px;height:40px;border-radius:8px;display:flex;align-items:center;
               justify-content:center;color:#00c8ff;font-size:1.1rem;
               background:rgba(0,200,255,0.12);border:1px solid rgba(0,200,255,0.3)">⊞</div>
@@ -435,7 +397,7 @@ AKTIV/TILGÆNGELIG tile:
 INAKTIV/OPTAGET tile:
   background: linear-gradient(135deg,#1e2d40 0%,#2a3d55 100%); ingen box-shadow; color:#5a6a7a
 
-━━━ DATA-PANELS OG METRIK-KORT (Grundfos iSolutions stil) ━━━
+━━━ DATA-PANELS OG METRIK-KORT (dark industrial dashboard style) ━━━
 Hvert metrik-kort:
   background:#111827; border:1px solid rgba(0,200,255,0.15); border-radius:8px; padding:14px 16px;
   Øverst: label i ALL CAPS, color:#a8b8cc, font-size:0.62rem, letter-spacing:0.1em
@@ -477,8 +439,8 @@ SVG ARC-GAUGE (til vigtige målinger):
   ✗ Tomme gauges — altid realistiske tal
   ✗ Font-size < 9px
 
-━━━ DOMÆNE-PARAMETRE (brug nævnte værdier, ellers disse) ━━━
-PUMPE (Grundfos):
+━━━ DOMÆNE-PARAMETRE (brug nævnte værdier fra transskriptet — ellers disse eksempler) ━━━
+EKSEMPEL (industrielt anlæg — tilpas til domænet i transskriptet):
   Flow: 18.5 m³/h | Tryk: 4.2 bar | RPM: 2850 | Temp: 65°C | Virkningsgrad: 78% | Effekt: 3.2 kW
 
 SHORE POWER / LANDSTRØMSANLÆG:
@@ -523,8 +485,8 @@ FREKVENSOMFORMER:
    Hero-sektion med produktnavn (Playfair), tagline, og 3 kolonner:
    What it does | Who it's for | Why it matters.
 
-━━━ FYSISK GRUNDFOS PUMPE & CONTROLLER VISUALISERING (FRONT PANEL FOCUS) ━━━
-USE WHEN: transcript mentions physical pump appearance, hardware, product model, controller, CU unit, control box, pump panel, front face.
+━━━ FYSISK PRODUKT & CONTROLLER VISUALISERING (FRONT PANEL FOCUS) ━━━
+USE WHEN: transcript mentions physical product appearance, hardware, product model, controller, control unit, control box, product panel, front face.
 
 FRONT PANEL ONLY — NOT the full pump body with pipes and flanges:
   • Comfort TA / Comfort PM → ROUND BLACK DISC (circular front panel with icons, QR code, > button, AUTO ADAPT text)
@@ -538,11 +500,12 @@ COMPLETE SVG TEMPLATES with all gradients, filters, shadows are injected into th
 3. Adapt the "CHANGE THIS / ADAPT" lines in the template — keep ALL other SVG complexity unchanged
 4. Add <line>+<text> callout annotations for each feature explicitly discussed in the transcript
 
-GRUNDFOS HARDWARE COLOURS (reference):
+HARDWARE COLOUR REFERENCE (Grundfos pumper — brugbare defaults hvis produktet matches):
   Signature Red: #BE1E2D | Navy: #002A5C | Blue: #0077C8
   Enclosure: #2A2D30 | Stainless: #B0B8C1 | LED green: #22C55E | LED red: #EF4444
   Display bg: #0A1628 | Display text: #00C8FF / #7CFC00
   Comfort TA panel: #111111 black disc, outer rim #D8E8F0 light blue-grey
+For non-Grundfos products: derive colours from the transcript (brand colours, product images described).
 
 SURROUNDING LAYOUT (for all pump/controller types):
   Top: product name hero title — Outfit 2.2rem font-weight:700 color:#002A5C, centered.
@@ -557,9 +520,9 @@ Visual language: Miro/Figma UX style. Light background #F7F8FA.
 FONT: @import Outfit + Space Mono from Google Fonts
 
 STRUCTURE (full width, horizontal):
-1. HEADER ROW — persona avatar (circle, initials, Grundfos blue #0077C8 fill), journey title 1.8rem, metadata
+1. HEADER ROW — persona avatar (circle, initials, accent colour fill derived from context — default #0077C8), journey title 1.8rem, metadata
 2. PHASE COLUMNS — 4-6 phases, column headers as rounded pills in alternating:
-   #002A5C · #0077C8 · #1A6B3C · #7B3FA0 · #C05B00
+   #1E3A5F · #0077C8 · #1A6B3C · #7B3FA0 · #C05B00
 3. SWIM LANES — 4 horizontal rows:
    Row A — TOUCHPOINT (icon + channel: App · Web · Physical · Phone)
    Row B — USER ACTION (white card, bold 0.9rem, left-blue-border 4px #0077C8)
@@ -838,7 +801,7 @@ ABSOLUTE PROHIBITIONS (ALL TYPES):
 - Returnér KUN HTML: <style>/* al CSS */</style><div>/* indhold */</div>
 - Brug én <style>-blok øverst til al CSS
 - Responsive, primært til 16:9 widescreen (min-width: 800px)
-- HMI: dark iSolutions-paletten (cyan #00c8ff på navy #0d1421)
+- HMI: dark industrial palette (cyan #00c8ff på navy #0d1421)
 - Ikke-HMI: Playfair + Outfit + dramatisk hierarki
 - Brug KUN Unicode-symboler — aldrig emoji
 - Texts in English (technical terms preserved)
@@ -863,7 +826,7 @@ Shape: {"panels":{"<id>":"<inner HTML string>",...}}
 Keys MUST exactly match the tab ids given in the user message.
 Each value is inner HTML for that panel. No <style> blocks. Inline style= attributes are OK. No <script> blocks.
 Use single quotes for HTML attributes inside the JSON strings.
-Match the same industrial / Grundfos HMI tone as the main visualization (dark: #111827 panels, #00c8ff accents, monospace numbers, status LEDs).
+Match the same industrial dark HMI tone as the main visualization (dark: #111827 panels, #00c8ff accents, monospace numbers, status LEDs).
 
 CONTENT RULES — make each panel RICH and DOMAIN-SPECIFIC based on the tab label:
 - Safety / Sikkerhed: alarm limits table (High/Low setpoints per parameter), emergency stop status, pressure relief valve state, SIL level if relevant, last alarm log, ATEX/IEC 62443 notes from transcript.
@@ -904,7 +867,7 @@ Når visualization_trace mangler eller er null:
 - Skriv venligt at der endnu ikke er genereret en visualisering, og at man skal klikke "Visualize" og derefter opdatere denne fane.
 - Tilføj 3–5 sætninger om hvad transskriptet umiddelbart lægger op til visuelt.
 
-Workspace-kontekst (grundfos / gabriel / generic): nævn det kort hvis det fremgår af sporet.`;
+Nævn kortfattet den overordnede kontekst/branche, hvis det fremgår tydeligt af transkriptet.`;
 
 export interface VisualizerParams {
   transcript: string;
@@ -917,8 +880,6 @@ export interface VisualizerParams {
   roomId?: string | null;
   resolvedFamily?: string | null;
   refinementDirective?: string | null;
-  /** grundfos | gabriel | generic — drives system prompt and branding */
-  workspaceDomain?: string | null;
   /** "Speaker: text" of the specific segment the user clicked to trigger this generation */
   focusSegment?: string | null;
   /** Fra room-state før dette kald — baggrund, ikke hovedkilde */
@@ -931,7 +892,7 @@ export interface VisualizerParams {
 
 /** Maps server-side family IDs to clear, unambiguous instructions for the AI */
 const FAMILY_INSTRUCTIONS: Record<string, string> = {
-  hmi_interface: `GENERATE: HMI / SCADA DASHBOARD — Grundfos iSolutions dark-theme interface, FULLY INTERACTIVE like a deployed web application.
+  hmi_interface: `GENERATE: HMI / SCADA DASHBOARD — dark industrial control-room interface, FULLY INTERACTIVE like a deployed web application.
 
 LAYOUT: Left sidebar (180px, #0A1628) + right content area (flex:1). The sidebar contains nav items that switch the main content — this is the PRIMARY navigation. No dead zones.
 
@@ -988,7 +949,7 @@ REQUIRED INTERACTIVITY:
 
 IMPLEMENTATION: Wire all phase column <th> or header divs with addEventListener('click'). Detail panel below uses innerHTML swap.
 
-Use Grundfos brand colours (#002A5C navy, #0077C8 blue). Clean, editorial layout with Google Fonts (Playfair Display + Outfit).
+Use a clean, professional colour palette derived from workspace context — default: dark navy #1E3A5F / accent #0077C8. Clean, editorial layout with Google Fonts (Playfair Display + Outfit).
 DO NOT use dark backgrounds, gauges, or pump hardware illustrations.
 Target ~4,500–6,000 tokens of HTML output.`,
 
@@ -1191,7 +1152,7 @@ EXTRACT FROM TRANSCRIPT:
 DO NOT modify the renderer script. DO NOT use Mermaid. DO NOT add sidebars.
 Target ~1,200–1,600 tokens of HTML output.`,
 
-  physical_product: `GENERATE: GRUNDFOS PUMP FRONT PANEL — the control face / display IS the visualization. NOT the full pump body.
+  physical_product: `GENERATE: PHYSICAL PRODUCT FRONT PANEL — the control face / display IS the visualization. NOT the full product body.
 
 FRONT PANEL FOCUS — NON-NEGOTIABLE:
   Show the USER-FACING CONTROL FACE of the product — the circular disc, the LCD screen, the button layout.
@@ -1245,7 +1206,7 @@ REQUIRED INTERACTIVITY:
 
 TABLE: Columns: Req ID | Requirement (truncated, expands) | Priority (MoSCoW chip) | Source | Status chip | Actions.
 Colour-coding: Must=red chip, Should=amber, Could=green, Won't=grey. Alternating row shading (#F8FAFC).
-Grundfos brand header (#002A5C). Google Fonts.
+Clean professional header — use workspace context brand colour or default dark navy. Google Fonts.
 DO NOT use dark backgrounds or pump illustrations.
 Target ~2,500–3,500 tokens of HTML output.`,
 
@@ -1261,7 +1222,7 @@ REQUIRED INTERACTIVITY:
   • Risici tab: risk rows sortable by severity (Høj/Middel/Lav); each row expands mitigation plan with data-viz-toggle.
 
 Use dramatic typography hierarchy (Playfair Display for headings, Outfit for body).
-Grundfos navy and blue accents (#002A5C, #0077C8). Print-ready proportions.
+Clean professional colour palette from workspace context — default dark navy + blue accents. Print-ready proportions.
 DO NOT use dark HMI style or pump hardware illustrations.
 Target ~3,500–4,500 tokens of HTML output.`,
 
@@ -1279,7 +1240,7 @@ REQUIRED INTERACTIVITY:
 For PERSONAS: profile section (name, role, archetype, silhouette), demographics sidebar, goals (green), frustrations (red), behavioral patterns, Day in the Life timeline, Jobs-to-be-Done.
 For EMPATHY MAPS: 4-quadrant layout (Says / Thinks / Does / Feels) with persona at center.
 For RESEARCH FINDINGS: insight cards with supporting quotes, thematic clusters, severity indicators, recommendations.
-Grundfos colours, Google Fonts, light background. DO NOT use dark HMI style or pump hardware.
+Professional colour palette from workspace context. Google Fonts, light background. DO NOT use dark HMI style or pump hardware.
 Target ~3,000–4,000 tokens of HTML output.`,
 
   service_blueprint: `GENERATE: SERVICE BLUEPRINT / EXPERIENCE ARCHITECTURE — layered diagram, FULLY INTERACTIVE.
@@ -1295,7 +1256,7 @@ REQUIRED INTERACTIVITY:
 
 For SERVICE BLUEPRINTS: horizontal swim-lane layout — Customer Actions (top), Frontstage, Line of Visibility (dashed), Backstage Processes, Support Processes (bottom). Left-to-right phases.
 For STAKEHOLDER MAPS: radial/network diagram with nodes. For INFORMATION ARCHITECTURE: hierarchical sitemap.
-Grundfos brand colours, clean lines, light background. DO NOT use dark HMI style.
+Professional colour palette from workspace context. Clean lines, light background. DO NOT use dark HMI style.
 Target ~4,000–5,500 tokens of HTML output.`,
 
   comparison_evaluation: `GENERATE: COMPARISON / EVALUATION MATRIX — structured analytical layout, FULLY INTERACTIVE.
@@ -1310,7 +1271,7 @@ REQUIRED INTERACTIVITY:
 
 For COMPARISON MATRICES: table with options as columns, criteria as rows, colour-coded scoring (green/amber/red), weighted totals.
 For SWOT: 2×2 grid. For PRIORITIZATION: Impact×Effort 2D scatter. For SCORECARDS: radar/weighted table.
-Grundfos brand colours, Google Fonts, light background. DO NOT use dark HMI style.
+Professional colour palette from workspace context. Google Fonts, light background. DO NOT use dark HMI style.
 Target ~2,500–3,500 tokens of HTML output.`,
 
   design_system: `GENERATE: DESIGN SYSTEM / COMPONENT SPECIFICATION — technical documentation layout, FULLY INTERACTIVE.
@@ -1475,98 +1436,12 @@ ABSOLUTELY NOT ALLOWED:
 Target ~1,800–2,500 tokens of HTML output.`,
 };
 
-function systemPromptForDomain(domain: WorkspaceDomain): string {
-  return adaptSystemPromptForDomain(SYSTEM_PROMPT_GRUNDFOS, domain);
+function systemPromptForDomain(): string {
+  return SYSTEM_PROMPT_BASE;
 }
 
-function familyInstructionForDomain(
-  family: string,
-  domain: WorkspaceDomain,
-): string | undefined {
-  const base = FAMILY_INSTRUCTIONS[family];
-  if (!base) return undefined;
-  if (domain === "grundfos") return base;
-
-  const bn = brandNameForDomain(domain);
-  const text = base.replace(/Grundfos/g, bn);
-
-  if (family === "physical_product") {
-    if (domain === "gabriel") {
-      return `GENERATE: DATA-FIRST VISUAL BOARD — charts, KPI tiles, and legible tables. Use stated figures when the transcript supplies them; if the meeting is about **how** to visualise (layout, chart types, dashboard concepts) without concrete numbers, populate with **coherent example / placeholder values** and a small "Example data" cue. Optional modest illustration only if the talk is truly about a physical sample or asset. SoMe, links, or campaigns: clear strip (real URLs/handles only if stated). Do NOT use Grundfos pump hardware templates. Dark SCADA chrome only if the meeting explicitly discusses control-room monitoring.`;
-    }
-    if (domain === "generic") {
-      return `GENERATE: PHYSICAL PRODUCT OR TANGIBLE ARTIFACT — infer the object from the transcript (equipment, spatial design, consumer product, etc.).
-Centre a detailed illustration or exploded diagram with spec callouts. Avoid defaulting to industrial pumps unless the transcript discusses fluids/pumps.`;
-    }
-  }
-
-  // ux_prototype: Gabriel gets Nordic-toned clickable prototype
-  if (family === "ux_prototype") {
-    if (domain === "gabriel") {
-      return `GENERATE: CLICKABLE MULTI-SCREEN UX PROTOTYPE — navigable interactive mockup with Nordic-premium Gabriel aesthetic.
-
-Build 2–4 distinct screens based on what the transcript describes. Show ONE screen at a time; JavaScript manages all navigation.
-
-VISUAL IDENTITY — Gabriel-minded:
-  • Calm Nordic tone: warm off-white (#FAFAF8) or soft grey (#F5F4F2) backgrounds, deep ink (#1A1A1A) or deep green (#1B4332) text
-  • Accent: deep green (#2D6A4F) or forest (#166534) — not Grundfos blue or SCADA cyan
-  • Typography: Inter or Outfit, generous line-height, restrained weight contrasts
-  • Cards: white (#FFFFFF) with 1px #E5E0DB border, 12px border-radius, subtle shadow
-  • Buttons: filled accent for primary, outlined for secondary — tactile feel
-
-SCREEN STRUCTURE (mandatory):
-  • Each screen: full-viewport, display:none by default (only first visible)
-  • Persistent top navigation bar across all screens: logo/app name left, current screen label center (e.g. "2 / 3 — Produktdetalje"), optional icon right
-  • Every screen except the first: visible "← Tilbage" / "← Back" button in header or top-left
-  • CSS fade transition on screen change: opacity 0→1 over 200ms
-
-SCREENS based on transcript:
-  • Derive from what was discussed — if the meeting describes an app, portal, or tool, generate those exact flows
-  • If conceptual, use plausible screens for the product type (e.g. overview → detail → form → confirmation)
-  • Label each screen in Danish or English matching the transcript
-
-JAVASCRIPT — one trailing inline IIFE:
-  const screens = document.querySelectorAll('[data-screen]');
-  function showScreen(id) {
-    screens.forEach(s => { s.style.opacity='0'; setTimeout(()=>{ s.style.display='none'; }, 200); });
-    const t = document.querySelector('[data-screen="'+id+'"]');
-    if (!t) return;
-    t.style.display='flex'; t.style.flexDirection='column';
-    setTimeout(()=>{ t.style.opacity='1'; }, 20);
-  }
-  document.querySelectorAll('[data-go]').forEach(el =>
-    el.addEventListener('click', () => showScreen(el.dataset.go))
-  );
-  showScreen('screen-1');
-
-INTERACTIVITY within screens:
-  • data-go="screen-id" on buttons/cards/links that should navigate
-  • Hover states on interactive elements (CSS :hover)
-  • Form fields, toggles, and checkboxes should respond visually to interaction
-
-DO NOT use dark HMI/SCADA style. DO NOT use Grundfos navy/cyan. DO NOT generate static content with no navigation.`;
-    }
-    // grundfos / generic: use base instruction
-  }
-
-  // Generic family: domæne-specifik tone, fælles struktur (card-grid, ingen notater)
-  if (family === "generic") {
-    if (domain === "gabriel") {
-      return `GENERATE: STRUCTURED DATA OVERVIEW — card-grid layout with analytics tone.
-3–4 sections reflecting the meeting topics. Each card: white background, subtle border, bullet points or mini-table.
-Accent: #3B82F6 or derive from context. Typography: Inter/Outfit. No charts unless transcript has numbers.
-ABSOLUTELY NOT: meeting notes prose, bullet wall, dark gradient background.`;
-    }
-    if (domain === "generic") {
-      return `GENERATE: STRUCTURED OVERVIEW — neutral card-grid layout.
-3–4 named sections (white cards, #F8FAFC background, single accent colour from context).
-Bullet points or mini-tables inside cards — never running prose or meeting notes aesthetic.`;
-    }
-    // grundfos: brug base-instructionen (Grundfos-farver allerede inkluderet)
-    return base;
-  }
-
-  return text;
+function familyInstructionForDomain(family: string): string | undefined {
+  return FAMILY_INSTRUCTIONS[family];
 }
 
 export async function* streamVisualization(
@@ -1589,21 +1464,16 @@ export async function* streamVisualization(
     freshStart,
     resolvedFamily,
     refinementDirective,
-    workspaceDomain,
     focusSegment,
     meetingEssence,
     sketchPngBase64,
     isAnnotation,
   } = params;
 
-  const domain = normalizeWorkspaceDomain(workspaceDomain);
-  const systemPrompt = systemPromptForDomain(domain);
+  const systemPrompt = systemPromptForDomain();
 
   const model = MODEL_IDS[vizModel ?? "haiku"];
-  const isPump = domain === "grundfos" && resolvedFamily === "physical_product";
-  const maxTokens = isPump
-    ? MAX_TOKENS_PUMP[vizModel ?? "haiku"]
-    : MAX_TOKENS[vizModel ?? "haiku"];
+  const maxTokens = MAX_TOKENS[vizModel ?? "haiku"];
 
   const transcriptForModel = truncateTranscript(transcript);
 
@@ -1636,7 +1506,7 @@ export async function* streamVisualization(
   }
 
   const familyDirective = resolvedFamily
-    ? familyInstructionForDomain(resolvedFamily, domain)
+    ? familyInstructionForDomain(resolvedFamily)
     : undefined;
   if (resolvedFamily && familyDirective) {
     const source =
@@ -1950,13 +1820,8 @@ export async function fillTabPanels(
   tabs: Array<{ id: string; label: string }>,
   title?: string | null,
   context?: string | null,
-  workspaceDomain?: string | null,
 ): Promise<Record<string, string>> {
-  const domain = normalizeWorkspaceDomain(workspaceDomain);
-  const fillSystem = adaptAuxiliarySystemPrompt(
-    FILL_TAB_PANELS_SYSTEM_BASE,
-    domain,
-  );
+  const fillSystem = FILL_TAB_PANELS_SYSTEM_BASE;
   const transcriptForModel = truncateTranscript(transcript);
   const tabLines = tabs
     .map((t) => `- id "${t.id}" — label: ${t.label || "section"}`)
@@ -2007,14 +1872,10 @@ export async function* streamReasoningNarrative(
   title?: string | null,
   context?: string | null,
   onChunk?: (chunk: string) => void,
-  workspaceDomain?: string | null,
+  _workspaceDomain?: string | null,
   vizTrace?: Record<string, unknown> | null,
 ): AsyncGenerator<string> {
-  const domain = normalizeWorkspaceDomain(workspaceDomain);
-  const system = adaptAuxiliarySystemPrompt(
-    REASONING_NARRATIVE_SYSTEM_BASE,
-    domain,
-  );
+  const system = REASONING_NARRATIVE_SYSTEM_BASE;
 
   let userMsg = "";
   if (title) userMsg += `Meeting title: ${title}\n\n`;

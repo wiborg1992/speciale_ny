@@ -5,7 +5,6 @@
  * This eliminates ambiguity and dramatically sharpens type selection.
  */
 
-import { normalizeWorkspaceDomain } from "./workspace-domain.js";
 
 export type VizFamily =
   | "hmi_interface"
@@ -1666,124 +1665,6 @@ const TOPIC_SHIFT_OVERRIDES: Array<{ pattern: string; target: VizFamily }> = [
   { pattern: "swimlane procesdiagram", target: "workflow_process" },
 ];
 
-/**
- * Gabriel / møde-dataviz: ekstra hard overrides når mønstret findes i sidste segment
- * (eller ultra-recent zone) — samme “vinder med 999”-sti som øvrige TOPIC_SHIFT_OVERRIDES.
- */
-const TOPIC_SHIFT_GABRIEL_OVERRIDES: Array<{
-  pattern: string;
-  target: VizFamily;
-}> = [
-  { pattern: "excel fil", target: "management_summary" },
-  { pattern: "excelark", target: "management_summary" },
-  { pattern: "excel arket", target: "management_summary" },
-  { pattern: "regnearket", target: "management_summary" },
-  { pattern: "regneark", target: "management_summary" },
-  { pattern: "pivottabel", target: "management_summary" },
-  { pattern: "pivot table", target: "management_summary" },
-  { pattern: "kpi rapport", target: "management_summary" },
-  { pattern: "kpi board", target: "management_summary" },
-  { pattern: "data dashboard", target: "management_summary" },
-  { pattern: "marketing dashboard", target: "management_summary" },
-  { pattern: "vis tallene i et", target: "management_summary" },
-  { pattern: "visualisér data", target: "management_summary" },
-  { pattern: "visualisere data", target: "management_summary" },
-  { pattern: "søjlediagram", target: "management_summary" },
-  { pattern: "linjediagram", target: "management_summary" },
-  { pattern: "cirkeldiagram", target: "management_summary" },
-  { pattern: "power bi", target: "management_summary" },
-  { pattern: "lav en graf", target: "management_summary" },
-  { pattern: "ny graf til", target: "management_summary" },
-  { pattern: "som et diagram", target: "management_summary" },
-  { pattern: "som en graf", target: "management_summary" },
-  { pattern: "sammenlign de to kolonner", target: "comparison_evaluation" },
-  { pattern: "sammenlign kolonner", target: "comparison_evaluation" },
-  { pattern: "helt andet emne", target: "generic" },
-  { pattern: "lad os skifte emne", target: "generic" },
-  { pattern: "start forfra med visualisering", target: "generic" },
-  { pattern: "ny session om", target: "generic" },
-  // Engagement analytics
-  { pattern: "engagement data", target: "engagement_analytics" },
-  { pattern: "trafikdata", target: "engagement_analytics" },
-  { pattern: "trafikrapport", target: "engagement_analytics" },
-  { pattern: "trafik rapport", target: "engagement_analytics" },
-  { pattern: "trafik analyse", target: "engagement_analytics" },
-  { pattern: "trafikanalyse", target: "engagement_analytics" },
-  { pattern: "concurrent users", target: "engagement_analytics" },
-  { pattern: "pageviews", target: "engagement_analytics" },
-  { pattern: "bounce rate", target: "engagement_analytics" },
-  { pattern: "engaged time", target: "engagement_analytics" },
-  { pattern: "visitor frequency", target: "engagement_analytics" },
-  { pattern: "realtime analytics", target: "engagement_analytics" },
-  { pattern: "real-time analytics", target: "engagement_analytics" },
-  { pattern: "trafikkilder", target: "engagement_analytics" },
-  { pattern: "device split", target: "engagement_analytics" },
-  { pattern: "unique visitors", target: "engagement_analytics" },
-  { pattern: "unikt besøgende", target: "engagement_analytics" },
-];
-
-/** Ekstra score i seneste zone (3000 tegn) for Gabriel — engagement analytics boost. */
-function gabrielRecentEngagementBoost(recentNorm: string): number {
-  let b = 0;
-  const terms: Array<[string, number]> = [
-    ["engagement", 46],
-    ["pageviews", 44],
-    ["bounce rate", 42],
-    ["trafikdata", 44],
-    ["trafik analyse", 44],
-    ["trafikanalyse", 44],
-    ["concurrent users", 46],
-    ["concurrents", 38],
-    ["engaged time", 44],
-    ["visitor frequency", 42],
-    ["trafikkilder", 42],
-    ["trafik kilde", 40],
-    ["device split", 40],
-    ["realtime analytics", 44],
-    ["real-time analytics", 42],
-    ["abonnenter", 36],
-    ["referrers", 36],
-    ["social reach", 34],
-    ["unique visitors", 42],
-    ["unikt besøgende", 42],
-    ["chartbeat", 46],
-    ["google analytics", 40],
-    ["sessions", 28],
-  ];
-  for (const [t, w] of terms) {
-    if (recentNorm.includes(t)) b += w;
-  }
-  return Math.min(b, 150);
-}
-
-/** Ekstra score i seneste zone (3000 tegn) for Gabriel — uden at erstatte hard override. */
-function gabrielRecentDatavizBoost(recentNorm: string): number {
-  let b = 0;
-  const terms: Array<[string, number]> = [
-    ["excel", 44],
-    ["regneark", 40],
-    ["spreadsheet", 40],
-    ["csv", 28],
-    ["pivot", 36],
-    ["kpi", 38],
-    ["dashboard", 42],
-    ["datavisualisering", 46],
-    ["visualisering af data", 44],
-    ["som graf", 24],
-    ["diagram", 26],
-    [" bar chart", 28],
-    ["line chart", 28],
-    ["campaign metrics", 30],
-    ["social media", 26],
-    ["reach og", 22],
-    ["impressions", 24],
-  ];
-  for (const [t, w] of terms) {
-    if (recentNorm.includes(t)) b += w;
-  }
-  return Math.min(b, 130);
-}
-
 function scoreZone(
   normText: string,
   signals: typeof VIZ_FAMILY_SIGNALS,
@@ -1859,16 +1740,12 @@ function boostPhysicalFromLongRangeWindow(
 
 export function classifyVisualizationIntent(
   transcript: string,
-  workspaceDomain?: string | null,
+  _workspaceDomain?: string | null,
   latestChunk?: string | null,
   /** Fuld (normaliseret) transskript til ekstra physical-window; typisk samme som route's `normalized`. */
   longRangeTranscript?: string | null,
 ): ClassificationResult {
-  const domain = normalizeWorkspaceDomain(workspaceDomain);
-  const topicShiftOverrides =
-    domain === "gabriel"
-      ? [...TOPIC_SHIFT_OVERRIDES, ...TOPIC_SHIFT_GABRIEL_OVERRIDES]
-      : TOPIC_SHIFT_OVERRIDES;
+  const topicShiftOverrides = TOPIC_SHIFT_OVERRIDES;
 
   const tail = transcript.slice(-VIZ_CLASSIFY_TAIL_CHARS);
 
@@ -1920,23 +1797,6 @@ export function classifyVisualizationIntent(
         (middleScores.get(fam.id) ?? 0) +
         (distantScores.get(fam.id) ?? 0),
     );
-  }
-
-  if (domain === "gabriel") {
-    const gb = gabrielRecentDatavizBoost(recentNorm);
-    if (gb > 0) {
-      mergedMap.set(
-        "management_summary",
-        (mergedMap.get("management_summary") ?? 0) + gb,
-      );
-    }
-    const eb = gabrielRecentEngagementBoost(recentNorm);
-    if (eb > 0) {
-      mergedMap.set(
-        "engagement_analytics",
-        (mergedMap.get("engagement_analytics") ?? 0) + eb,
-      );
-    }
   }
 
   const longSource = longRangeTranscript?.trim()

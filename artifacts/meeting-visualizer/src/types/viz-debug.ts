@@ -21,7 +21,6 @@ export interface VizDebugInfo {
   refinementDirective?: string | null;
   hasPreviousHtml?: boolean;
   focusSegment?: string | null;
-  workspaceDomain?: string | null;
   transcriptTotalWords?: number;
   roomId?: string | null;
   prompt?: {

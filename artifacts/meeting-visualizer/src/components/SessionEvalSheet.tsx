@@ -78,7 +78,6 @@ export interface SessionEvalSheetProps {
   events: SessionEvalEvent[];
   roomId: string | undefined;
   meetingTitle: string;
-  workspaceDomain: string;
   sessionStartedAtRef: MutableRefObject<number>;
   getTranscriptWordCount: () => number;
   getSegmentCount: () => number;
@@ -92,7 +91,6 @@ export function SessionEvalSheet({
   events,
   roomId,
   meetingTitle,
-  workspaceDomain,
   sessionStartedAtRef,
   getTranscriptWordCount,
   getSegmentCount,
@@ -128,7 +126,6 @@ export function SessionEvalSheet({
     return buildSessionEvalReport({
       roomId: roomId ?? "unknown",
       meetingTitle,
-      workspaceDomain,
       sessionStartedAt: sessionStartedAtRef.current,
       reviewerNotes,
       events: merged,
@@ -141,7 +138,6 @@ export function SessionEvalSheet({
     facitByVersion,
     roomId,
     meetingTitle,
-    workspaceDomain,
     sessionStartedAtRef,
     reviewerNotes,
     getTranscriptWordCount,

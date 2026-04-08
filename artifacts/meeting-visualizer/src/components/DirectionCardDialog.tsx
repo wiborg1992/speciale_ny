@@ -29,7 +29,6 @@ export type DirectionCardMode = "fixation_breaker";
 
 interface DirectionCardDialogProps {
   transcript: string;
-  workspaceDomain?: string | null;
   context?: string | null;
   mode?: DirectionCardMode;
   onPick: (familyId: VizFamilyId, shownFamilies: string[]) => void;
@@ -38,7 +37,6 @@ interface DirectionCardDialogProps {
 
 export function DirectionCardDialog({
   transcript,
-  workspaceDomain,
   context,
   mode = "fixation_breaker",
   onPick,
@@ -58,7 +56,7 @@ export function DirectionCardDialog({
         const res = await fetch(`${BASE}api/classify`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ transcript, workspaceDomain, context }),
+          body: JSON.stringify({ transcript, context }),
         });
 
         if (!res.ok) {
@@ -95,7 +93,7 @@ export function DirectionCardDialog({
 
     fetchClassification();
     return () => { cancelled = true; };
-  }, [transcript, workspaceDomain, context]);
+  }, [transcript, context]);
 
   function handleCardClick(familyId: VizFamilyId) {
     if (resolvedRef.current) return;

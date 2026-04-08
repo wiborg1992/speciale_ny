@@ -148,8 +148,6 @@ const VisualizeBodySchema = z.object({
   title: z.string().optional().nullable(),
   context: z.string().optional().nullable(),
   freshStart: z.boolean().optional(),
-  /** grundfos | gabriel | generic (aliases: neutral, other → generic) */
-  workspaceDomain: z.string().optional().nullable(),
   /** "Speaker: text" of the specific segment the user clicked to trigger this generation */
   focusSegment: z.string().optional().nullable(),
   /** Eksplicit brugervalg efter disambiguation-dialog: "fresh" = ny viz, "refine" = byg videre */
@@ -334,7 +332,6 @@ router.post("/visualize", async (req, res, next): Promise<void> => {
       title,
       context,
       freshStart,
-      workspaceDomain,
       focusSegment,
       userVizIntent,
       sketchId,
@@ -432,7 +429,7 @@ router.post("/visualize", async (req, res, next): Promise<void> => {
       ? null
       : classifyVisualizationIntent(
           classificationInput,
-          workspaceDomain,
+          null,
           latestChunk,
           normalized,
         );
@@ -784,7 +781,6 @@ router.post("/visualize", async (req, res, next): Promise<void> => {
           refinementDirective: refinementDirective ?? null,
           hasPreviousHtml: !!effectivePreviousHtml,
           focusSegment: focusSegment ?? null,
-          workspaceDomain: workspaceDomain ?? null,
           transcriptTotalWords: totalWords,
           roomId: roomId ?? null,
         })}\n\n`,
@@ -812,7 +808,6 @@ router.post("/visualize", async (req, res, next): Promise<void> => {
           roomId,
           resolvedFamily,
           refinementDirective,
-          workspaceDomain,
           focusSegment,
           meetingEssence: meetingEssenceForPrompt,
           sketchPngBase64,
@@ -847,7 +842,6 @@ router.post("/visualize", async (req, res, next): Promise<void> => {
         incremental: !freshStart && !!effectivePreviousHtml,
         classifiedFamily: resolvedFamily ?? classification?.family ?? null,
         refinement: refinementDirective ? true : false,
-        workspaceDomain: workspaceDomain ?? null,
       };
 
       const cleanHtml = postProcessHtml(stripCodeFences(fullHtml), resolvedFamily ?? classification?.family ?? null);
@@ -924,7 +918,6 @@ router.post("/visualize", async (req, res, next): Promise<void> => {
           incremental: !freshStart && !!effectivePreviousHtml,
           refinement: !!refinementDirective,
           roomId: roomId ?? null,
-          workspaceDomain: workspaceDomain ?? null,
           transcriptWords: normalized.split(/\s+/).filter(Boolean).length,
           orphaned: clientDisconnected,
         },
@@ -975,7 +968,6 @@ const FillTabsSchema = z.object({
   title: z.string().optional().nullable(),
   context: z.string().optional().nullable(),
   tabs: z.array(z.object({ id: z.string(), label: z.string() })),
-  workspaceDomain: z.string().optional().nullable(),
 });
 
 router.post("/viz/fill-tab-panels", async (req, res): Promise<void> => {
@@ -985,7 +977,7 @@ router.post("/viz/fill-tab-panels", async (req, res): Promise<void> => {
     return;
   }
 
-  let { transcript, roomId, title, context, tabs, workspaceDomain } =
+  let { transcript, roomId, title, context, tabs } =
     parsed.data;
 
   if (!transcript.trim() && roomId) {
@@ -1008,7 +1000,6 @@ router.post("/viz/fill-tab-panels", async (req, res): Promise<void> => {
       tabs,
       title,
       context,
-      workspaceDomain,
     );
     res.json({ panels });
   } catch (err) {
@@ -1023,7 +1014,6 @@ const ActionsSchema = z.object({
   roomId: z.string().optional().nullable(),
   title: z.string().optional().nullable(),
   context: z.string().optional().nullable(),
-  workspaceDomain: z.string().optional().nullable(),
   /** Slank debug/metadata fra seneste visualisering — til almen reasoning-forklaring */
   vizTrace: z.record(z.string(), z.unknown()).nullable().optional(),
 });
@@ -1035,7 +1025,7 @@ router.post("/actions", async (req, res): Promise<void> => {
     return;
   }
 
-  let { transcript, roomId, title, context, workspaceDomain, vizTrace } =
+  let { transcript, roomId, title, context, vizTrace } =
     parsed.data;
 
   if (!transcript.trim() && roomId) {
@@ -1065,7 +1055,7 @@ router.post("/actions", async (req, res): Promise<void> => {
       context,
       (c) =>
         res.write(`data: ${JSON.stringify({ type: "chunk", text: c })}\n\n`),
-      workspaceDomain,
+      null,
       vizTrace ?? null,
     )) {
       // chunks written in callback above
