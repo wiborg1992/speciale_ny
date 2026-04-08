@@ -135,6 +135,41 @@ export async function updateMeetingTitle(roomId: string, title: string) {
   }
 }
 
+export type SessionContextData = {
+  purpose: string;
+  projects: string;
+  attendees: string;
+  extra: string;
+  files: { name: string; content: string }[];
+};
+
+export async function getMeetingContextData(roomId: string): Promise<SessionContextData | null> {
+  if (!db) return null;
+  const rows = await db
+    .select({ contextData: meetingsTable.contextData })
+    .from(meetingsTable)
+    .where(eq(meetingsTable.roomId, roomId))
+    .limit(1);
+  if (!rows.length || !rows[0].contextData) return null;
+  try {
+    return JSON.parse(rows[0].contextData) as SessionContextData;
+  } catch {
+    return null;
+  }
+}
+
+export async function updateMeetingContextData(roomId: string, data: SessionContextData) {
+  if (!db) return;
+  try {
+    await db
+      .update(meetingsTable)
+      .set({ contextData: JSON.stringify(data), updatedAt: new Date() })
+      .where(eq(meetingsTable.roomId, roomId));
+  } catch (err) {
+    console.error("Failed to update meeting context data:", err);
+  }
+}
+
 export async function listMeetings(limit = 50) {
   if (!db) return [];
   return db

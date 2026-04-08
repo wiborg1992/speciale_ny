@@ -450,6 +450,48 @@ export default function Room() {
     return () => clearTimeout(timer);
   }, [meetingTitle, roomId]);
 
+  // Load persisted context data for this session on mount
+  useEffect(() => {
+    if (!roomId) return;
+    fetch(`${BASE}api/meetings/${roomId}/context`)
+      .then((r) => r.ok ? r.json() : null)
+      .then((json) => {
+        if (!json?.context) return;
+        const c = json.context;
+        if (c.purpose) setCtxPurpose(c.purpose);
+        if (c.projects) setCtxProjects(c.projects);
+        if (c.attendees) setCtxAttend(c.attendees);
+        if (c.extra) setCtxExtra(c.extra);
+        if (Array.isArray(c.files) && c.files.length > 0) {
+          setUploadedFiles(c.files);
+          // Åbn context-panelet automatisk når der er gemt data
+          setShowContext(true);
+        }
+      })
+      .catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [roomId]);
+
+  // Auto-gem context til DB ved ændringer (debounce 1500ms)
+  useEffect(() => {
+    if (!roomId) return;
+    const timer = setTimeout(() => {
+      const readyFiles = uploadedFiles.filter((f) => !f.loading && f.content);
+      fetch(`${BASE}api/meetings/${roomId}/context`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          purpose: ctxPurpose,
+          projects: ctxProjects,
+          attendees: ctxAttend,
+          extra: ctxExtra,
+          files: readyFiles.map((f) => ({ name: f.name, content: f.content })),
+        }),
+      }).catch(() => {});
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, [roomId, ctxPurpose, ctxProjects, ctxAttend, ctxExtra, uploadedFiles]);
+
   // Build stable speaker color map from segment order
   const speakerColorMap = useMemo(() => {
     const map = new Map<string, number>();

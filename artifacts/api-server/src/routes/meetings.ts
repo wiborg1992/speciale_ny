@@ -7,6 +7,9 @@ import {
   updateMeetingTitle,
   clearMeetingTranscript,
   getOrCreateMeeting,
+  getMeetingContextData,
+  updateMeetingContextData,
+  type SessionContextData,
 } from "../lib/meeting-store.js";
 import { clearRoomSegments, broadcastEvent } from "../lib/rooms.js";
 
@@ -111,6 +114,38 @@ router.delete("/meetings/:roomId", async (req, res): Promise<void> => {
   } catch (err) {
     console.error("Failed to delete meeting:", err);
     res.status(500).json({ error: "Failed to delete meeting" });
+  }
+});
+
+/** GET /meetings/:roomId/context — henter persisteret session-kontekst */
+router.get("/meetings/:roomId/context", async (req, res): Promise<void> => {
+  try {
+    const { roomId } = req.params;
+    const data = await getMeetingContextData(roomId);
+    res.json({ context: data });
+  } catch (err) {
+    console.error("Failed to get meeting context:", err);
+    res.status(500).json({ error: "Failed to get meeting context" });
+  }
+});
+
+/** PUT /meetings/:roomId/context — gemmer session-kontekst (filer + felter) */
+router.put("/meetings/:roomId/context", async (req, res): Promise<void> => {
+  try {
+    const { roomId } = req.params;
+    const body = req.body as SessionContextData;
+    await getOrCreateMeeting(roomId);
+    await updateMeetingContextData(roomId, {
+      purpose: body.purpose ?? "",
+      projects: body.projects ?? "",
+      attendees: body.attendees ?? "",
+      extra: body.extra ?? "",
+      files: Array.isArray(body.files) ? body.files : [],
+    });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("Failed to update meeting context:", err);
+    res.status(500).json({ error: "Failed to update meeting context" });
   }
 });
 

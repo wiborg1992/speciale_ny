@@ -13,6 +13,8 @@ export const meetingsTable = pgTable("meetings", {
   segmentCount: integer("segment_count").default(0).notNull(),
   wordCount: integer("word_count").default(0).notNull(),
   speakerNames: text("speaker_names").default("[]").notNull(),
+  /** JSON: { purpose, projects, attendees, extra, files: [{name, content}] } */
+  contextData: text("context_data").default(null),
 });
 
 export const segmentsTable = pgTable("segments", {
