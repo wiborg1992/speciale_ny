@@ -80,7 +80,6 @@ export function useOpenAISpeech({
   const blobUrlRef = useRef<string | null>(null);
   const isRecordingRef = useRef(false);
   const speechStartedAtRef = useRef<number | null>(null);
-  const silenceCheckTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const onSegmentFinalizedRef = useRef(onSegmentFinalized);
   useEffect(() => { onSegmentFinalizedRef.current = onSegmentFinalized; }, [onSegmentFinalized]);
@@ -93,7 +92,6 @@ export function useOpenAISpeech({
 
   const cleanup = useCallback(() => {
     isRecordingRef.current = false;
-    if (silenceCheckTimerRef.current) { clearTimeout(silenceCheckTimerRef.current); silenceCheckTimerRef.current = null; }
 
     if (workletNodeRef.current) {
       workletNodeRef.current.disconnect();
@@ -186,22 +184,6 @@ export function useOpenAISpeech({
       source.connect(workletNode);
       workletNode.connect(silencer);
       silencer.connect(audioCtx.destination);
-
-      // Tjek om mikrofonen faktisk fanger lyd — iframe-begrænsninger kan give silent stream
-      const analyser = audioCtx.createAnalyser();
-      analyser.fftSize = 256;
-      source.connect(analyser);
-      const pcm = new Uint8Array(analyser.frequencyBinCount);
-      silenceCheckTimerRef.current = setTimeout(() => {
-        silenceCheckTimerRef.current = null;
-        analyser.getByteFrequencyData(pcm);
-        const avg = pcm.reduce((a, b) => a + b, 0) / pcm.length;
-        if (avg < 0.5 && isRecordingRef.current) {
-          setError(
-            "Mikrofon fanger ingen lyd. Åbn appen i en separat browser-fane — ikke Replit canvas-rammen.",
-          );
-        }
-      }, 3000);
 
       // 4. Open WebSocket to OpenAI Realtime API with ephemeral key
       // backendModel comes from the token response — matches the session the backend created.
