@@ -1524,11 +1524,12 @@ export default function Room() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isGenerating]);
 
-  // Auto-viz: 45-second countdown
+  // Auto-viz: 45-second countdown — kører kun når optagelse er aktiv
   useEffect(() => {
     setAutoVizCountdown(45);
     autoVizCountdownRef.current = 45;
     if (!autoVizEnabled) return;
+    if (!isRecording) return; // Ingen optagelse → ingen nedtælling
 
     const tick = setInterval(() => {
       // Frys nedtælling mens disambiguation-dialog eller retningskort afventer brugerens valg
@@ -1557,7 +1558,7 @@ export default function Room() {
     }, 1000);
 
     return () => clearInterval(tick);
-  }, [autoVizEnabled]);
+  }, [autoVizEnabled, isRecording]);
 
   // ── Forklaring (AI-reasoning i almen tekst) ─────────────────────────────────
   const handleLoadActions = useCallback(async () => {
