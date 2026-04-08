@@ -190,7 +190,7 @@ export default function Room() {
   const [isEditingName, setIsEditingName] = useState(false);
   const [editNameValue, setEditNameValue] = useState("");
   const [language, setLanguage] = useState("da-DK");
-  const [autoVizEnabled, setAutoVizEnabled] = useState(false);
+  const [autoVizEnabled, setAutoVizEnabled] = useState(true);
   const [autoVizCountdown, setAutoVizCountdown] = useState(45);
 
   // Input tabs
@@ -2109,6 +2109,25 @@ export default function Room() {
                       )}
                       {isRecording ? "Stop" : "Record"}
                     </Button>
+
+                    {/* Auto-viz toggle */}
+                    <div className="flex items-center gap-1.5 shrink-0 px-1">
+                      <Switch
+                        checked={autoVizEnabled}
+                        onCheckedChange={setAutoVizEnabled}
+                        id="auto-viz"
+                      />
+                      <label
+                        htmlFor="auto-viz"
+                        className="text-xs font-mono text-muted-foreground cursor-pointer select-none whitespace-nowrap"
+                      >
+                        Auto
+                        {autoVizEnabled && (
+                          <span className="text-primary ml-1">[{autoVizCountdown}s]</span>
+                        )}
+                      </label>
+                    </div>
+
                     <Button
                       type="button"
                       variant="outline"
@@ -2772,25 +2791,6 @@ export default function Room() {
               <div className="flex items-center gap-3 py-1.5">
                 {outputTab === "viz" && (
                   <>
-                    <div className="flex items-center gap-1.5">
-                      <Switch
-                        checked={autoVizEnabled}
-                        onCheckedChange={setAutoVizEnabled}
-                        id="auto-viz"
-                      />
-                      <label
-                        htmlFor="auto-viz"
-                        className="text-xs font-mono text-muted-foreground cursor-pointer select-none"
-                      >
-                        Auto{" "}
-                        {autoVizEnabled && (
-                          <span className="text-primary">
-                            [{autoVizCountdown}s]
-                          </span>
-                        )}
-                      </label>
-                    </div>
-
                     <div className="w-px h-5 bg-border" />
 
                     {activeHtml && (
