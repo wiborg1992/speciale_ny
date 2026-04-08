@@ -63,14 +63,7 @@ export function useDeepgramSpeech({
 
   const pendingBufferRef = useRef<{ transcript: string; speaker: number }[]>([]);
   const commitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const maxAgeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const silenceCheckTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // Vent så længe efter sidste is_final før vi committer til transskriptet.
-  // Længere vindue ⇒ færre, længere segmenter (typisk 1–2 blokke pr. ytring i stedet for mange små).
-  const SILENCE_MS = 14_000;
-  // Tvangs-commit under lang monolog så UI/SSE ikke venter for evigt
-  const MAX_BUFFER_MS = 90_000;
 
   const getSpeakerLabel = useCallback((speakerId: number): string => {
     return speakerNamesRef.current[speakerId] ?? `Speaker ${speakerId + 1}`;
@@ -78,7 +71,6 @@ export function useDeepgramSpeech({
 
   const flushBuffer = useCallback(() => {
     if (commitTimerRef.current) { clearTimeout(commitTimerRef.current); commitTimerRef.current = null; }
-    if (maxAgeTimerRef.current) { clearTimeout(maxAgeTimerRef.current); maxAgeTimerRef.current = null; }
     const items = [...pendingBufferRef.current];
     pendingBufferRef.current = [];
     if (items.length === 0) return;
@@ -107,7 +99,6 @@ export function useDeepgramSpeech({
   const stopRecording = useCallback(() => {
     isRecordingRef.current = false;
     if (commitTimerRef.current) { clearTimeout(commitTimerRef.current); commitTimerRef.current = null; }
-    if (maxAgeTimerRef.current) { clearTimeout(maxAgeTimerRef.current); maxAgeTimerRef.current = null; }
     if (silenceCheckTimerRef.current) { clearTimeout(silenceCheckTimerRef.current); silenceCheckTimerRef.current = null; }
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
       mediaRecorderRef.current.stop();
@@ -133,7 +124,7 @@ export function useDeepgramSpeech({
       if (!tokenRes.ok) throw new Error("Could not fetch Deepgram token from server");
       const { key } = await tokenRes.json();
 
-      // 2. Request microphone — high-quality capture for better recognition
+      // 2. Request microphone
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           channelCount: 1,
@@ -178,7 +169,7 @@ export function useDeepgramSpeech({
         interim_results: "true",
         smart_format: "true",
         numerals: "true",
-        utterance_end_ms: "5000",
+        utterance_end_ms: "2500",
         vad_events: "true",
       });
 
@@ -235,27 +226,21 @@ export function useDeepgramSpeech({
             if (data.is_final) {
               pendingBufferRef.current.push({ transcript, speaker: dominantSpeaker });
 
-              // Nulstil stilhedstimer ved hvert nyt is_final — først commit efter SILENCE_MS uden nye finals.
+              // Primary commit trigger is UtteranceEnd (fires after utterance_end_ms=2500ms silence).
+              // Fallback timer in case UtteranceEnd doesn't fire.
               if (commitTimerRef.current) clearTimeout(commitTimerRef.current);
-              commitTimerRef.current = setTimeout(flushBuffer, SILENCE_MS);
+              commitTimerRef.current = setTimeout(flushBuffer, 5000);
 
-              // Én max-alder-timer fra første chunk i denne “blok”
-              if (!maxAgeTimerRef.current) {
-                maxAgeTimerRef.current = setTimeout(flushBuffer, MAX_BUFFER_MS);
-              }
-
-              const speakerLabel = getSpeakerLabel(dominantSpeaker);
-              const pending = pendingBufferRef.current.map((b) => b.transcript).join(" ");
-              setInterimText(`[${speakerLabel}] ${pending}`);
+              setInterimText("");
             } else {
               // Show live interim preview
               const pending = pendingBufferRef.current.map((b) => b.transcript).join(" ");
               const speakerLabel = getSpeakerLabel(dominantSpeaker);
               setInterimText(`[${speakerLabel}] ${[pending, transcript].filter(Boolean).join(" ")}`);
             }
+          } else if (data.type === "UtteranceEnd") {
+            flushBuffer();
           }
-          // UtteranceEnd bruges ikke til flush: den giver mange korte segmenter.
-          // Vi samler flere is_final-chunks og committer ved SILENCE_MS / MAX_BUFFER_MS / stop.
         } catch {
           // ignore malformed messages
         }
