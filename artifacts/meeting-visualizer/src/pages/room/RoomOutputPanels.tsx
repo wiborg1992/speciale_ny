@@ -286,7 +286,7 @@ export function RoomOutputPanels({
           <IframeRenderer
             html={activeHtml}
             isStreaming={isGenerating}
-            className="glow-border h-full"
+            className="h-full"
             roomId={roomId}
             title={meetingTitle || null}
             context={meetingContextForIframe}

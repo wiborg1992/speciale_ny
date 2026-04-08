@@ -101,6 +101,11 @@
   background: hsl(var(--muted-foreground));
 }
 
+/* Remove browser-native focus outline from <details>/<summary> — we style these ourselves */
+summary {
+  outline: none;
+}
+
 .glass-panel {
   @apply bg-card/60 backdrop-blur-md border border-border/50 shadow-xl shadow-black/40;
 }
