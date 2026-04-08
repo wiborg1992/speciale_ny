@@ -15,6 +15,12 @@ export const meetingsTable = pgTable("meetings", {
   speakerNames: text("speaker_names").default("[]").notNull(),
   /** JSON: { purpose, projects, attendees, extra, files: [{name, content}] } */
   contextData: text("context_data").default(null),
+  /**
+   * Orchestrator-managed session summary — persisted after each successful viz.
+   * Max 500 chars. Survives server restarts and is reloaded into room state on
+   * first SSE connect or viz request.
+   */
+  orchestratorSummary: text("orchestrator_summary").default(null),
 });
 
 export const segmentsTable = pgTable("segments", {

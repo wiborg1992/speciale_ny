@@ -14,19 +14,24 @@ import {
   type VizFamily,
   type ClassificationResult,
 } from "../lib/classifier.js";
-import { getRoom, broadcastEvent, getRecentSegments } from "../lib/rooms.js";
+import { getRoom, getOrCreateRoom, broadcastEvent, getRecentSegments } from "../lib/rooms.js";
 import {
   computeEssenceBullets,
   extractVizTitleFromHtml,
   roomToMeetingEssencePayload,
 } from "../lib/meeting-essence.js";
-import { saveVisualization, updateMeetingTitle, getSketchById, linkSketchToViz } from "../lib/meeting-store.js";
+import { saveVisualization, updateMeetingTitle, getSketchById, linkSketchToViz, updateOrchestratorSummary, getOrchestratorSummary } from "../lib/meeting-store.js";
 import { detectRefinementIntent } from "../lib/refinement-detector.js";
 import { llmRouteDecision } from "../lib/llm-router.js";
 import {
   evaluateVisualizationInput,
   MIN_WORDS_FOR_VISUALIZATION,
 } from "../lib/transcript-quality.js";
+import {
+  orchestratorVizDecision,
+  isOrchestratorEnabled,
+  type OrchestratorDecision,
+} from "../lib/orchestrator-viz.js";
 
 const router: IRouter = Router();
 
@@ -283,11 +288,13 @@ function sendNeedIntent(
   currentFamily: string | null,
   scores: Array<{ family: string; score: number }>,
 ): void {
-  res.setHeader("Content-Type", "text/event-stream");
-  res.setHeader("Cache-Control", "no-cache");
-  res.setHeader("Connection", "keep-alive");
-  res.setHeader("X-Accel-Buffering", "no");
-  res.flushHeaders();
+  if (!res.headersSent) {
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Connection", "keep-alive");
+    res.setHeader("X-Accel-Buffering", "no");
+    res.flushHeaders();
+  }
 
   const EXPLANATIONS: Record<DisambiguationReason, string> = {
     refinement_vs_topic_shift:
@@ -355,6 +362,37 @@ router.post("/visualize", async (req, res, next): Promise<void> => {
       return;
     }
 
+    // ─── Fase B: Orchestrator DB setup — immediately after request parsing ────────────────
+    // Per spec: start orchestratorVizDecision() as a Promise in parallel with normalizer,
+    // refinement detector, and classifier. The DB summary reload starts here (I/O bound),
+    // and the Claude API call starts immediately after classification (to provide full context).
+    //
+    // Two-phase parallel approach:
+    //   Phase 1 (now): room setup + DB summary I/O starts — runs in parallel with all prep work
+    //   Phase 2 (after classification): Claude API call starts with full context — runs in parallel
+    //                                   with all downstream P0-P8 resolution + viz generation
+    // This gives the maximum parallelism while providing full classifierTop context.
+    //
+    // Orchestrator bypasses: focusSegment and userPickedType represent user-explicit intent.
+    const userPickedType = vizType && vizType !== "auto";
+    let orchestratorRoomRef: ReturnType<typeof getOrCreateRoom> | null = null;
+    let dbSummaryPromise: Promise<string | null> = Promise.resolve(null);
+
+    if (isOrchestratorEnabled() && !userPickedType && !focusSegment && roomId) {
+      orchestratorRoomRef = getOrCreateRoom(roomId);
+      // Start DB summary reload I/O in parallel with normalization/classification:
+      // - Warm path (summary in memory OR sentinel set): resolves synchronously — no DB hit
+      // - Cold path (server restart, first viz ever): DB query runs in parallel
+      // orchestratorSummaryLoaded sentinel prevents repeated DB hits when summary is legitimately
+      // null (first viz ever — no stored history), avoiding per-request DB reads on new rooms.
+      if (!orchestratorRoomRef.orchestratorSummaryLoaded && orchestratorRoomRef.orchestratorManagedSummary === null) {
+        dbSummaryPromise = getOrchestratorSummary(roomId);
+      } else {
+        dbSummaryPromise = Promise.resolve(orchestratorRoomRef.orchestratorManagedSummary);
+      }
+    }
+    // orchestratorPromise is declared later (after classification) with full context.
+
     // Brug klients transskript når det er udfyldt (fx Paste). Traf kun room-segmenter ind når body er tom,
     // så indsat tekst ikke overskrives af gamle/mic-segmenter i samme rum.
     let effectiveTranscript = transcript;
@@ -405,7 +443,7 @@ router.post("/visualize", async (req, res, next): Promise<void> => {
     // The classifier must reflect the user's LATEST intent, not accumulated topics.
     /** Ord sendes til klassifikator (tail). Øget så "physical pump" mv. ikke falder ud af vinduet før PIN/HMI-dominans. */
     const CLASSIFY_TAIL_WORDS = 280;
-    const userPickedType = vizType && vizType !== "auto";
+    // userPickedType declared above in Fase B block (needed for orchestrator bypass decision)
 
     let classificationInput: string;
     if (focusSegment) {
@@ -431,6 +469,9 @@ router.post("/visualize", async (req, res, next): Promise<void> => {
       }
     }
 
+    // ─── Server-side classification (fast, synchronous, ~5-50ms) ─────────────────────────
+    // Runs FIRST so classifierTop scores are available for the orchestrator.
+    // Classification is cheap; the expensive work is the orchestrator Claude call (~4s).
     const classification = userPickedType
       ? null
       : classifyVisualizationIntent(
@@ -448,6 +489,41 @@ router.post("/visualize", async (req, res, next): Promise<void> => {
       console.log(
         `[classify] Input: ${classifyWords}/${totalWords} words (${focusSegment ? "focusSegment" : "tail"}) latestChunk: ${latestChunk ? latestChunk.split(/\s+/).filter(Boolean).length + "w" : "none"} → ${classification.family} (lead=${classification.lead}, ambiguous=${classification.ambiguous})`,
       );
+    }
+
+    // ─── Fase B Phase 2: Start orchestrator Claude call with full context ────────────────
+    // Classification is done — now start the orchestrator Claude call with complete input.
+    // This Claude call (~4s RTT) runs in parallel with all downstream work:
+    //   TYPE_TO_FAMILY mapping, lastFamily resolution, resolveFamily P0-P8, SSE headers,
+    //   viz prompt construction, and the main viz Claude streaming call (~4-8s).
+    // The DB summary reload started in Phase 1 — await it here (likely already resolved).
+    const roomForOrchestrator = orchestratorRoomRef;
+
+    let orchestratorPromise: Promise<OrchestratorDecision | null> = Promise.resolve(null);
+    if (isOrchestratorEnabled() && !userPickedType && !focusSegment && roomForOrchestrator) {
+      // Collect DB summary (likely already resolved since DB I/O started before classification).
+      const resolvedSummary = await dbSummaryPromise;
+      // Mark sentinel regardless of whether DB returned a value — prevents future DB queries
+      // for rooms with no stored summary (first viz ever scenario).
+      roomForOrchestrator.orchestratorSummaryLoaded = true;
+      if (resolvedSummary && !roomForOrchestrator.orchestratorManagedSummary) {
+        roomForOrchestrator.orchestratorManagedSummary = resolvedSummary;
+        console.log(`[orchestrator-viz] Reloaded session summary from DB for room=${roomId} (${resolvedSummary.length} chars)`);
+      }
+      // Start Claude call NOW with full context (classifierTop, refinementDetected, normalized transcript).
+      orchestratorPromise = orchestratorVizDecision({
+        transcriptTail: normalized,
+        sessionSummary: roomForOrchestrator.orchestratorManagedSummary ?? null,
+        lastFamily: (roomForOrchestrator.lastFamily ?? null) as VizFamily | null,
+        lastVizTitle: roomForOrchestrator.lastVizTitle ?? null,
+        classifierTop: (classification?.scores ?? []).map((s) => ({
+          family: s.id,
+          score: s.score,
+        })),
+        hasPreviousViz: !!(effectivePreviousHtml || roomForOrchestrator.lastVisualization),
+        refinementDetected: !!refinementDirective,
+        isColdStart: !roomForOrchestrator.orchestratorManagedSummary && !roomForOrchestrator.lastFamily,
+      });
     }
 
     // ─── Resolve viz-familie (P0–P8 decision order) ─────────────────────────────
@@ -506,17 +582,145 @@ router.post("/visualize", async (req, res, next): Promise<void> => {
       roomId ? (getRoom(roomId)?.lastFamily ?? null) : null
     ) as VizFamily | null;
 
+    // sendSkipped is defined here (before orchestrator await) so it can be called
+    // from orchestrator early-return branches (skip mode). Using const + arrow function
+    // avoids block-scope TDZ issues with function declarations in strict-mode ESM blocks.
+    const sendSkipped = (reason: string, extra?: Record<string, unknown>): void => {
+      if (!res.headersSent) {
+        res.setHeader("Content-Type", "text/event-stream");
+        res.setHeader("Cache-Control", "no-cache");
+        res.setHeader("Connection", "keep-alive");
+        res.setHeader("X-Accel-Buffering", "no");
+        res.flushHeaders();
+      }
+      res.write(
+        `data: ${JSON.stringify({ type: "skipped", reason, ...extra })}\n\n`,
+      );
+      res.end();
+    };
+
+    // AWAIT ORCHESTRATOR — Promise was started before TYPE_TO_FAMILY block above.
+    // All sync work (mapping, lastFamily, word-count guards) ran while orchestrator
+    // was in-flight. Await here — immediately before resolveFamily.
+    const orchestratorResult = await orchestratorPromise;
+
+    // Keep the orchestrator result for SSE meta-emission (Fase D)
+    let orchestratorMeta: { rationale: string; mode: string; confidence: number } | null = null;
+
     let resolvedFamily: VizFamily | null;
-    if (userPickedType) {
-      // P0: brugeren har valgt eksplicit — bypass alt
-      resolvedFamily = TYPE_TO_FAMILY[vizType!] ?? null;
+
+    if (orchestratorResult && isOrchestratorEnabled()) {
+      // ─── Orchestrator path ────────────────────────────────────────────────
+      // Orchestrator returnerede en valideret beslutning.
+      const oc = orchestratorResult;
+
+      if (oc.mode === "ask_user" || oc.confidence < 0.45) {
+        // Lav confidence → emit orchestrator SSE meta FØR need_intent.
+        // Set SSE headers first (headers not yet committed in early-return paths),
+        // then write meta event, then call sendNeedIntent (which guards headersSent).
+        console.log(
+          `[orchestrator-viz] ask_user mode (confidence=${oc.confidence}) — sending need_intent`,
+        );
+        // Map orchestrator context to the most precise DisambiguationReason:
+        // - cold-start + no previous viz → "ambiguous_with_previous_viz" not applicable;
+        //   use "uncertain_topic_shift" to signal "we don't know what type yet".
+        // - refinement detected + previous viz exists → could be a topic shift; use
+        //   "refinement_vs_topic_shift" so the UI surfaces "refine vs. new" framing.
+        // - ambiguous with previous viz (most common case) → "ambiguous_with_previous_viz".
+        const orchestratorHasPreviousViz = !!(effectivePreviousHtml || roomForOrchestrator?.lastVisualization);
+        const orchestratorRefinementDetected = !!refinementDirective;
+        const orchestratorIsColdStart = !roomForOrchestrator?.orchestratorManagedSummary && !roomForOrchestrator?.lastFamily;
+        let disambiguationReason: DisambiguationReason;
+        let disambiguationDefault: "fresh" | "refine";
+        if (orchestratorIsColdStart || !orchestratorHasPreviousViz) {
+          disambiguationReason = "uncertain_topic_shift";
+          disambiguationDefault = "fresh";
+        } else if (orchestratorRefinementDetected && orchestratorHasPreviousViz) {
+          disambiguationReason = "refinement_vs_topic_shift";
+          disambiguationDefault = "fresh";
+        } else {
+          disambiguationReason = "ambiguous_with_previous_viz";
+          disambiguationDefault = "refine";
+        }
+        res.setHeader("Content-Type", "text/event-stream");
+        res.setHeader("Cache-Control", "no-cache");
+        res.setHeader("Connection", "keep-alive");
+        res.setHeader("X-Accel-Buffering", "no");
+        res.flushHeaders();
+        res.write(
+          `data: ${JSON.stringify({
+            type: "meta",
+            orchestrator: { rationale: oc.rationale, mode: oc.mode, confidence: oc.confidence },
+          })}\n\n`,
+        );
+        sendNeedIntent(
+          res,
+          disambiguationReason,
+          disambiguationDefault,
+          oc.vizFamily,
+          lastFamily,
+          (classification?.scores ?? []).map((s) => ({ family: s.id, score: s.score })),
+        );
+        return;
+      }
+
+      if (oc.mode === "skip") {
+        // Skip: emit orchestrator SSE meta FØR skipped-event.
+        // Set SSE headers first, then write meta, then sendSkipped (guards headersSent).
+        console.log(`[orchestrator-viz] skip mode — orchestrator chose to skip`);
+        res.setHeader("Content-Type", "text/event-stream");
+        res.setHeader("Cache-Control", "no-cache");
+        res.setHeader("Connection", "keep-alive");
+        res.setHeader("X-Accel-Buffering", "no");
+        res.flushHeaders();
+        res.write(
+          `data: ${JSON.stringify({
+            type: "meta",
+            orchestrator: { rationale: oc.rationale, mode: oc.mode, confidence: oc.confidence },
+          })}\n\n`,
+        );
+        sendSkipped("orchestrator_skip", { rationale: oc.rationale });
+        return;
+      }
+
+      // Map orchestrator output til resolvedFamily + mode
+      resolvedFamily = oc.vizFamily as VizFamily;
+
+      if (oc.mode === "fresh") {
+        effectivePreviousHtml = undefined;
+        refinementDirective = null;
+      } else if (oc.mode === "refine") {
+        if (!effectivePreviousHtml && roomId) {
+          const room = getRoom(roomId);
+          if (room?.lastVisualization) effectivePreviousHtml = room.lastVisualization;
+        }
+        if (oc.refinementNote) {
+          refinementDirective = oc.refinementNote;
+        }
+      }
+
+      orchestratorMeta = {
+        rationale: oc.rationale,
+        mode: oc.mode,
+        confidence: oc.confidence,
+      };
+
+      console.log(
+        `[orchestrator-viz] decision applied: family=${resolvedFamily} mode=${oc.mode} confidence=${oc.confidence}`,
+      );
     } else {
-      resolvedFamily = resolveFamily({
-        classification,
-        lastFamily,
-        hasFocusSegment: !!focusSegment,
-        refinementDetected: !!refinementDirective,
-      });
+      // ─── Fallback path: P0–P8 decision order ─────────────────────────────
+      if (userPickedType) {
+        // P0: brugeren har valgt eksplicit — bypass alt
+        resolvedFamily = TYPE_TO_FAMILY[vizType!] ?? null;
+      } else {
+        resolvedFamily = resolveFamily({
+          classification,
+          lastFamily,
+          hasFocusSegment: !!focusSegment,
+          refinementDetected: !!refinementDirective,
+        });
+      }
     }
 
     // ─── userVizIntent override ───────────────────────────────────────────────
@@ -539,8 +743,12 @@ router.post("/visualize", async (req, res, next): Promise<void> => {
     // physical_product (pump front panel / SVG) er strukturelt inkompatibel med
     // alle andre familier. Selv ved moderat klassifikationssignal (lead >= 6) og
     // uanset P5/P8-inertia tvinger vi et frisk start — ingen disambiguation-dialog.
+    //
+    // ORCHESTRATOR-GATE: Skip when orchestrator is active — orchestrator has authority
+    // and already resolved the family. This override only applies in fallback mode.
     const PHYSICAL_PRODUCT_AUTO_SWITCH_LEAD = 6;
     if (
+      (!orchestratorResult || !isOrchestratorEnabled()) &&
       !userPickedType &&
       !focusSegment &&
       !freshStart &&
@@ -624,20 +832,8 @@ router.post("/visualize", async (req, res, next): Promise<void> => {
       bypassForRefinement: !!refinementDirective,
       userPickedVisualizationType: !!userPickedType,
     });
-    function sendSkipped(
-      reason: string,
-      extra?: Record<string, unknown>,
-    ): void {
-      res.setHeader("Content-Type", "text/event-stream");
-      res.setHeader("Cache-Control", "no-cache");
-      res.setHeader("Connection", "keep-alive");
-      res.setHeader("X-Accel-Buffering", "no");
-      res.flushHeaders();
-      res.write(
-        `data: ${JSON.stringify({ type: "skipped", reason, ...extra })}\n\n`,
-      );
-      res.end();
-    }
+    // NOTE: sendSkipped is defined earlier (before orchestrator await) as a const arrow
+    // function so it is in scope for the orchestrator skip early-return branch.
 
     // Bypass word-gate når en sketch er vedhæftet — skitsen er indholdet
     if (!vizQuality.ok && !sketchId) {
@@ -663,7 +859,12 @@ router.post("/visualize", async (req, res, next): Promise<void> => {
     // Klassifikatoren er ikke sikker på typen OG der er ingen tidligere
     // visualisering at opdatere — generér ikke generisk HTML, vent på mere indhold.
     // Bypasses hvis: bruger har valgt type, refinement er detekteret, focusSegment, forceVisualize.
+    //
+    // ORCHESTRATOR-GATE: Skip when orchestrator is active — orchestrator has already
+    // resolved the family/mode and handles ambiguous cases via ask_user/confidence zones.
+    // This heuristic-based skip only runs in fallback (orchestrator null or disabled).
     if (
+      (!orchestratorResult || !isOrchestratorEnabled()) &&
       !sketchId &&
       !userPickedType &&
       !refinementDirective &&
@@ -732,7 +933,11 @@ router.post("/visualize", async (req, res, next): Promise<void> => {
     // ─── Disambiguation gate ──────────────────────────────────────────────────
     // Spørg brugeren når refinement-signal og stærkt topic-skift konflikterer.
     // B3: Forsøg LLM-routing først — kun fallback til bruger-dialog hvis LLM fejler.
-    {
+    //
+    // ORCHESTRATOR-GATE: Skip this entire block when orchestrator already returned a valid
+    // decision — orchestrator has authority and has already resolved the family/mode.
+    // Legacy disambiguation only runs when orchestrator is null (flag off, timeout, network error).
+    if (!orchestratorResult || !isOrchestratorEnabled()) {
       const gate = checkDisambiguationGate({
         refinementDirective,
         classification,
@@ -869,6 +1074,7 @@ router.post("/visualize", async (req, res, next): Promise<void> => {
           refinement: refinementDirective
             ? { detected: true, directive: refinementDirective }
             : null,
+          orchestrator: orchestratorMeta ?? undefined,
         })}\n\n`,
       );
     } else if (refinementDirective) {
@@ -876,6 +1082,14 @@ router.post("/visualize", async (req, res, next): Promise<void> => {
         `data: ${JSON.stringify({
           type: "meta",
           refinement: { detected: true, directive: refinementDirective },
+          orchestrator: orchestratorMeta ?? undefined,
+        })}\n\n`,
+      );
+    } else if (orchestratorMeta) {
+      res.write(
+        `data: ${JSON.stringify({
+          type: "meta",
+          orchestrator: orchestratorMeta,
         })}\n\n`,
       );
     }
@@ -941,6 +1155,9 @@ router.post("/visualize", async (req, res, next): Promise<void> => {
           refinementDirective,
           focusSegment,
           meetingEssence: meetingEssenceForPrompt,
+          orchestratorSessionSummary: isOrchestratorEnabled()
+            ? (roomBeforeViz?.orchestratorManagedSummary ?? null)
+            : null,
           sketchPngBase64,
           isAnnotation: !!isAnnotation,
         },
@@ -973,6 +1190,9 @@ router.post("/visualize", async (req, res, next): Promise<void> => {
         incremental: !freshStart && !!effectivePreviousHtml,
         classifiedFamily: resolvedFamily ?? classification?.family ?? null,
         refinement: refinementDirective ? true : false,
+        // Include orchestrator reasoning in done.meta so the frontend can persist it
+        // across the full request lifecycle (even after streaming ends).
+        ...(orchestratorMeta ? { orchestrator: orchestratorMeta } : {}),
       };
 
       const cleanHtml = postProcessHtml(stripCodeFences(fullHtml), resolvedFamily ?? classification?.family ?? null);
@@ -980,9 +1200,34 @@ router.post("/visualize", async (req, res, next): Promise<void> => {
 
       if (qualityOk) {
         if (roomId) {
-          // Always persist to DB — even if the client navigated away while the
-          // AI was still streaming. The HTML is complete at this point because
-          // the server-side loop runs to completion regardless of disconnect.
+          // Fase C: Orchestrator session summary — decide in-memory update AND DB persist atomically.
+          // Both decisions use the SAME debounce condition evaluated once. This ensures that when
+          // debounce passes, BOTH in-memory and DB are updated in the same request — no split-state.
+          // DB persist is chained inside saveVisualization().then() so the meeting row exists first.
+          const ORCHESTRATOR_SUMMARY_DEBOUNCE_MS = 60_000;
+          let pendingOrchestratorSummary: string | null = null;
+          if (orchestratorResult?.sessionSummaryUpdate) {
+            const rawSummary = orchestratorResult.sessionSummaryUpdate.slice(0, 500);
+            const room = getRoom(roomId);
+            const now = Date.now();
+            const debounceOk = !room
+              || !room.orchestratorManagedSummary
+              || (now - room.orchestratorSummaryUpdatedAt) >= ORCHESTRATOR_SUMMARY_DEBOUNCE_MS;
+            if (debounceOk) {
+              // Snapshot summary for DB persist (chained below) and update in-memory state.
+              pendingOrchestratorSummary = rawSummary;
+              if (room) {
+                room.orchestratorManagedSummary = rawSummary;
+                room.orchestratorSummaryUpdatedAt = now;
+                console.log(`[orchestrator-viz] Session summary updated (in-memory) for room=${roomId} (${rawSummary.length} chars)`);
+              }
+            }
+          }
+
+          // Always persist visualization to DB — even if client navigated away while streaming.
+          // The HTML is complete because the server-side loop runs to completion regardless.
+          // Chain orchestrator summary persist AFTER saveVisualization() guarantees the meeting
+          // row exists (saveVisualization upserts it on first viz for a new room).
           saveVisualization(
             roomId,
             cleanHtml,
@@ -992,6 +1237,11 @@ router.post("/visualize", async (req, res, next): Promise<void> => {
             if (sketchId && savedVersion) {
               linkSketchToViz(sketchId, savedVersion, roomId).catch(() => {});
             }
+            if (pendingOrchestratorSummary) {
+              updateOrchestratorSummary(roomId, pendingOrchestratorSummary).catch((err) =>
+                console.error("[orchestrator-viz] Failed DB persist of session summary:", err)
+              );
+            }
           }).catch((err) => console.error("[viz-save] Failed to persist visualization:", err));
           if (title) {
             updateMeetingTitle(roomId, title).catch(() => {});
@@ -999,7 +1249,7 @@ router.post("/visualize", async (req, res, next): Promise<void> => {
 
           const room = getRoom(roomId);
           if (room) {
-            // Always update in-memory state so reconnecting clients get the latest viz
+            // Always update remaining in-memory state so reconnecting clients get latest viz.
             room.lastVisualization = cleanHtml;
             room.lastFamily = resolvedFamily ?? classification?.family ?? null;
             const fromHtml = extractVizTitleFromHtml(cleanHtml);
@@ -1012,6 +1262,7 @@ router.post("/visualize", async (req, res, next): Promise<void> => {
                 classification?.family ??
                 null) as VizFamily | null,
             );
+            // orchestratorManagedSummary + orchestratorSummaryUpdatedAt updated above (Fase C block).
           }
           // Broadcast via SSE uanset om HTTP-streamen er afbrudt.
           // Klientens SSE-kanal er separat — de modtager viz selv hvis fetch-POST er droppet.

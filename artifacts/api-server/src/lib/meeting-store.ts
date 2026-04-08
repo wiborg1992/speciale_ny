@@ -300,6 +300,41 @@ export async function linkSketchToViz(
   }
 }
 
+/**
+ * Persist orchestrator-managed session summary to DB.
+ * Called after each successful viz with 60s debounce (enforced by caller).
+ */
+export async function updateOrchestratorSummary(roomId: string, summary: string): Promise<void> {
+  if (!db) return;
+  try {
+    await db
+      .update(meetingsTable)
+      .set({ orchestratorSummary: summary.slice(0, 500), updatedAt: new Date() })
+      .where(eq(meetingsTable.roomId, roomId));
+  } catch (err) {
+    console.error("[orchestrator-viz] Failed to persist orchestratorSummary:", err);
+  }
+}
+
+/**
+ * Load orchestrator-managed session summary from DB.
+ * Called when a room is first created/loaded (to survive server restarts).
+ */
+export async function getOrchestratorSummary(roomId: string): Promise<string | null> {
+  if (!db) return null;
+  try {
+    const rows = await db
+      .select({ orchestratorSummary: meetingsTable.orchestratorSummary })
+      .from(meetingsTable)
+      .where(eq(meetingsTable.roomId, roomId))
+      .limit(1);
+    return rows[0]?.orchestratorSummary ?? null;
+  } catch (err) {
+    console.error("[orchestrator-viz] Failed to load orchestratorSummary:", err);
+    return null;
+  }
+}
+
 export async function deleteMeeting(roomId: string) {
   if (!db) return false;
   const result = await db

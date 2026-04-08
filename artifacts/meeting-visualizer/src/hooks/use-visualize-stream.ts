@@ -40,6 +40,7 @@ export function useVisualizeStream() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [streamedHtml, setStreamedHtml] = useState<string>("");
   const [meta, setMeta] = useState<any>(null);
+  const [orchestratorMeta, setOrchestratorMeta] = useState<{ rationale: string; mode: string; confidence: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [debugInfo, setDebugInfo] = useState<VizDebugInfo | null>(null);
   /**
@@ -79,6 +80,7 @@ export function useVisualizeStream() {
       setStreamedHtml("");
       setError(null);
       setMeta(null);
+      setOrchestratorMeta(null);
       setDebugInfo(null);
       setStreamFamily(null);
       const genStartTime = performance.now();
@@ -168,6 +170,12 @@ export function useVisualizeStream() {
                   } else if (parsed.classification?.family) {
                     setStreamFamily((prev) => prev ?? parsed.classification.family);
                   }
+                  // Persist orchestrator reasoning from early meta events so the UI
+                  // panel is populated even for ask_user/skip early-return flows
+                  // (which never reach the done event).
+                  if (parsed.orchestrator) {
+                    setOrchestratorMeta(parsed.orchestrator);
+                  }
                 } else if (parsed.type === "thinking") {
                   // future-proofing: backend may rename meta→thinking per task spec
                   if (parsed.resolvedFamily) {
@@ -202,7 +210,13 @@ export function useVisualizeStream() {
                     streamFlushRafRef.current = null;
                   }
                   setStreamedHtml(completeHtml);
-                  if (parsed.meta) setMeta(parsed.meta);
+                  if (parsed.meta) {
+                    setMeta(parsed.meta);
+                    // done.meta.orchestrator is included for replay/debug snapshot consistency
+                    if (parsed.meta.orchestrator) {
+                      setOrchestratorMeta(parsed.meta.orchestrator);
+                    }
+                  }
                   setDebugInfo((prev) =>
                     prev
                       ? {
@@ -327,6 +341,7 @@ export function useVisualizeStream() {
     isGenerating,
     streamedHtml,
     meta,
+    orchestratorMeta,
     error,
     debugInfo,
     streamFamily,

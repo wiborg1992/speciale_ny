@@ -21,6 +21,20 @@ export interface RoomState {
   lastVizTitle: string | null;
   /** 3–5 bullets fra seneste klassifikation — sendes som kontekst i næste viz */
   meetingEssenceBullets: string[];
+  /**
+   * Orchestrator-managed session summary — maks 500 tegn.
+   * Opdateres efter hver succesfuld viz med sessionSummaryUpdate fra orchestrator.
+   * Null ved cold-start (første viz i denne serverprocess).
+   */
+  orchestratorManagedSummary: string | null;
+  /**
+   * Sentinel: true when the DB has been queried for orchestratorManagedSummary at least once.
+   * Prevents repeated DB reads when the summary is legitimately null (first viz ever, no history).
+   * Without this sentinel, every request would hit the DB on cold rooms with no stored summary.
+   */
+  orchestratorSummaryLoaded: boolean;
+  /** Tidsstempel for seneste orchestrator-summary-opdatering (til debounce). */
+  orchestratorSummaryUpdatedAt: number;
 }
 
 const rooms = new Map<string, RoomState>();
@@ -38,6 +52,9 @@ export function getOrCreateRoom(roomId: string): RoomState {
       lastFamily: null,
       lastVizTitle: null,
       meetingEssenceBullets: [],
+      orchestratorManagedSummary: null,
+      orchestratorSummaryLoaded: false,
+      orchestratorSummaryUpdatedAt: 0,
     });
   }
   return rooms.get(roomId)!;

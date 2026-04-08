@@ -863,6 +863,12 @@ export interface VisualizerParams {
   focusSegment?: string | null;
   /** Fra room-state før dette kald — baggrund, ikke hovedkilde */
   meetingEssence?: MeetingEssenceForPrompt | null;
+  /**
+   * Orchestrator-managed session summary (max 500 chars).
+   * Replaces keyword-based essence as the primary session memory when ORCHESTRATOR_VIZ=1.
+   * Injected into the viz prompt to give the LLM multi-turn context.
+   */
+  orchestratorSessionSummary?: string | null;
   /** Base64-kodet PNG af brugerens Excalidraw-skitse — sendes som image-block til Claude */
   sketchPngBase64?: string | null;
   /** Sand: skitsen er en annotation oven på en eksisterende viz (ikke en ny skitse) */
@@ -1561,6 +1567,7 @@ export async function* streamVisualization(
     refinementDirective,
     focusSegment,
     meetingEssence,
+    orchestratorSessionSummary,
     sketchPngBase64,
     isAnnotation,
   } = params;
@@ -1580,7 +1587,15 @@ export async function* streamVisualization(
   if (context)
     userMessage += `ADDITIONAL MEETING CONTEXT (from facilitator — structured notes/files):\n${context}\n\n`;
 
-  const essence = meetingEssence;
+  // Orchestrator-managed session summary takes priority over keyword-based essence
+  // when ORCHESTRATOR_VIZ=1 — it captures evolving domain context across viz turns.
+  if (orchestratorSessionSummary) {
+    userMessage += `SESSION CONTEXT (orchestrator-managed, updated each viz turn):\n${orchestratorSessionSummary}\n\n`;
+  }
+
+  // When orchestrator is active and provides a session summary, suppress keyword-based
+  // essence to avoid duplication — orchestrator summary is the authoritative memory source.
+  const essence = orchestratorSessionSummary ? null : meetingEssence;
   if (
     essence &&
     (essence.bullets.length > 0 ||

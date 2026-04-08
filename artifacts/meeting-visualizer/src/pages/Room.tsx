@@ -325,6 +325,7 @@ export default function Room() {
     isGenerating,
     streamedHtml,
     meta: streamMeta,
+    orchestratorMeta,
     error: vizStreamError,
     debugInfo,
     streamFamily,
@@ -3170,6 +3171,60 @@ export default function Room() {
                           )}
                         </div>
                       </details>
+
+                      {/* Orchestrator reasoning — sourced from orchestratorMeta state,
+                          populated from early SSE meta events (not just done.meta) so
+                          ask_user/skip early-return flows are surfaced in the panel. */}
+                      {orchestratorMeta && (
+                        <details className="group">
+                          <summary className="cursor-pointer text-purple-400/80 hover:text-purple-400 [&::-webkit-details-marker]:hidden flex items-center gap-1">
+                            <span className="opacity-50 group-open:rotate-90 transition-transform">
+                              ▸
+                            </span>
+                            Orchestrator
+                            <span className={`ml-2 px-1.5 py-0 rounded text-[9px] font-semibold uppercase tracking-wide ${
+                              orchestratorMeta.mode === "fresh" ? "bg-green-500/20 text-green-400" :
+                              orchestratorMeta.mode === "refine" ? "bg-amber-500/20 text-amber-400" :
+                              orchestratorMeta.mode === "skip" ? "bg-slate-500/20 text-slate-400" :
+                              orchestratorMeta.mode === "ask_user" ? "bg-orange-500/20 text-orange-400" :
+                              "bg-slate-500/20 text-slate-400"
+                            }`}>
+                              {orchestratorMeta.mode}
+                            </span>
+                            <span className={`ml-1 text-[9px] ${
+                              orchestratorMeta.confidence >= 0.72 ? "text-green-400" :
+                              orchestratorMeta.confidence >= 0.45 ? "text-amber-400" :
+                              "text-orange-400"
+                            }`}>
+                              {Math.round(orchestratorMeta.confidence * 100)}%
+                            </span>
+                          </summary>
+                          <div className="ml-3 mt-1 space-y-0.5 text-foreground/70">
+                            <div>
+                              <span className="text-muted-foreground">Rationale:</span>{" "}
+                              <span className="text-foreground/80 italic">{orchestratorMeta.rationale}</span>
+                            </div>
+                            <div>
+                              <span className="text-muted-foreground">Mode:</span>{" "}
+                              <span className="text-purple-300">{orchestratorMeta.mode}</span>{" "}
+                              ·{" "}
+                              <span className="text-muted-foreground">Confidence:</span>{" "}
+                              <span className={
+                                orchestratorMeta.confidence >= 0.72 ? "text-green-400" :
+                                orchestratorMeta.confidence >= 0.45 ? "text-amber-400" :
+                                "text-orange-400"
+                              }>
+                                {orchestratorMeta.confidence.toFixed(2)}
+                              </span>
+                              {orchestratorMeta.confidence >= 0.72
+                                ? " (auto_high)"
+                                : orchestratorMeta.confidence >= 0.45
+                                ? " (auto_medium)"
+                                : " (ask_user zone)"}
+                            </div>
+                          </div>
+                        </details>
+                      )}
 
                       {/* Generation config */}
                       <details open className="group">
