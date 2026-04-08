@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Comfort GO — Physical Panel</title>
+<style>
+  @keyframes ledAlarm { 0%,100%{opacity:1} 50%{opacity:.25} }
+  @keyframes fadeIn   { from{opacity:0;transform:translateY(5px)} to{opacity:1;transform:none} }
+  @keyframes fadeUp   { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:none} }
+  @keyframes spin     { to{transform:rotate(360deg)} }
+  @keyframes ledPulse { 0%,100%{opacity:1;filter:drop-shadow(0 0 6px #22C55E)} 50%{opacity:.7;filter:drop-shadow(0 0 12px #22C55E)} }
+  @keyframes screenGlow { 0%,100%{opacity:1} 50%{opacity:.92} }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #F8FAFC;
+    font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 32px 24px 40px;
+  }
+
+  .page-title {
+    font-size: 1.05rem;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: #4B5563;
+    margin-bottom: 6px;
+    animation: fadeIn 0.5s ease both;
+  }
+
+  .page-sub {
+    font-size: 0.72rem;
+    color: #9CA3AF;
+    letter-spacing: 0.08em;
+    margin-bottom: 36px;
+    animation: fadeIn 0.5s ease 0.1s both;
+  }
+
+  .svg-wrap {
+    width: 100%;
+    max-width: 820px;
+    animation: fadeUp 0.6s ease 0.15s both;
+  }
+
+  .chips-row {
+    display: flex;
+    gap: 12px;
+    margin-top: 28px;
+    flex-wrap: wrap;
+    justify-content: center;
+    animation: fadeIn 0.5s ease 0.4s both;
+  }
+
+  .chip {
+    background: #F1F5F9;
+    border: 1px solid #E2E8F0;
+    border-radius: 999px;
+    padding: 6px 16px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: #374151;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .chip.green {
+    background: #F0FDF4;
+    border-color: #86EFAC;
+    color: #166534;
+  }
+
+  .chip.blue {
+    background: #EFF6FF;
+    border-color: #93C5FD;
+    color: #1D4ED8;
+  }
+
+  .footer {
+    margin-top: 36px;
+    font-size: 0.62rem;
+    color: #CBD5E1;
+    letter-spacing: 0.08em;
+    animation: fadeIn 0.5s ease 0.55s both;
+  }
+</style>
+</head>
+<body>
+
+<div class="page-title">Comfort GO — Physical Control Panel</div>
+<div class="page-sub">MagnaFree Series &nbsp;·&nbsp; Technician-Assisted Setup &nbsp;·&nbsp; CRA Compliant</div>
+
+<div class="svg-wrap">
+<svg viewBox="0 0 820 620" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;display:block;">
+  <defs>
+    <radialGradient id="panelFace" cx="50%" cy="42%" r="52%">
+      <stop offset="0%" stop-color="#38383C"/>
+      <stop offset="60%" stop-color="#242428"/>
+      <stop offset="100%" stop-color="#111114"/>
+    </radialGradient>
+    <radialGradient id="panelRim" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#3A3A3E"/>
+      <stop offset="100%" stop-color="#1A1A1D"/>
+    </radialGradient>
+    <radialGradient id="btnGrad" cx="38%" cy="30%" r="60%">
+      <stop offset="0%" stop-color="#6A6A72"/>
+      <stop offset="100%" stop-color="#2E2E32"/>
+    </radialGradient>
+    <radialGradient id="btnInner" cx="35%" cy="28%" r="55%">
+      <stop offset="0%" stop-color="#7A7A84"/>
+      <stop offset="100%" stop-color="#38383E"/>
+    </radialGradient>
+    <radialGradient id="ledGreen" cx="40%" cy="35%" r="55%">
+      <stop offset="0%" stop-color="#4ADE80"/>
+      <stop offset="100%" stop-color="#15803D"/>
+    </radialGradient>
+    <radialGradient id="ledAmber" cx="40%" cy="35%" r="55%">
+      <stop offset="0%" stop-color="#FCD34D"/>
+      <stop offset="100%" stop-color="#B45309"/>
+    </radialGradient>
+    <radialGradient id="ledBlue" cx="40%" cy="35%" r="55%">
+      <stop offset="0%" stop-color="#60A5FA"/>
+      <stop offset="100%" stop-color="#1D4ED8"/>
+    </radialGradient>
+    <radialGradient id="screenBg" cx="50%" cy="30%" r="70%">
+      <stop offset="0%" stop-color="#0F1923"/>
+      <stop offset="100%" stop-color="#060A0F"/>
+    </radialGradient>
+    <radialGradient id="outerRingGrad" cx="50%" cy="50%" r="50%">
+      <stop offset="85%" stop-color="transparent"/>
+      <stop offset="100%" stop-color="#2A2A2E"/>
+    </radialGradient>
+    <radialGradient id="qrDot" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#555560"/>
+      <stop offset="100%" stop-color="#333338"/>
+    </radialGradient>
+    <filter id="panelShadow" x="-15%" y="-15%" width="130%" height="130%">
+      <feDropShadow dx="0" dy="8" stdDeviation="22" flood-color="#000000" flood-opacity="0.65"/>
+    </filter>
+    <filter id="ledGlow">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="screenGlowFilter">
+      <feGaussianBlur stdDeviation="4" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <clipPath id="circleClip">
+      <circle cx="410" cy="305" r="228"/>
+    </clipPath>
+    <linearGradient id="rimHighlight" x1="20%" y1="10%" x2="80%" y2="90%">
+      <stop offset="0%" stop-color="#5A5A62" stop-opacity="0.8"/>
+      <stop offset="40%" stop-color="#2A2A2E" stop-opacity="0.3"/>
+      <stop offset="100%" stop-color="#111114" stop-opacity="0.9"/>
+    </linearGradient>
+    <linearGradient id="btnNavGrad" x1="20%" y1="10%" x2="80%" y2="90%">
+      <stop offset="0%" stop-color="#505058"/>
+      <stop offset="100%" stop-color="#28282C"/>
+    </linearGradient>
+    <radialGradient id="centerHighlight" cx="50%" cy="35%" r="50%">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.04"/>
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Page background -->
+  <rect width="820" height="620" fill="#F8FAFC"/>
+
+  <!-- Outer metallic rim -->
+  <circle cx="410" cy="305" r="246" fill="url(#panelRim)" filter="url(#panelShadow)"/>
+  <circle cx="410" cy="305" r="246" fill="url(#rimHighlight)" opacity="0.6"/>
+  <circle cx="410" cy="305" r="238" fill="none" stroke="#484850" stroke-width="1.5" opacity="0.8"/>
+  <circle cx="410" cy="305" r="234" fill="none" stroke="#222226" stroke-width="1" opacity="0.9"/>
+
+  <!-- Main panel face -->
+  <circle cx="410" cy="305" r="228" fill="url(#panelFace)"/>
+
+  <!-- Subtle center highlight -->
+  <circle cx="410" cy="305" r="228" fill="url(#centerHighlight)"/>
+
+  <!-- LED ring arc (active segments — blue/cyan) -->
+  <circle cx="410" cy="305" r="216" fill="none" stroke="#1D4ED8" stroke-width="5" stroke-opacity="0.15" stroke-dasharray="1357 1358" stroke-linecap="round"/>
+  <circle cx="410" cy="305" r="216" fill="none" stroke="#3B82F6" stroke-width="4" stroke-opacity="0.55" stroke-dasharray="820 537" stroke-dashoffset="0" stroke-linecap="round" style="animation:ledPulse 2.8s ease-in-out infinite"/>
+  <circle cx="410" cy="305" r="216" fill="none" stroke="#60A5FA" stroke-width="2" stroke-opacity="0.25" stroke-dasharray="1357 1358"/>
+
+  <!-- GRUNDFOS Logo area — top center -->
+  <!-- X mark logo -->
+  <g transform="translate(374, 118)">
+    <!-- Grundfos X mark — two crossing diagonal strokes with serifs -->
+    <line x1="0" y1="0" x2="28" y2="26" stroke="#FFFFFF" stroke-width="4.5" stroke-linecap="round" opacity="0.92"/>
+    <line x1="28" y1="0" x2="0" y2="26" stroke="#FFFFFF" stroke-width="4.5" stroke-linecap="round" opacity="0.92"/>
+    <!-- serif dots -->
+    <circle cx="0" cy="0" r="3.2" fill="#FFFFFF" opacity="0.92"/>
+    <circle cx="28" cy="0" r="3.2" fill="#FFFFFF" opacity="0.92"/>
+    <circle cx="0" cy="26" r="3.2" fill="#FFFFFF" opacity="0.92"/>
+    <circle cx="28" cy="26" r="3.2" fill="#FFFFFF" opacity="0.92"/>
+  </g>
+  <!-- GRUNDFOS wordmark -->
+  <text x="410" y="162" text-anchor="middle" font-family="system-ui, sans-serif" font-size="13" font-weight="700" letter-spacing="5" fill="#FFFFFF" opacity="0.92">GRUNDFOS</text>
+  <!-- divider line -->
+  <line x1="358" y1="170" x2="462" y2="170" stroke="#FFFFFF" stroke-width="0.8" stroke-opacity="0.3"/>
+
+  <!-- Model name -->
+  <text x="410" y="185" text-anchor="middle" font-family="system-ui, sans-serif" font-size="9.5" font-weight="600" letter-spacing="3.5" fill="#9CA3AF" opacity="0.85">COMFORT GO</text>
+  <text x="410" y="197" text-anchor="middle" font-family="system-ui, sans-serif" font-size="7.5" font-weight="400" letter-spacing="2" fill="#6B7280" opacity="0.75">MAGNAFREE SERIES</text>
+
+  <!-- Green status LED — top center above screen -->
+  <circle cx="410" cy="216" r="5.5" fill="url(#ledGreen)" filter="url(#ledGlow)" style="animation:ledPulse 2.8s ease-in-out infinite"/>
+  <circle cx="410" cy="216" r="3" fill="#4ADE80" opacity="0.9"/>
+
+  <!-- Central LCD Screen -->
+  <rect x="342" y="228" width="136" height="96" rx="7" ry="7" fill="#0A0E14" stroke="#1E293B" stroke-width="2"/>
+  <rect x="346" y="232" width="128" height="88" rx="5" ry="5" fill="url(#screenBg)" style="animation:screenGlow 3s ease-in-out infinite"/>
+
+  <!-- Screen content — connected status -->
+  <rect x="350" y="236" width="120" height="80" rx="4" ry="4" fill="#060C14" clip-path="url(#circleClip)"/>
+
+  <!-- Screen top bar -->
+  <rect x="350" y="236" width="120" height="14" rx="4" ry="0" fill="#0F2744"/>
+  <text x="360" y="246" font-family="monospace" font-size="7" fill="#60A5FA" letter-spacing="1" opacity="0.9">COMFORT GO</text>
+  <circle cx="460" cy="243" r="3" fill="#22C55E" opacity="0.9"/>
+
+  <!-- Main screen value -->
+  <text x="410" y="270" text-anchor="middle" font-family="monospace" font-size="11" font-weight="700" fill="#22C55E" letter-spacing="1" opacity="0.95">AUTO ADAPT</text>
+
+  <!-- Flow reading -->
+  <text x="370" y="285" text-anchor="middle" font-family="monospace" font-size="9" fill="#FFFFFF" opacity="0.8">3.2</text>
+  <text x="370" y="293" text-anchor="middle" font-family="monospace" font-size="6.5" fill="#60A5FA" opacity="0.7">m³/h</text>
+
+  <!-- Pressure reading -->
+  <text x="410" y="285" text-anchor="middle" font-family="monospace" font-size="9" fill="#FFFFFF" opacity="0.8">2.8</text>
+  <text x="410" y="293" text-anchor="middle" font-family="monospace" font-size="6.5" fill="#60A5FA" opacity="0.7">bar</text>
+
+  <!-- Temp reading -->
+  <text x="450" y="285" text-anchor="middle" font-family="monospace" font-size="9" fill="#FFFFFF" opacity="0.8">65°</text>
+  <text x="450" y="293" text-anchor="middle" font-family="monospace" font-size="6.5" fill="#60A5FA" opacity="0.7">Temp</text>
+
+  <!-- Connected indicator -->
+  <text x="410" y="308" text-anchor="middle" font-family="monospace" font-size="6.5" fill="#4ADE80" letter-spacing="0.5" opacity="0.9">&#x25CF; CONNECTED</text>
+
+  <!-- Icon row — 4 icons below screen -->
+  <!-- Temperature / eco leaf icon -->
+  <g transform="translate(336, 344)">
+    <ellipse cx="12" cy="10" rx="8" ry="10" fill="none" stroke="#4ADE80" stroke-width="1.8" opacity="0.75"/>
+    <line x1="12" y1="20" x2="12" y2="26" stroke="#4ADE80" stroke-width="1.5" opacity="0.65"/>
+    <line x1="12" y1="14" x2="18" y2="8" stroke="#4ADE80" stroke-width="1.2" opacity="0.55"/>
+    <circle cx="12" cy="10" r="2.5" fill="#4ADE80" opacity="0.6"/>
+  </g>
+
+  <!-- Clock / timer icon -->
+  <g transform="translate(376, 344)">
+    <circle cx="12" cy="13" r="10" fill="none" stroke="#9CA3AF" stroke-width="1.8" opacity="0.7"/>
+    <line x1="12" y1="13" x2="12" y2="7" stroke="#9CA3AF" stroke-width="1.8" stroke-linecap="round" opacity="0.7"/>
+    <line x1="12" y1="13" x2="17" y2="15" stroke="#9CA3AF" stroke-width="1.5" stroke-linecap="round" opacity="0.6"/>
+    <circle cx="12" cy="3" r="2" fill="#9CA3AF" opacity="0.5"/>
+  </g>
+
+  <!-- WiFi arcs icon -->
+  <g transform="translate(416, 344)">
+    <circle cx="12" cy="22" r="3" fill="#60A5FA" opacity="0.85"/>
+    <path d="M5,16 Q12,9 19,16" fill="none" stroke="#60A5FA" stroke-width="2" stroke-linecap="round" opacity="0.8"/>
+    <path d="M1,11 Q12,1 23,11" fill="none" stroke="#60A5FA" stroke-width="2" stroke-linecap="round" opacity="0.55"/>
+  </g>
+
+  <!-- Warning triangle icon (CRA compliance indicator — amber) -->
+  <g transform="translate(454, 344)">
+    <polygon points="12,2 23,22 1,22" fill="none" stroke="#F59E0B" stroke-width="1.8" stroke-linejoin="round" opacity="0.75"/>
+    <text x="12" y="18" text-anchor="middle" font-size="10" font-weight="700" fill="#F59E0B" opacity="0.8">!</text>
+  </g>
+
+  <!-- Icon labels -->
+  <text x="348" y="382" text-anchor="middle" font-family="system-ui, sans-serif" font-size="7" fill="#6B7280" letter-spacing="0.5">ECO</text>
+  <text x="388" y="382" text-anchor="middle" font-family="system-ui, sans-serif" font-size="7" fill="#6B7280" letter-spacing="0.5">TIMER</text>
+  <text x="428" y="382" text-anchor="middle" font-family="system-ui, sans-serif" font-size="7" fill="#6B7280" letter-spacing="0.5">BT</text>
+  <text x="466" y="382" text-anchor="middle" font-family="system-ui, sans-serif" font-size="7" fill="#D97706" letter-spacing="0.5">CRA</text>
+
+  <!-- Navigation button cluster — below icons -->
+  <!-- HOME / BACK button — left -->
+  <circle cx="354" cy="418" r="20" fill="url(#btnGrad)" stroke="#4A4A52" stroke-width="1.2"/>
+  <circle cx="354" cy="418" r="16" fill="url(#btnInner)"/>
+  <!-- house icon -->
+  <polygon points="354,409 363,416 363,427 345,427 345,416" fill="none" stroke="#FFFFFF" stroke-width="1.8" stroke-linejoin="round" opacity="0.75"/>
+  <line x1="349" y1="427" x2="349" y2="421" stroke="#FFFFFF" stroke-width="1.5" opacity="0.75"/>
+  <line x1="354" y1="409" x2="345" y2="416" stroke="#FFFFFF" stroke-width="1.8" stroke-linecap="round" opacity="0.75"/>
+
+  <!-- OK / Confirm button — center large -->
+  <circle cx="410" cy="432" r="32" fill="url(#btnGrad)" stroke="#5A5A62" stroke-width="1.5"/>
+  <circle cx="410" cy="432" r="26" fill="url(#btnInner)" stroke="#484850" stroke-width="1"/>
+  <circle cx="410" cy="432" r="20" fill="#1A1A1E" stroke="#3A3A42" stroke-width="1"/>
+  <!-- OK chevron -->
+  <text x="410" y="439" text-anchor="middle" font-family="system-ui, sans-serif" font-size="18" font-weight="700" fill="#FFFFFF" opacity="0.88">&#x25BA;</text>
+
+  <!-- BACK / arrow button — right -->
+  <circle cx="466" cy="418" r="20" fill="url(#btnGrad)" stroke="#4A4A52" stroke-width="1.2"/>
+  <circle cx="466" cy="418" r="16" fill="url(#btnInner)"/>
+  <!-- back arrow -->
+  <polyline points="471,412 461,418 471,424" fill="none" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" opacity="0.75"/>
+  <line x1="461" y1="418" x2="474" y2="418" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" opacity="0.75"/>
+
+  <!-- Button labels -->
+  <text x="354" y="446" text-anchor="middle" font-family="system-ui, sans-serif" font-size="6.5" fill="#6B7280" letter-spacing="0.5">HOME</text>
+  <text x="410" y="472" text-anchor="middle" font-family="system-ui, sans-serif" font-size="6.5" fill="#6B7280" letter-spacing="0.5">SELECT</text>
+  <text x="466" y="446" text-anchor="middle" font-family="system-ui, sans-serif" font-size="6.5" fill="#6B7280" letter-spacing="0.5">BACK</text>
+
+  <!-- QR code — lower left of panel -->
+  <rect x="313" y="460" width="44" height="44" rx="3" fill="#1A1A1E" stroke="#333338" stroke-width="1"/>
+  <!-- QR corner markers -->
+  <rect x="317" y="464" width="12" height="12" rx="1.5" fill="#555560"/>
+  <rect x="319" y="466" width="8" height="8" rx="0.5" fill="#1A1A1E"/>
+  <rect x="321" y="468" width="4" height="4" rx="0.5" fill="#555560"/>
+  <rect x="329" y="464" width="12" height="12" rx="1.5" fill="#555560"/>
+  <rect x="331" y="466" width="8" height="8" rx="0.5" fill="#1A1A1E"/>
+  <rect x="333" y="468" width="4" height="4" rx="0.5" fill="#555560"/>
+  <rect x="317" y="480" width="12" height="12" rx="1.5" fill="#555560"/>
+  <rect x="319" y="482" width="8" height="8" rx="0.5" fill="#1A1A1E"/>
+  <rect x="321" y="484" width="4" height="4" rx="0.5" fill="#555560"/>
+  <!-- QR data dots -->
+  <rect x="331" y="480" width="3" height="3" fill="#555560"/>
+  <rect x="335" y="480" width="3" height="3" fill="#555560"/>
+  <rect x="339" y="480" width="3" height="3" fill="#555560"/>
+  <rect x="331" y="484" width="3" height="3" fill="#555560"/>
+  <rect x="339" y="484" width="3" height="3" fill="#555560"/>
+  <rect x="335" y="488" width="3" height="3" fill="#555560"/>
+  <rect x="339" y="488" width="3" height="3" fill="#555560"/>
+  <rect x="329" y="478" width="3" height="3" fill="#555560"/>
+  <text x="335" y="512" text-anchor="middle" font-family="monospace" font-size="6" fill="#4B5563" letter-spacing="0.3">SCAN TO PAIR</text>
+
+  <!-- PIN code indicator — lower right of panel -->
+  <rect x="462" y="462" width="52" height="38" rx="4" fill="#0F2744" stroke="#1E3A5C" stroke-width="1.2"/>
+  <text x="488" y="476" text-anchor="middle" font-family="monospace" font-size="6.5" fill="#60A5FA" letter-spacing="1">PIN</text>
+  <text x="488" y="487" text-anchor="middle" font-family="monospace" font-size="9" font-weight="700" fill="#FFFFFF" letter-spacing="2">&#x2022;&#x2022;&#x2022;&#x2022;</text>
+  <text x="488" y="497" text-anchor="middle" font-family="monospace" font-size="5.5" fill="#4ADE80" letter-spacing="0.5">CRA OK</text>
+  <text x="488" y="508" text-anchor="middle" font-family="system-ui, sans-serif" font-size="6" fill="#6B7280" letter-spacing="0.3">CUSTOMER PIN</text>
+
+  <!-- Model label bottom inside circle -->
+  <text x="410" y="521" text-anchor="middle" font-family="system-ui, sans-serif" font-size="8.5" font-weight="600" letter-spacing="3" fill="#4B5563" opacity="0.8">MAGNAFREE</text>
+  <text x="410" y="532" text-anchor="middle" font-family="system-ui, sans-serif" font-size="6.5" letter-spacing="2" fill="#374151" opacity="0.6">SERIE 1.0</text>
+
+  <!-- Subtle inner ring near edge -->
+  <circle cx="410" cy="305" r="225" fill="none" stroke="#FFFFFF" stroke-width="0.5" stroke-opacity="0.05"/>
+
+  <!-- ═══ CALLOUT ANNOTATIONS — outside the panel ═══ -->
+
+  <!-- Callout 1: LED Ring — top left -->
+  <line x1="238" y1="225" x2="290" y2="265" stroke="#9CA3AF" stroke-width="1.2" stroke-dasharray="4,3" opacity="0.8"/>
+  <circle cx="238" cy="225" r="3" fill="#60A5FA" opacity="0.7"/>
+  <rect x="100" y="196" width="134" height="34" rx="5" fill="#F1F5F9" stroke="#E2E8F0" stroke-width="1"/>
+  <text x="167" y="210" text-anchor="middle" font-family="system-ui, sans-serif" font-size="8.5" font-weight="700" fill="#1D4ED8" letter-spacing="0.5">BT LED RING</text>
+  <text x="167" y="223" text-anchor="middle" font-family="system-ui, sans-serif" font-size="7.5" fill="#6B7280">Bluetooth pairing status</text>
+
+  <!-- Callout 2: Screen — left mid -->
+  <line x1="228" y1="280" x2="342" y2="275" stroke="#9CA3AF" stroke-width="1.2" stroke-dasharray="4,3" opacity="0.8"/>
+  <circle cx="228" cy="280" r="3" fill="#4ADE80" opacity="0.7"/>
+  <rect x="72" y="256" width="152" height="48" rx="5" fill="#F0FDF4" stroke="#86EFAC" stroke-width="1"/>
+  <text x="148" y="272" text-anchor="middle" font-family="system-ui, sans-serif" font-size="8.5" font-weight="700" fill="#166534" letter-spacing="0.5">COLOR LCD SCREEN</text>
+  <text x="148" y="284" text-anchor="middle" font-family="system-ui, sans-serif" font-size="7.5" fill="#4B7C56">AUTO ADAPT · 3.2 m³/h · 2.8 bar</text>
+  <text x="148" y="296" text-anchor="middle" font-family="system-ui, sans-serif" font-size="7.5" fill="#4B7C56">Live view in Comfort GO app</text>
+
+  <!-- Callout 3: Icon row — left lower -->
+  <line x1="218" y1="375" x2="326" y2="365" stroke="#9CA3AF" stroke-width="1.2" stroke-dasharray="4,3" opacity="0.8"/>
+  <circle cx="218" cy="375" r="3" fill="#F59E0B" opacity="0.7"/>
+  <rect x="72" y="352" width="142" height="36" rx="5" fill="#FFFBEB" stroke="#FCD34D" stroke-width="1"/>
+  <text x="143" y="366" text-anchor="middle" font-family="system-ui, sans-serif" font-size="8.5" font-weight="700" fill="#B45309" letter-spacing="0.5">SETUP ICONS</text>
+  <text x="143" y="379" text-anchor="middle" font-family="system-ui, sans-serif" font-size="7.5" fill="#92400E">ECO · TIMER · BT · CRA Check</text>
+
+  <!-- Callout 4: OK button — bottom left -->
+  <line x1="250" y1="462" x2="382" y2="440" stroke="#9CA3AF" stroke-width="1.2" stroke-dasharray="4,3" opacity="0.8"/>
+  <circle cx="250" cy="462" r="3" fill="#6B7280" opacity="0.7"/>
+  <rect x="80" y="442" width="166" height="36" rx="5" fill="#F1F5F9" stroke="#CBD5E1" stroke-width="1"/>
+  <text x="163" y="456" text-anchor="middle" font-family="system-ui, sans-serif" font-size="8.5" font-weight="700" fill="#374151" letter-spacing="0.5">CONFIRM BUTTON</text>
+  <text x="163" y="469" text-anchor="middle" font-family="system-ui, sans-serif" font-size="7.5" fill="#6B7280">Technician setup confirmation</text>
+
+  <!-- Callout 5: QR code — bottom right

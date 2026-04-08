@@ -375,6 +375,16 @@ const VIZ_FAMILY_SIGNALS: Array<{
       ["app notification", 12],
       ["push notification", 12],
       ["push besked", 12],
+      // Speech-recogniser variants of "Comfort GO" / "Grundfos GO"
+      ["cornforz go", 22],
+      ["comfort go app", 22],
+      ["comfort go", 18],
+      // Natural speech — mobile phone context
+      ["mobile phone app", 20],
+      ["mobile phone application", 18],
+      ["mobile phone", 14],
+      ["the mobile app", 18],
+      ["the application the", 12],
     ],
   },
   {
@@ -1320,6 +1330,20 @@ const TOPIC_SHIFT_OVERRIDES: Array<{ pattern: string; target: VizFamily }> = [
   { pattern: "on the smartphone", target: "mobile_app" },
   { pattern: "the go app", target: "mobile_app" },
   { pattern: "grundfos go app", target: "mobile_app" },
+  // Speech-recogniser variants + natural "mobile phone" context
+  { pattern: "cornforz go", target: "mobile_app" },
+  { pattern: "comfort go app", target: "mobile_app" },
+  { pattern: "comfort go", target: "mobile_app" },
+  { pattern: "the mobile phone app", target: "mobile_app" },
+  { pattern: "mobile phone app", target: "mobile_app" },
+  { pattern: "display of the mobile phone", target: "mobile_app" },
+  { pattern: "display of the mobile", target: "mobile_app" },
+  { pattern: "interaction with the mobile", target: "mobile_app" },
+  { pattern: "the application the", target: "mobile_app" },
+  { pattern: "this is the application", target: "mobile_app" },
+  { pattern: "setup screens", target: "mobile_app" },
+  { pattern: "the setup screens", target: "mobile_app" },
+  { pattern: "go through various setup screens", target: "mobile_app" },
   // Natural speech — hmi_interface
   { pattern: "the screen layout", target: "hmi_interface" },
   { pattern: "what the user sees on screen", target: "hmi_interface" },
@@ -1378,6 +1402,15 @@ const TOPIC_SHIFT_OVERRIDES: Array<{ pattern: string; target: VizFamily }> = [
   { pattern: "what happens at each stage", target: "user_journey" },
   { pattern: "when the technician arrives", target: "user_journey" },
   { pattern: "when the user arrives", target: "user_journey" },
+  { pattern: "technician assisted", target: "user_journey" },
+  { pattern: "technician-assisted", target: "user_journey" },
+  { pattern: "the technician assisted part", target: "user_journey" },
+  { pattern: "technician assists the customer", target: "user_journey" },
+  { pattern: "assisted by the technician", target: "user_journey" },
+  { pattern: "the technician helps the customer", target: "user_journey" },
+  { pattern: "the technician arrives at the", target: "user_journey" },
+  { pattern: "techniker assisteret", target: "user_journey" },
+  { pattern: "teknikeren hjælper kunden", target: "user_journey" },
   { pattern: "the end to end experience", target: "user_journey" },
   { pattern: "end to end journey", target: "user_journey" },
   { pattern: "fra brugerens perspektiv", target: "user_journey" },
@@ -2017,6 +2050,26 @@ export function classifyVisualizationIntent(
       }
     }
   }
+  // ── Anti-false-positive: suppress physical_product override when mobile_app is stronger ──
+  // Scenario: transcript says "mobile phone app" / "Comfort GO app" / "setup screens" but
+  // accumulated pump-word scores + an old physical_product phrase in tail fire a 999 override.
+  // Fix: if mobile_app zone score (latest+recent) > physical_product zone score, cancel.
+  if (hardOverrideFamily === "physical_product") {
+    const mobileZone =
+      (latestScores?.get("mobile_app") ?? 0) +
+      (recentScores.get("mobile_app") ?? 0);
+    const physicalZone =
+      (latestScores?.get("physical_product") ?? 0) +
+      (recentScores.get("physical_product") ?? 0);
+    if (mobileZone > physicalZone) {
+      console.warn(
+        `[classifier] physical_product OVERRIDE suppressed — mobile_app zone score (${mobileZone.toFixed(1)}) > physical_product (${physicalZone.toFixed(1)})`,
+      );
+      hardOverrideFamily = null;
+      hardOverridePos = -1;
+    }
+  }
+
   if (hardOverrideFamily) {
     const topicLabel =
       (VIZ_FAMILY_SIGNALS.find((f) => f.id === hardOverrideFamily)?.label ??
