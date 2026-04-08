@@ -508,27 +508,40 @@ export default function Room() {
     });
   }, []);
 
+  const MAX_CONTEXT_FILES = 10;
+
   const handleFileUpload = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
-      const files = Array.from(e.target.files ?? []);
-      files.forEach((file) => {
-        setUploadedFiles((prev) => {
-          if (prev.some((f) => f.name === file.name)) return prev;
-          return [...prev, { name: file.name, content: "", loading: true }];
-        });
-        readFileContent(file)
-          .then((content) => {
-            setUploadedFiles((prev) =>
-              prev.map((f) =>
-                f.name === file.name ? { name: f.name, content, loading: false } : f,
-              ),
-            );
-          })
-          .catch(() => {
-            setUploadedFiles((prev) => prev.filter((f) => f.name !== file.name));
-          });
-      });
+      const incoming = Array.from(e.target.files ?? []);
       if (fileInputRef.current) fileInputRef.current.value = "";
+      if (!incoming.length) return;
+
+      setUploadedFiles((prev) => {
+        const slots = MAX_CONTEXT_FILES - prev.length;
+        if (slots <= 0) return prev;
+        const toAdd = incoming
+          .filter((f) => !prev.some((p) => p.name === f.name))
+          .slice(0, slots);
+
+        toAdd.forEach((file) => {
+          readFileContent(file)
+            .then((content) => {
+              setUploadedFiles((cur) =>
+                cur.map((f) =>
+                  f.name === file.name ? { name: f.name, content, loading: false } : f,
+                ),
+              );
+            })
+            .catch(() => {
+              setUploadedFiles((cur) => cur.filter((f) => f.name !== file.name));
+            });
+        });
+
+        return [
+          ...prev,
+          ...toAdd.map((f) => ({ name: f.name, content: "", loading: true })),
+        ];
+      });
     },
     [],
   );
@@ -2577,10 +2590,16 @@ export default function Room() {
                       <button
                         type="button"
                         onClick={() => fileInputRef.current?.click()}
-                        className="flex items-center gap-1.5 h-7 px-2.5 rounded border border-dashed border-border text-xs font-mono text-muted-foreground hover:text-white hover:border-primary/50 transition-colors"
+                        disabled={uploadedFiles.length >= MAX_CONTEXT_FILES}
+                        className="flex items-center gap-1.5 h-7 px-2.5 rounded border border-dashed border-border text-xs font-mono text-muted-foreground hover:text-white hover:border-primary/50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                       >
                         <Upload className="w-3 h-3" />
                         Upload context file
+                        {uploadedFiles.length > 0 && (
+                          <span className="text-muted-foreground/60">
+                            {uploadedFiles.length}/{MAX_CONTEXT_FILES}
+                          </span>
+                        )}
                       </button>
                       {uploadedFiles.map((f) => (
                         <span
