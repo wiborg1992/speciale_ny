@@ -55,6 +55,9 @@ The main product artifact. A live meeting tool for industrial/engineering contex
 - **Version history**: in-session v1/v2/v3 pills for revisiting prior visualizations
 - **Meeting context**: title, purpose, projects, participants, extra context passed to AI
 - **Server-side classification** (`classifier.ts`): weighted keyword scoring with recency zones + hard topic-shift overrides for instant type switching (10 families + generic fallback: hmi_interface, user_journey, persona_research, service_blueprint, comparison_evaluation, design_system, workflow_process, physical_product, requirements_matrix, management_summary)
+  - **Routing pipeline (Strategi B)**: resolveFamily P1-P8 decision order; P5 refinement lock only holds at lead < CLASSIFY_SWITCH_LEAD (12); P6 wins at high lead even with refinement. AUTO_FRESH_FAMILIES (physical_product) skip disambiguation dialog. Structural incompatibility defense forces fresh start.
+  - **LLM routing at disambiguation (B3)**: When disambiguation gate fires (uncertain topic shift / refinement conflict), Gemini Flash is called first with transcript + meetingEssence context. If confidence >= 0.6, LLM decides family + refinement vs fresh — no user dialog needed. Falls back to user dialog if LLM is unavailable or low confidence.
+  - **Refinement detector**: regex-based with negation suppression (English + Danish), viz-context bonus (+1 weight when captured text mentions diagram/visualization), and threshold >= 3. Generic phrases like "focus on" only trigger refinement when they reference the visualization.
 - **Meeting persistence**: All segments and visualizations saved to PostgreSQL via Drizzle ORM. Meetings resume on rejoin — SSE hydrates from DB when room is empty in memory. Meeting archive page lists all past meetings with segment count, word count, and speakers. Delete meetings from archive.
 - **Speaker identification**: Editable speaker name in room header with colored avatar initial. Name persisted in localStorage and shared across sessions. Color assigned per speaker in transcript/participant list. Meeting title auto-saved to DB with 2s debounce.
 - **Multi-user rooms**: up to 10 participants with unique speaker colors, SSE broadcast of segments + visualizations + participants, transcript includes `[SpeakerName]: text` attribution
@@ -72,7 +75,8 @@ The main product artifact. A live meeting tool for industrial/engineering contex
 - `artifacts/api-server/src/routes/segment.ts` — POST /api/segment (persists to DB)
 - `artifacts/api-server/src/routes/meetings.ts` — GET /api/meetings, GET /api/meetings/:roomId, PATCH /api/meetings/:roomId, DELETE /api/meetings/:roomId
 - `artifacts/api-server/src/routes/deepgram.ts` — GET /api/deepgram-token
-- `artifacts/api-server/src/lib/refinement-detector.ts` — Detects spoken refinement intent (zoom ind, tilføj, behold formatet, etc.) and extracts modification directives for Claude
+- `artifacts/api-server/src/lib/refinement-detector.ts` — Detects spoken refinement intent (zoom ind, tilføj, behold formatet, etc.) and extracts modification directives for Claude. Negation-aware (don't/ikke), viz-context bonus, threshold >= 3.
+- `artifacts/api-server/src/lib/llm-router.ts` — B3 LLM routing: Gemini Flash call at disambiguation gates. Returns { family, isRefinement, confidence, reason }. 4s timeout, confidence >= 0.6 required. Falls back to user dialog on failure.
 - `artifacts/api-server/src/lib/pump-svg-templates.ts` — Complete SVG templates (CU controller, Alpha GO circulator, CR pump) with gradients/filters/shadows, injected into user message when `physical_product` family is detected; higher token budget (haiku:8192, sonnet:10000, opus:12000)
 
 ### Key frontend files
@@ -86,6 +90,7 @@ The main product artifact. A live meeting tool for industrial/engineering contex
 
 ### Environment variables required
 - `ANTHROPIC_API_KEY` — Required for AI visualization
+- `GEMINI_API_KEY` — Used by LLM router (Gemini Flash) for disambiguation gate decisions
 - `DEEPGRAM_API_KEY` — Optional, for Deepgram STT
 - `ALLOW_DEEPGRAM_KEY_TO_BROWSER` — Set to `false` to disable Deepgram in browser (default: allowed)
 - `AI_INTEGRATIONS_OPENAI_BASE_URL` + `AI_INTEGRATIONS_OPENAI_API_KEY` — Auto-provisioned by Replit AI Integrations for OpenAI fallback (GPT-4o) when Anthropic is overloaded

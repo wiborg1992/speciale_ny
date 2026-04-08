@@ -22,6 +22,7 @@ import {
 } from "../lib/meeting-essence.js";
 import { saveVisualization, updateMeetingTitle, getSketchById, linkSketchToViz } from "../lib/meeting-store.js";
 import { detectRefinementIntent } from "../lib/refinement-detector.js";
+import { llmRouteDecision } from "../lib/llm-router.js";
 import {
   evaluateVisualizationInput,
   MIN_WORDS_FOR_VISUALIZATION,
@@ -594,6 +595,29 @@ router.post("/visualize", async (req, res, next): Promise<void> => {
       refinementDirective = null;
     }
 
+    // ─── Structured routing decision log ──────────────────────────────────────
+    // Single JSON line capturing all routing decisions for prod debugging.
+    console.log(
+      JSON.stringify({
+        event: "viz-routing-decision",
+        roomId: roomId ?? "none",
+        classifiedFamily: classification?.family ?? null,
+        classifiedLead: classification?.lead ?? null,
+        classifiedAmbiguous: classification?.ambiguous ?? null,
+        hardOverride: classification?.hardOverride ?? false,
+        resolvedFamily,
+        lastFamily: lastFamily ?? null,
+        refinementDetected: !!refinementDirective,
+        refinementDirective: refinementDirective
+          ? refinementDirective.slice(0, 80)
+          : null,
+        hasPreviousHtml: !!effectivePreviousHtml,
+        freshStart: !!freshStart,
+        userPickedType: !!userPickedType,
+        focusSegment: !!focusSegment,
+      }),
+    );
+
     const vizPerfStart = performance.now();
 
     const vizQuality = evaluateVisualizationInput(normalized, {
@@ -707,8 +731,7 @@ router.post("/visualize", async (req, res, next): Promise<void> => {
 
     // ─── Disambiguation gate ──────────────────────────────────────────────────
     // Spørg brugeren når refinement-signal og stærkt topic-skift konflikterer.
-    // Kun når brugeren IKKE allerede har svaret (userVizIntent) og ikke har valgt
-    // type eksplicit eller klikket et segment.
+    // B3: Forsøg LLM-routing først — kun fallback til bruger-dialog hvis LLM fejler.
     {
       const gate = checkDisambiguationGate({
         refinementDirective,
@@ -721,20 +744,84 @@ router.post("/visualize", async (req, res, next): Promise<void> => {
       });
       if (gate.needsIntent && gate.reason && gate.defaultChoice) {
         console.log(
-          `[disambiguation] ${gate.reason} in room ${roomId} — detectedFamily=${gate.detectedFamily}, currentFamily=${lastFamily}`,
+          `[disambiguation] ${gate.reason} in room ${roomId} — attempting LLM routing before dialog`,
         );
-        sendNeedIntent(
-          res,
-          gate.reason,
-          gate.defaultChoice,
-          gate.detectedFamily,
-          lastFamily,
-          (classification?.scores ?? []).map((s) => ({
+
+        const roomForEssence = roomId ? getRoom(roomId) : null;
+        const llmResult = await llmRouteDecision({
+          recentTranscript: normalized.slice(-3000),
+          meetingEssenceBullets: roomForEssence?.meetingEssenceBullets ?? [],
+          lastFamily: lastFamily,
+          lastVizTitle: roomForEssence?.lastVizTitle ?? null,
+          classificationScores: (classification?.scores ?? []).map((s) => ({
             family: s.id,
             score: s.score,
           })),
-        );
-        return;
+        });
+
+        if (llmResult && llmResult.confidence >= 0.6) {
+          console.log(
+            `[disambiguation] LLM resolved: family=${llmResult.family} isRefinement=${llmResult.isRefinement} confidence=${llmResult.confidence} — skipping user dialog`,
+          );
+
+          resolvedFamily = llmResult.family;
+
+          if (llmResult.isRefinement && effectivePreviousHtml) {
+            // LLM says refinement — keep previousHtml, let incremental flow handle it
+          } else {
+            // LLM says new topic — force fresh start
+            effectivePreviousHtml = undefined;
+            refinementDirective = null;
+          }
+
+          // Re-run structural incompatibility check after LLM override
+          if (
+            resolvedFamily &&
+            lastFamily &&
+            resolvedFamily !== lastFamily &&
+            effectivePreviousHtml &&
+            (AUTO_FRESH_FAMILIES.includes(resolvedFamily) ||
+              AUTO_FRESH_FAMILIES.includes(lastFamily))
+          ) {
+            effectivePreviousHtml = undefined;
+            refinementDirective = null;
+          }
+
+          // Re-emit structured log after LLM override
+          console.log(
+            JSON.stringify({
+              event: "viz-routing-decision",
+              source: "llm-override",
+              roomId: roomId ?? "none",
+              classifiedFamily: classification?.family ?? null,
+              classifiedLead: classification?.lead ?? null,
+              resolvedFamily,
+              lastFamily: lastFamily ?? null,
+              llmFamily: llmResult.family,
+              llmRefinement: llmResult.isRefinement,
+              llmConfidence: llmResult.confidence,
+              llmReason: llmResult.reason,
+              hasPreviousHtml: !!effectivePreviousHtml,
+            }),
+          );
+        } else {
+          // LLM failed or low confidence — fall back to user dialog
+          console.log(
+            `[disambiguation] LLM ${llmResult ? `low confidence (${llmResult.confidence})` : "unavailable"} — falling back to user dialog`,
+          );
+          sendNeedIntent(
+            res,
+            gate.reason,
+            gate.defaultChoice,
+            gate.detectedFamily,
+            lastFamily,
+            (classification?.scores ?? []).map((s) => ({
+              family: s.id,
+              score: s.score,
+            })),
+          );
+          return;
+        }
       }
     }
 
