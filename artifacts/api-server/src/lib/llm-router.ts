@@ -13,6 +13,7 @@ const VALID_FAMILIES: VizFamily[] = [
   "user_journey",
   "workflow_process",
   "physical_product",
+  "mobile_app",
   "requirements_matrix",
   "management_summary",
   "engagement_analytics",
@@ -34,6 +35,7 @@ Visualization families:
 - user_journey: Customer experience map, touchpoints, journey stages, pain points, experience flow
 - workflow_process: Process flow, steps, decision points, swimlanes, business process, operations
 - physical_product: Physical pump hardware, front panel, buttons, LEDs, housing, control face, device appearance
+- mobile_app: Grundfos GO app, mobile application, smartphone app, pump setup via phone, app screens, bottom tabs, app navigation
 - requirements_matrix: Requirements list, traceability, MoSCoW prioritization, acceptance criteria
 - management_summary: Executive summary, timeline, Gantt, KPIs, decisions, milestones
 - engagement_analytics: Digital analytics, CTR, retention, CRM, CDP, GDPR, marketing metrics
@@ -47,6 +49,7 @@ Visualization families:
 IMPORTANT RULES:
 - Focus on what participants are discussing RIGHT NOW, not earlier topics
 - "front panel", "buttons", "LED", "display on the pump", "physical device" → physical_product
+- "Grundfos GO", "GO app", "mobile app", "mobil app", "smartphone", "download appen", "app setup" → mobile_app (NOT hmi_interface, NOT physical_product)
 - "screen layout", "what the user sees on screen", "menu navigation" → hmi_interface
 - If the user is clearly asking to modify/improve the CURRENT visualization → isRefinement=true
 - If the user is talking about a NEW topic different from the current viz → isRefinement=false

@@ -33,7 +33,7 @@ const router: IRouter = Router();
 /** Mindste lead før vi spørger brugeren ved “blødt” emneskift (undgå støj ved lead 0–2). */
 const UNCERTAIN_TOPIC_SHIFT_MIN_LEAD = 4;
 
-const AUTO_FRESH_FAMILIES: VizFamily[] = ["physical_product"];
+const AUTO_FRESH_FAMILIES: VizFamily[] = ["physical_product", "mobile_app"];
 
 // ─── resolveFamily — P1–P8 decision order ────────────────────────────────────
 // P0 (userPickedType) løses i route-handleren før dette kald.

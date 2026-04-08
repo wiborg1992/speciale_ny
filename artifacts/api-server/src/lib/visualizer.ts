@@ -1194,6 +1194,102 @@ OUTPUT: Single self-contained HTML page. Inline SVG fills full width. Outfit fon
 FORBIDDEN: web dashboard grids, card sections, specification tables, requirements lists, HMI menus as web UI, dark-mode app layouts.
 `,
 
+  mobile_app: `GENERATE: GRUNDFOS GO MOBILE APP SCREEN — dark-themed mobile interface mimicking the real Grundfos GO app aesthetic. NOT a web dashboard, NOT an HMI, NOT a pump hardware illustration.
+
+═══════════════════════════════════════════════════════
+GRUNDFOS GO DESIGN LANGUAGE — MANDATORY REFERENCE
+═══════════════════════════════════════════════════════
+You are generating a MOBILE APP SCREEN that looks like the actual Grundfos GO app. Follow these design rules precisely:
+
+COLORS:
+  • Background: pure black #000000
+  • Cards/panels: dark grey #1A1A1E with 12px border-radius
+  • Primary accent: Grundfos blue #0077C8 (buttons, active states, links)
+  • Text primary: white #FFFFFF
+  • Text secondary: #8E8E93 (grey)
+  • Success: #30D158 (green checkmarks, running indicators)
+  • Warning: #FFD60A (amber alerts)
+  • Error: #FF453A (red errors)
+  • Dividers: #2C2C2E
+
+LAYOUT — MOBILE-FIRST (max-width: 428px, centered on page):
+  • Full-width stacked layout, no sidebars
+  • 16px horizontal padding
+  • Bottom tab navigation bar (fixed) with 4 tabs: "Oversigt", "Produkter", "Opret forbindelse", "Mere"
+  • Each tab: icon (SVG) + label below, active tab highlighted in blue #0077C8, inactive in #8E8E93
+  • Status bar at top: time left, wifi/battery icons right (decorative, static)
+
+SCREEN TYPES — choose based on transcript context:
+
+A) OVERSIGT (Home/Dashboard):
+  • Large greeting "Godaften!" / "God morgen!" with current time
+  • "Dine værktøjer" section: 2-3 icon buttons in a row (Opret forbindelse, Rapporter, + Værktøjer)
+  • "Nyheder" section: promotional card with image area, heading, description, blue CTA link
+  • Pagination dots below news card
+
+B) PRODUKTER (Product Information):
+  • Country selector top-left, cart icon top-right
+  • "Produktoplysninger" heading
+  • Search icon + "Søg efter produkter" link
+  • Stacked list items with icons: "GO Replace til cirkulationspumper", "Produktindstillinger", "Specificer dit produkt", "Fejlfinding", "Produktkatalog"
+  • Each item: icon left, text, chevron ">" right, full-width divider
+
+C) OPRET FORBINDELSE (Connect):
+  • "Opret forbindelse til Grundfos-produktet" heading
+  • Large centered WiFi pulsing icon (concentric circles around blue WiFi symbol)
+  • "Tryk for at oprette forbindelse" subtext
+  • "Scan QR-kode" link with QR icon at bottom
+  • "Demofunktion" link top-right
+
+D) OPSÆTNING (Setup Wizard):
+  • Blue progress bar at top (showing step completion %)
+  • "Opsætning" title centered, back arrow left, X close right
+  • Product image (simplified SVG pump illustration)
+  • Step heading (e.g. "Opsætning af ALPHA", "Vælg cirkulatorrolle", "Reguleringsform")
+  • Description text
+  • Radio button list or option cards for selections:
+    - Radio buttons: blue filled circle for selected, grey outline for unselected
+    - Option cards: illustration left, title + description right, radio right
+  • Blue full-width "Næste" button at bottom (border-radius: 25px)
+
+E) PUMP DASHBOARD (Connected pump view):
+  • Product name top-left (e.g. "ALPHA"), "Afslut demo" link top-right
+  • Product image with notification bell (red badge count) and settings gear icon
+  • Alert card: warning icon + error text + operating hours
+  • Status row: "Pumpen kører" with Stop button
+  • "Sætpunkt" row: value + chevron
+  • "Reguleringsform" card with curve illustration
+  • "Aktuelt driftspunkt" section: mini pump curve chart (head vs flow)
+  • "Trenddata" expandable row
+  • "Dan rapport" and "Hjælp os med at blive bedre" links
+
+F) SETUP COMPLETE:
+  • Large green check circle at top
+  • "Opsætning fuldført" heading
+  • Product status text
+  • "Sammenfatning" summary table: key-value pairs (function, emitter, regulation, setpoint)
+  • "Dan rapport" share link
+  • Blue "Gå til dashboard" button
+
+INTERACTIVE ELEMENTS:
+  • Bottom tabs: clicking switches screen content (use data-viz-nav pattern with bottom bar)
+  • Radio buttons: clicking toggles selection
+  • Setup wizard: "Næste" progresses through steps (use data-viz-section to show/hide steps)
+  • Expandable rows: chevron toggles detail content
+
+CSS PATTERNS:
+  • font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', sans-serif
+  • Buttons: background #0077C8, color white, border-radius 25px, padding 14px, font-weight 600
+  • Cards: background #1A1A1E, border-radius 12px, padding 16px
+  • List items: padding 16px 0, border-bottom 1px solid #2C2C2E
+  • Use CSS only — no external fonts, no Google Fonts
+
+MOBILE FRAME: Wrap entire content in a phone-shaped container:
+  <div style="max-width:428px;margin:0 auto;min-height:100vh;background:#000;position:relative;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Helvetica Neue',sans-serif">
+
+FORBIDDEN: Web dashboards, card grids, HMI/SCADA layouts, pump hardware SVG illustrations, light backgrounds, sidebar navigation, Google Fonts loading.
+Target ~4,000–6,000 tokens of HTML output.`,
+
   requirements_matrix: `GENERATE: REQUIREMENTS TRACEABILITY MATRIX — structured table layout, FULLY INTERACTIVE.
 
 REQUIRED INTERACTIVITY:
