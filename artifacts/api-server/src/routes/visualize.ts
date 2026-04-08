@@ -38,6 +38,13 @@ import {
   getPhysicalProductReferenceImages,
   getMobileAppReferenceImages,
 } from "../lib/reference-images.js";
+import {
+  evaluateAlignmentRubric,
+  startEarlyLlmAudit,
+  resolveAlignmentSeverity,
+  LLM_AUDIT_EARLY_SAMPLE_CHARS,
+  type AlignmentResult,
+} from "../lib/alignment-auditor.js";
 
 const router: IRouter = Router();
 
@@ -1202,6 +1209,28 @@ router.post("/visualize", async (req, res, next): Promise<void> => {
       ? roomToMeetingEssencePayload(roomBeforeViz)
       : null;
 
+    // ─── Alignment auditor setup ───────────────────────────────────────────────
+    // Determine if LLM auditor should run (mode=refine OR orchestratorConfidence < 0.65).
+    // Strategy: LLM Claude call starts DURING viz-streaming for true parallelism:
+    //   1. Chunk callback monitors accumulated HTML length during the streaming loop.
+    //   2. Once LLM_AUDIT_EARLY_SAMPLE_CHARS chars are accumulated, startEarlyLlmAudit() fires.
+    //   3. Claude call overlaps with remaining stream generation (not post-stream).
+    //   4. "done" SSE event is written first; auditor resolves "alignment" event afterward (≤3s).
+    //   5. Viz delivery to client is NOT delayed — client receives "done" with full HTML first.
+    const effectiveMode = orchestratorResult?.mode ?? (effectivePreviousHtml ? "refine" : "fresh");
+    const orchestratorConfidence = orchestratorResult?.confidence ?? 1.0;
+    const shouldRunLlmAudit =
+      effectiveMode === "refine" || orchestratorConfidence < 0.65;
+
+    const auditFamily = resolvedFamily ?? classification?.family ?? "generic";
+    const auditT0 = Date.now();
+
+    // LLM audit starts DURING streaming (overlaps with viz generation).
+    // earlyLlmAuditPromise is set inside the streaming loop as soon as
+    // LLM_AUDIT_EARLY_SAMPLE_CHARS chars have accumulated (~800 chars = first headings/structure).
+    // This achieves true parallelism: Claude call starts before streaming ends.
+    let earlyLlmAuditPromise: Promise<import("../lib/alignment-auditor.js").LlmAuditResult | null> | null = null;
+
     try {
       // Load reference images for vision-guided families
       const referenceImages =
@@ -1241,6 +1270,23 @@ router.post("/visualize", async (req, res, next): Promise<void> => {
           if (firstChunkMs == null)
             firstChunkMs = Math.round(performance.now() - streamT0);
           res.write(`data: ${JSON.stringify({ type: "chunk", text: c })}\n\n`);
+          // Start LLM audit DURING streaming — triggers as soon as we have enough
+          // HTML structure (headings/title visible from first ~800 chars).
+          // Include current chunk `c` in the length check so the trigger fires
+          // on the exact chunk that crosses the threshold (not one chunk later).
+          // Claude call overlaps with remaining stream generation (true parallelism).
+          if (
+            shouldRunLlmAudit &&
+            earlyLlmAuditPromise === null &&
+            fullHtml.length + c.length >= LLM_AUDIT_EARLY_SAMPLE_CHARS
+          ) {
+            earlyLlmAuditPromise = startEarlyLlmAudit(
+              normalized,
+              auditFamily,
+              fullHtml + c, // include current chunk for accurate early sample
+              orchestratorResult?.refinementNote ?? refinementDirective,
+            );
+          }
         },
         (promptInfo) => {
           res.write(
@@ -1275,6 +1321,86 @@ router.post("/visualize", async (req, res, next): Promise<void> => {
       const qualityOk = isHtmlQualityOk(cleanHtml);
 
       if (qualityOk) {
+        // LLM audit may already be in flight (started during streaming for parallelism).
+        // If early trigger didn't fire (short HTML), start LLM audit now with complete HTML.
+        if (shouldRunLlmAudit && earlyLlmAuditPromise === null) {
+          earlyLlmAuditPromise = startEarlyLlmAudit(
+            normalized,
+            auditFamily,
+            cleanHtml,
+            orchestratorResult?.refinementNote ?? refinementDirective,
+          );
+        }
+
+        // Define the auditorPromise to run alignment audit and emit SSE.
+        // "done" event is written first; SSE stays open ≤3s for alignment event.
+        const auditorPromise = (async (): Promise<void> => {
+          try {
+            // Rubric runs on complete HTML (fast, synchronous).
+            const rubric = evaluateAlignmentRubric(cleanHtml, auditFamily);
+
+            // Await early LLM promise (may already be in flight since streaming).
+            const llmResult = earlyLlmAuditPromise ? await earlyLlmAuditPromise : null;
+
+            const severity = resolveAlignmentSeverity(rubric, llmResult);
+            const elapsedMs = Date.now() - auditT0;
+            // llmTriggered: whether trigger conditions matched (mode=refine or confidence<0.65)
+            // llmCompleted: whether LLM call was started and returned a verdict
+            const llmTriggered = shouldRunLlmAudit;
+            const llmCompleted = llmResult !== null;
+            const llmVerdict = llmResult?.verdict ?? null;
+
+            const alignmentResult: AlignmentResult = {
+              severity,
+              rubricHits: rubric.hits,
+              llmVerdict,
+              llmTriggered,
+              llmCompleted,
+            };
+
+            if (!res.writableEnded && !clientDisconnected) {
+              res.write(
+                `data: ${JSON.stringify({
+                  type: "alignment",
+                  severity: alignmentResult.severity,
+                  rubricHits: alignmentResult.rubricHits,
+                  llmVerdict: alignmentResult.llmVerdict,
+                  // llmUsed: spec-required field — true when trigger conditions matched.
+                  llmUsed: alignmentResult.llmTriggered,
+                  llmTriggered: alignmentResult.llmTriggered,
+                  llmCompleted: alignmentResult.llmCompleted,
+                })}\n\n`,
+              );
+            }
+
+            // Task 6: Metric logging — explicit metric names for downstream dashboards.
+            // rubricHits: full array for observability/debuggability.
+            // alignment_fail_rate: 1 when fail, 0 otherwise.
+            // llm_auditor_trigger_rate: 1 when trigger conditions matched, 0 otherwise.
+            console.log(
+              JSON.stringify({
+                event: "alignment_auditor_result",
+                severity,
+                llmTriggered,
+                llmCompleted,
+                llmVerdict,
+                rubricHits: rubric.hits,
+                rubricHitCount: rubric.hits.length,
+                rubricCriticalHits: rubric.criticalHits,
+                rubricCriticalHitCount: rubric.criticalHits.length,
+                vizFamily: auditFamily,
+                mode: effectiveMode,
+                elapsedMs,
+                roomId: roomId ?? null,
+                alignment_fail_rate: severity === "fail" ? 1 : 0,
+                llm_auditor_trigger_rate: llmTriggered ? 1 : 0,
+              }),
+            );
+          } catch (auditErr) {
+            console.error("[alignment-auditor] Unexpected error:", auditErr);
+          }
+        })();
+
         if (roomId) {
           // Fase C: Orchestrator session summary — decide in-memory update AND DB persist atomically.
           // Both decisions use the SAME debounce condition evaluated once. This ensures that when
@@ -1355,6 +1481,10 @@ router.post("/visualize", async (req, res, next): Promise<void> => {
             `data: ${JSON.stringify({ type: "done", html: cleanHtml, meta })}\n\n`,
           );
         }
+
+        // Await auditor so alignment SSE event is emitted before res.end().
+        // The client already has the viz via "done". Max wait: 3s (LLM timeout).
+        await auditorPromise;
       } else {
         if (!clientDisconnected) {
           res.write(

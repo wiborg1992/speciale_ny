@@ -54,6 +54,7 @@ import type { SessionEvalVizSource } from "@/lib/session-eval-report";
 import { readFileContent } from "@/lib/file-reader";
 import { useOpenSessions } from "@/hooks/use-open-sessions";
 import { SessionTabs } from "@/components/SessionTabs";
+import { AlignmentBadge } from "@/components/AlignmentBadge";
 import {
   usePostSegment,
   type TranscriptSegment,
@@ -329,6 +330,7 @@ export default function Room() {
     error: vizStreamError,
     debugInfo,
     streamFamily,
+    alignment,
   } = useVisualizeStream();
 
   const activeHtml = isGenerating ? streamedHtml : displayHtml || sseViz.html;
@@ -3328,6 +3330,15 @@ export default function Room() {
                     </>
                   )}
                 </div>
+              </div>
+            )}
+
+            {outputTab === "viz" && alignment && alignment.severity !== "ok" && (
+              <div className="px-3 pb-1.5">
+                <AlignmentBadge
+                  alignment={alignment}
+                  onRegenerate={alignment.severity === "fail" ? () => handleGenerate(true) : undefined}
+                />
               </div>
             )}
 

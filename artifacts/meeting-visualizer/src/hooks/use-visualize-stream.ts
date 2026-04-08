@@ -4,6 +4,7 @@ import { toast } from "@/hooks/use-toast";
 import type { SessionEvalStreamDiagnostic } from "@/lib/session-eval-report";
 import type { VizDebugInfo } from "@/types/viz-debug";
 import type { NeedIntentPayload } from "@/types/need-intent";
+import type { AlignmentState } from "@/components/AlignmentBadge";
 
 const BASE = import.meta.env.BASE_URL;
 
@@ -43,6 +44,7 @@ export function useVisualizeStream() {
   const [orchestratorMeta, setOrchestratorMeta] = useState<{ rationale: string; mode: string; confidence: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [debugInfo, setDebugInfo] = useState<VizDebugInfo | null>(null);
+  const [alignment, setAlignment] = useState<AlignmentState | null>(null);
   /**
    * Viz family resolved from the earliest SSE event — drives the loading skeleton variant.
    * Precedence (earliest to most authoritative): meta.classification.family
@@ -83,6 +85,7 @@ export function useVisualizeStream() {
       setOrchestratorMeta(null);
       setDebugInfo(null);
       setStreamFamily(null);
+      setAlignment(null);
       const genStartTime = performance.now();
 
       try {
@@ -268,6 +271,14 @@ export function useVisualizeStream() {
                     options.onNeedIntent(payload, request);
                   }
                   return;
+                } else if (parsed.type === "alignment") {
+                  setAlignment({
+                    severity: parsed.severity ?? "ok",
+                    rubricHits: Array.isArray(parsed.rubricHits) ? parsed.rubricHits : [],
+                    llmVerdict: parsed.llmVerdict ?? null,
+                    llmTriggered: parsed.llmTriggered === true || parsed.llmUsed === true,
+                    llmCompleted: parsed.llmCompleted === true,
+                  });
                 } else if (parsed.type === "error") {
                   const msg = parsed.error || "Generation failed";
                   streamFailed = true;
@@ -345,5 +356,6 @@ export function useVisualizeStream() {
     error,
     debugInfo,
     streamFamily,
+    alignment,
   };
 }
