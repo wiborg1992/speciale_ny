@@ -191,7 +191,7 @@ export default function Room() {
   const [editNameValue, setEditNameValue] = useState("");
   const [language, setLanguage] = useState("da-DK");
   const [autoVizEnabled, setAutoVizEnabled] = useState(true);
-  const [autoVizCountdown, setAutoVizCountdown] = useState(45);
+  const [autoVizCountdown, setAutoVizCountdown] = useState(35);
 
   // Input tabs
   const [inputTab, setInputTab] = useState<InputTab>("mic");
@@ -1486,7 +1486,7 @@ export default function Room() {
 
   // Track word count at last generation to avoid redundant auto-viz triggers
   const lastVizWordCountRef = useRef(0);
-  const autoVizCountdownRef = useRef(45);
+  const autoVizCountdownRef = useRef(35);
 
   // Reset countdown whenever a generation completes (manual or auto).
   // VIGTIGT: currentWordCount må IKKE være i dependency-arrayet —
@@ -1499,8 +1499,8 @@ export default function Room() {
 
     if (!isGenerating) {
       lastVizWordCountRef.current = currentWordCountRef.current;
-      autoVizCountdownRef.current = 45;
-      setAutoVizCountdown(45);
+      autoVizCountdownRef.current = 35;
+      setAutoVizCountdown(35);
     }
 
     // Genstart optagelse og ryd transskript efter auto-viz "klip"
@@ -1524,10 +1524,10 @@ export default function Room() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isGenerating]);
 
-  // Auto-viz: 45-second countdown — kører kun når optagelse er aktiv
+  // Auto-viz: 35-second countdown — kører kun når optagelse er aktiv
   useEffect(() => {
-    setAutoVizCountdown(45);
-    autoVizCountdownRef.current = 45;
+    setAutoVizCountdown(35);
+    autoVizCountdownRef.current = 35;
     if (!autoVizEnabled) return;
     if (!isRecording) return; // Ingen optagelse → ingen nedtælling
 
@@ -1552,8 +1552,8 @@ export default function Room() {
           autoVizInFlightRef.current = true;
           handleGenerateRef.current(true);
         }
-        autoVizCountdownRef.current = 45;
-        setAutoVizCountdown(45);
+        autoVizCountdownRef.current = 35;
+        setAutoVizCountdown(35);
       }
     }, 1000);
 

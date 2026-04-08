@@ -62,7 +62,7 @@ The main product artifact. A live meeting tool for industrial/engineering contex
 - **Meeting persistence**: All segments and visualizations saved to PostgreSQL via Drizzle ORM. Meetings resume on rejoin — SSE hydrates from DB when room is empty in memory. Meeting archive page lists all past meetings with segment count, word count, and speakers. Delete meetings from archive.
 - **Speaker identification**: Editable speaker name in room header with colored avatar initial. Name persisted in localStorage and shared across sessions. Color assigned per speaker in transcript/participant list. Meeting title auto-saved to DB with 2s debounce.
 - **Multi-user rooms**: up to 10 participants with unique speaker colors, SSE broadcast of segments + visualizations + participants, transcript includes `[SpeakerName]: text` attribution
-- **45-second auto-viz countdown**: timer resets on each generate (mic or manual)
+- **35-second auto-viz countdown**: timer resets on each generate (mic or manual)
 - **Normalization**: fillword removal (da/en), Danish tech-term normalization (IEC 62443, ISO 27001, GDPR, SCADA, PLC, HMI, IE1–IE5, Grundfos products, m³/h)
 
 ### Key backend files
