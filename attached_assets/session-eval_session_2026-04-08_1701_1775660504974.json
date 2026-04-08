@@ -1,0 +1,92 @@
+{
+  "schemaVersion": 2,
+  "exportedAt": "2026-04-08T15:01:36.100Z",
+  "session": {
+    "roomId": "1W8CSJ",
+    "meetingTitle": "",
+    "workspaceDomain": "grundfos",
+    "sessionStartedAt": "2026-04-08T14:53:31.388Z",
+    "sessionEndedAt": "2026-04-08T15:01:36.100Z"
+  },
+  "summary": {
+    "transcriptWordCountApprox": 818,
+    "segmentCount": 5,
+    "participantNames": [
+      "Speaker 1",
+      "Anonymous"
+    ],
+    "visualizationEventCount": 1,
+    "skippedCount": 0,
+    "errorCount": 0
+  },
+  "reviewerNotes": "Overordnet en god session - hvor visualiseringerne fra V1 workflow - til forbedringer af workflow i v2 samt til v3 hvor der var user journey - ved fysisk produkt blev der dog lavet en inkrementel forbedring af user journey map  og ikke en ny visuasliering hvilket er en kritsk fejl. Det er til trods for modellen også har valgt physical_product som familie",
+  "events": [
+    {
+      "kind": "visualization",
+      "at": "2026-04-08T14:56:47.420Z",
+      "source": "local_stream",
+      "version": 4,
+      "vizName": "Pump Unboxing, Compliance Onboarding& Fron",
+      "htmlChars": 24030,
+      "debug": {
+        "timestamp": "2026-04-08T14:55:04.936Z",
+        "resolvedFamily": "user_journey",
+        "userPickedType": false,
+        "vizType": "auto",
+        "vizModel": "sonnet",
+        "isIncremental": true,
+        "isRefinement": false,
+        "refinementDirective": null,
+        "hasPreviousHtml": true,
+        "focusSegment": null,
+        "workspaceDomain": "grundfos",
+        "transcriptTotalWords": 802,
+        "roomId": "1W8CSJ",
+        "performanceMs": 104287,
+        "classification": {
+          "inputMode": "tail",
+          "inputWords": 280,
+          "totalWords": 802,
+          "inputText": "how are we going to do this. And what is the checkpoints afterwards. First they need to be able to set up the pump, through their mobile phone and through their Grundfos application. This should be a standard setting. And after that, should you also be able to give feedback to to the developers so so we can see what's good and what's not bad. [Anonymous]: alright this perfect and out that custom have the product in hand we going to need and when you going to needs to have a look at the front pan",
+          "family": "physical_product",
+          "topic": "Physical product / pump hardware",
+          "lead": 15,
+          "ambiguous": false,
+          "topScores": [
+            {
+              "family": "physical_product",
+              "score": 15
+            },
+            {
+              "family": "hmi_interface",
+              "score": 0
+            },
+            {
+              "family": "user_journey",
+              "score": 0
+            },
+            {
+              "family": "workflow_process",
+              "score": 0
+            },
+            {
+              "family": "requirements_matrix",
+              "score": 0
+            },
+            {
+              "family": "engagement_analytics",
+              "score": 0
+            }
+          ]
+        }
+      },
+      "facit": {
+        "expectedIntent": "new_viz",
+        "actualIntentNotes": "det blev istedet en inkremnetel forbedring ",
+        "disambiguationShown": false,
+        "severity": "p0",
+        "transcriptSnippetUser": "\"Front panel The Sign of the pump\" \" This we should have a separate display Which means This is only men for pin code\""
+      }
+    }
+  ]
+}

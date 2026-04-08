@@ -1186,6 +1186,17 @@ const TOPIC_SHIFT_OVERRIDES: Array<{ pattern: string; target: VizFamily }> = [
   { pattern: "knapperne på pumpen", target: "physical_product" },
   { pattern: "displayet på pumpen", target: "physical_product" },
   { pattern: "den fysiske pumpe", target: "physical_product" },
+  // Kortere front panel udtryk — mere generiske men stadig stærke override-signaler
+  { pattern: "the front panel", target: "physical_product" },
+  { pattern: "front panel", target: "physical_product" },
+  { pattern: "a separate display", target: "physical_product" },
+  { pattern: "separate display for the pump", target: "physical_product" },
+  { pattern: "sign of the pump", target: "physical_product" },
+  { pattern: "only for pin code", target: "physical_product" },
+  { pattern: "pin code entry", target: "physical_product" },
+  { pattern: "the pin insert", target: "physical_product" },
+  { pattern: "frontpanelet", target: "physical_product" },
+  { pattern: "front panel of", target: "physical_product" },
   // Natural speech — hmi_interface
   { pattern: "the screen layout", target: "hmi_interface" },
   { pattern: "what the user sees on screen", target: "hmi_interface" },

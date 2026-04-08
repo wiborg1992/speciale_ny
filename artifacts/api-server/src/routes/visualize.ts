@@ -41,8 +41,8 @@ const UNCERTAIN_TOPIC_SHIFT_MIN_LEAD = 4;
 //   P2  hardOverride=true → brug classifier.family, bypass inertia og refinement-lås
 //   P3  ambiguous + lastFamily  → arv lastFamily  [log: ambiguous_inherit]
 //   P4  ambiguous + !lastFamily → null (route skipper)
-//   P5  refinement + lastFamily → lås til lastFamily  [Strategi A: refinement blokerer ordinær klassifikation]
-//   P6  !ambiguous + lead >= CLASSIFY_SWITCH_LEAD + lastFamily → skift familie
+//   P5  refinement + lastFamily + lead < SWITCH → lås  [Strategi B: høj lead bryder lås]
+//   P6  !ambiguous + lead >= CLASSIFY_SWITCH_LEAD + lastFamily → skift (vinder over P5 ved høj lead)
 //   P7  !ambiguous + !lastFamily → brug classifier.family (første viz)
 //   P8  !ambiguous + lead < CLASSIFY_SWITCH_LEAD + lastFamily → inertia, behold lastFamily
 export function resolveFamily(params: {
@@ -78,17 +78,20 @@ export function resolveFamily(params: {
     return null;
   }
 
-  // P5: refinement detekteret + etableret familie → lås
-  // Strategi A: kun P0/P1/P2 kan bryde ud. Høj lead fra ordinær klassifikation
-  // bryder IKKE refinement-lås — det er bivirkningssignal, ikke brugerinstruktion.
-  if (refinementDetected && lastFamily) {
+  // P5: refinement detekteret + etableret familie + LAV LEAD → lås
+  // Strategi B: Høj lead (>= CLASSIFY_SWITCH_LEAD) bryder refinement-lås — P6 vinder.
+  // Begrundelse: stærk klassifikationssikkerhed er mere informativ end refinement-keyword
+  // der let optræder som false positive i naturlig tale ("focus on", "elaborate on" mv.).
+  // Ved lav lead er emnet uklart nok til at refinement-låsen er sikrere.
+  if (refinementDetected && lastFamily && classification.lead < CLASSIFY_SWITCH_LEAD) {
     return lastFamily;
   }
 
-  // P6: klar ny familie med tilstrækkelig sikkerhed + etableret familie → skift
+  // P6: klar ny familie med tilstrækkelig sikkerhed → skift
+  // Vinder over P5 (refinement-lås) ved lead >= CLASSIFY_SWITCH_LEAD.
   if (lastFamily && classification.lead >= CLASSIFY_SWITCH_LEAD) {
     console.log(
-      `[family-switch] ${lastFamily} → ${classification.family} (lead=${classification.lead})`,
+      `[family-switch] ${lastFamily} → ${classification.family} (lead=${classification.lead}${refinementDetected ? ", refinement-lås overruled" : ""})`,
     );
     return classification.family;
   }
@@ -249,7 +252,7 @@ export function checkDisambiguationGate(params: {
     lastFamily &&
     classification.family !== lastFamily &&
     !!effectivePreviousHtml &&
-    !refinementDirective &&
+    // !refinementDirective-kravet fjernet: gate dækker nu også refinement+lav lead+familie-konflikt
     classification.lead >= UNCERTAIN_TOPIC_SHIFT_MIN_LEAD &&
     classification.lead < CLASSIFY_SWITCH_LEAD
   ) {
@@ -529,19 +532,40 @@ router.post("/visualize", async (req, res, next): Promise<void> => {
       }
     }
 
+    // ─── Physical product auto-fresh override ─────────────────────────────────
+    // physical_product (pump front panel / SVG) er strukturelt inkompatibel med
+    // alle andre familier. Selv ved moderat klassifikationssignal (lead >= 6) og
+    // uanset P5/P8-inertia tvinger vi et frisk start — ingen disambiguation-dialog.
+    const PHYSICAL_PRODUCT_AUTO_SWITCH_LEAD = 6;
+    if (
+      !userPickedType &&
+      !focusSegment &&
+      !freshStart &&
+      classification?.family === "physical_product" &&
+      lastFamily &&
+      lastFamily !== "physical_product" &&
+      (classification.lead ?? 0) >= PHYSICAL_PRODUCT_AUTO_SWITCH_LEAD
+    ) {
+      resolvedFamily = "physical_product";
+      console.log(
+        `[physical-auto-switch] lead=${classification.lead} >= ${PHYSICAL_PRODUCT_AUTO_SWITCH_LEAD} → physical_product override (lastFamily=${lastFamily})`,
+      );
+    }
+
     // ─── Topic-shift clear ────────────────────────────────────────────────────
     // Ryd previousHtml når resolved familie ikke matcher serverens lastFamily — ELLER
     // når lastFamily mangler (ny instans, restart, state ikke delt): ellers sender
     // klienten stadig previousHtml → isIncremental=true og gammelt layout bløder ind.
-    // Refinement: ikke ryd (Strategi A / bruger retter bevidst samme viz).
-    if (resolvedFamily && roomId && !freshStart && !refinementDirective) {
+    // Rettelse: ryd OGSÅ ved familie-skift selvom refinement er detekteret — strukturel
+    // inkompatibilitet vejer tungere end refinement-signal.
+    if (resolvedFamily && roomId && !freshStart) {
       const noServerFamily = lastFamily == null;
       const familyMismatch =
         lastFamily != null && lastFamily !== resolvedFamily;
       if (noServerFamily || familyMismatch) {
         const reason = noServerFamily
           ? `no server lastFamily (clear previousHtml if any) → ${resolvedFamily}`
-          : `family changed: ${lastFamily} → ${resolvedFamily}`;
+          : `family changed: ${lastFamily} → ${resolvedFamily}${refinementDirective ? " (refinement overruled by family mismatch)" : ""}`;
         console.log(
           `[topic-shift] ${reason} in room ${roomId} — forcing fresh visualization`,
         );

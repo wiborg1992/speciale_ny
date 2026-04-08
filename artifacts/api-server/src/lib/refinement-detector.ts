@@ -213,10 +213,12 @@ export function detectRefinementIntent(
     }
   }
 
-  const detected = bestWeight >= 2;
+  // Hævet fra >= 2 til >= 3: reducerer false positives fra generiske fraser
+  // ("focus on", "elaborate on") der har lav weight men stadig trigerede lås.
+  const detected = bestWeight >= 3;
 
   const confidence: RefinementResult["confidence"] =
-    bestWeight >= 3 ? "high" : bestWeight >= 2 ? "medium" : "low";
+    bestWeight >= 5 ? "high" : bestWeight >= 3 ? "medium" : "low";
 
   return {
     detected,

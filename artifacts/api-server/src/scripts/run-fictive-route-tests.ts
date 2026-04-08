@@ -164,9 +164,9 @@ function main(): void {
   );
   console.log("R7 ✓ hardOverride trumfer refinement-lås: hmi_interface vinder");
 
-  // R8: Strategi A — høj lead UDEN hardOverride bryder ikke refinement-lås
+  // R8: Strategi B — høj lead (>= CLASSIFY_SWITCH_LEAD) bryder refinement-lås, P6 vinder
   assertEq(
-    "R8 Strategi A: high lead without hardOverride does NOT break refinement lock",
+    "R8 Strategi B: high lead without hardOverride DOES break refinement lock (P6 wins)",
     resolveFamily({
       classification: makeClassification({
         family: "comparison_evaluation",
@@ -177,10 +177,10 @@ function main(): void {
       hasFocusSegment: false,
       refinementDetected: true,
     }),
-    "workflow_process",
+    "comparison_evaluation",
   );
   console.log(
-    "R8 ✓ Strategi A: lead=20 uden hardOverride → holder workflow_process (refinement-lås)",
+    "R8 ✓ Strategi B: lead=20 >= CLASSIFY_SWITCH_LEAD → P5-lås overruled, comparison_evaluation vinder",
   );
 
   // R9: P1 focusSegment — bypass alt inkl. inertia og refinement
@@ -218,7 +218,7 @@ function main(): void {
   );
 
   console.log(
-    "\nAlle resolveFamily route-tests OK (R1–R10, P1–P8 decision order, Strategi A verificeret).",
+    "\nAlle resolveFamily route-tests OK (R1–R10, P1–P8 decision order, Strategi B verificeret).",
   );
 
   // ─── checkDisambiguationGate tests (D1–D6) ───────────────────────────────
@@ -256,7 +256,8 @@ function main(): void {
     );
   }
 
-  // D2: Ingen konflikt — refinement + svag klassifikation (lead under tærskel) → ingen gate
+  // D2: Strategi B — refinement + lav lead + familie-konflikt → Gate 3 fyrer (needsIntent=true)
+  // Rettelse: !refinementDirective-guard fjernet fra Gate 3 → dialog vises i stedet for stille P5-lås.
   {
     const g = checkDisambiguationGate({
       refinementDirective: "ZOOM IN: Expand on pumps.",
@@ -272,8 +273,15 @@ function main(): void {
       focusSegment: null,
       userVizIntent: null,
     });
-    assertEq("D2 needsIntent=false (lead under tærskel)", g.needsIntent, false);
-    console.log(`D2 ✓ ingen gate: lead=${CLASSIFY_SWITCH_LEAD - 1} < tærskel`);
+    assertEq(
+      "D2 needsIntent=true (Strategi B: refinement + familie-konflikt + lav lead → dialog)",
+      g.needsIntent,
+      true,
+    );
+    assertEq("D2 reason=uncertain_topic_shift", g.reason, "uncertain_topic_shift");
+    console.log(
+      `D2 ✓ Strategi B: refinement + lead=${CLASSIFY_SWITCH_LEAD - 1} + familie-konflikt → Gate 3 needsIntent=true`,
+    );
   }
 
   // D3: Ingen konflikt — refinement men SAMME familie → ingen gate
