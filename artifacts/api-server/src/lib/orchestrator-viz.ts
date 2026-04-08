@@ -18,7 +18,8 @@ import { z } from "zod";
 import { createHash } from "node:crypto";
 import type { VizFamily } from "./classifier.js";
 
-const ORCHESTRATOR_VIZ_FLAG = process.env.ORCHESTRATOR_VIZ === "1";
+// Default ON — zæt ORCHESTRATOR_VIZ=0 i .env for at slå fra.
+const ORCHESTRATOR_VIZ_FLAG = process.env.ORCHESTRATOR_VIZ !== "0";
 
 export function isOrchestratorEnabled(): boolean {
   return ORCHESTRATOR_VIZ_FLAG;

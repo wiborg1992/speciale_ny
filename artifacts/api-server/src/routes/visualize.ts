@@ -1279,6 +1279,7 @@ router.post("/visualize", async (req, res, next): Promise<void> => {
               (resolvedFamily ??
                 classification?.family ??
                 null) as VizFamily | null,
+              normalized, // transcript-tail til indholds-ekstraktion
             );
             // orchestratorManagedSummary + orchestratorSummaryUpdatedAt updated above (Fase C block).
           }

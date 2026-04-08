@@ -62,13 +62,28 @@ const MAX_TOKENS_PUMP: Record<VizModel, number> = {
 /** Sekundær appendix — stadig cap'et, men FOKUS-sektionen er primær (seneste ord). */
 const MAX_TRANSCRIPT_CHARS = 72_000;
 const MAX_PREV_VIZ_CHARS = 70_000;
-/** Matcher klassifikatorens tail — "hvad driver figuren nu" */
-const PRIMARY_FOCUS_WORDS = 280;
+/**
+ * FOKUS-vinduet: de seneste N ord af transcript sendes som primær fokus.
+ * Baseret på DB-analyse: typiske sessions = 412–1298 ord, gennemsnit ~100 ord/segment.
+ * 500 ord ≈ 4–5 segmenter ≈ de seneste 3–4 minutter.
+ * TRANSCRIPT-sektionen indeholder kun det der ER ÆLDRE end dette vindue (ingen overlap).
+ */
+const PRIMARY_FOCUS_WORDS = 500;
 
 function sliceTailWords(text: string, wordCount: number): string {
   const words = text.split(/\s+/).filter(Boolean);
   if (words.length <= wordCount) return text.trim();
   return words.slice(-wordCount).join(" ");
+}
+
+/**
+ * Returnerer alt UNDTAGEN de seneste N ord — komplementet til sliceTailWords.
+ * Bruges til at fjerne FOKUS-overlappet fra TRANSCRIPT-sektionen.
+ */
+function removeLastNWords(text: string, wordCount: number): string {
+  const words = text.split(/\s+/).filter(Boolean);
+  if (words.length <= wordCount) return ""; // hele transcript er i FOKUS
+  return words.slice(0, -wordCount).join(" ");
 }
 
 function truncateTranscript(transcript: string): string {
@@ -1583,7 +1598,13 @@ export async function* streamVisualization(
   const model = MODEL_IDS[vizModel ?? "haiku"];
   const maxTokens = MAX_TOKENS[vizModel ?? "haiku"];
 
-  const transcriptForModel = truncateTranscript(transcript);
+  // TRANSCRIPT = alt UNDTAGEN de seneste PRIMARY_FOCUS_WORDS ord (de er eksklusivt i FOKUS)
+  // Undgår overlap: modellen ser ikke de samme ord to gange i to forskellige sektioner.
+  // Hvis hele transcript er kortere end FOKUS-vinduet → transcriptBackground er tom → ingen sekundær sektion.
+  const transcriptBackground = focusSegment
+    ? transcript // focusSegment er manuelt valgt → vis alt i begge sektioner
+    : removeLastNWords(transcript, PRIMARY_FOCUS_WORDS);
+  const transcriptForModel = truncateTranscript(transcriptBackground);
 
   const isIncremental =
     !freshStart && !!previousHtml && previousHtml.trim().length > 80;
@@ -1648,9 +1669,12 @@ export async function* streamVisualization(
     ? focusSegment.trim()
     : sliceTailWords(transcript, PRIMARY_FOCUS_WORDS);
 
-  userMessage += `FOKUS — seneste indhold (ca. sidste ${PRIMARY_FOCUS_WORDS} ord af transskriptet, medmindre et fokus-segment er angivet). Prioritér dette når du vælger hvad figuren primært handler om nu:\n\n${primaryFocus}\n\n`;
+  userMessage += `FOKUS — SENESTE INDHOLD (de seneste ~${PRIMARY_FOCUS_WORDS} ord, eller det valgte fokus-segment). Dette er det primære signal: hvad taler de om NU. Lad dette styre emne, type og visuel prioritering:\n\n${primaryFocus}\n\n`;
 
-  userMessage += `HELE TRANSSKRIPTET (sekundær reference — brug til detaljer, navne og tal; lad FOKUS styre emne og type; undgå at lade gamle afsnit dominere over nye):\n\n${transcriptForModel}\n\n`;
+  // Inkludér kun baggrundstransskript hvis der ER noget ældre indhold (undgå tom sektion og overlap)
+  if (transcriptForModel.trim().length > 0) {
+    userMessage += `BAGGRUNDSTRANSSKRIPT (ældre indhold — sekundær reference til detaljer, navne og tal fra tidligere i mødet; lad FOKUS styre emne og type):\n\n${transcriptForModel}\n\n`;
+  }
 
   if (isIncremental && previousHtml) {
     const { snippet, truncated } = truncatePreviousViz(previousHtml);
